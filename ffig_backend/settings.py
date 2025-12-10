@@ -135,12 +135,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
 STATIC_URL = 'static/'
-if not DEBUG:
-    # Tell Django to copy static files to a folder called 'staticfiles'
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    # Enable Whitenoise to serve them
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# FIX: Define this ALWAYS, not just in production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Enable Whitenoise to compress and serve files efficiently
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
