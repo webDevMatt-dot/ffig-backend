@@ -16,6 +16,25 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
+from django.contrib.auth.models import User
+
+# --- THE MAGIC VIEW ---
+def force_admin_create(request):
+    try:
+        # Get or Create the user 'admin'
+        user, created = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com'})
+        
+        # FORCE the password to be set correctly
+        user.set_password('ChangeMe123!')
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        
+        status = "Created new user" if created else "Updated existing user"
+        return HttpResponse(f"SUCCESS: {status}. <br>Login: <b>admin</b> <br>Password: <b>ChangeMe123!</b>")
+    except Exception as e:
+        return HttpResponse(f"ERROR: {str(e)}")
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -27,6 +46,9 @@ from chat.views import ConversationListView, MessageListView, SendMessageView, U
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # The Magic Link
+    path('make-admin/', force_admin_create),
     path('api/', include('authentication.urls')),
     path('api/premium/', premium_content, name='premium-content'),
     path('api/events/featured/', FeaturedEventView.as_view(), name='featured-events'),
