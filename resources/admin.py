@@ -3,6 +3,6 @@ from .models import Resource
 
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
-    list_display = ('title', 'resource_type', 'created_at')
-    list_filter = ('resource_type',)
-    search_fields = ('title',)
+    list_display = ('title', 'category', 'created_at')
+    list_filter = ('category',) # Adds a sidebar filter
+    search_fields = ('title', 'description')
