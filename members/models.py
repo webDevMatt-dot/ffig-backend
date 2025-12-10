@@ -12,6 +12,7 @@ class Profile(models.Model):
     is_premium = models.BooleanField(default=False)
     # We'll stick to a placeholder image for now to save setup time
     photo_url = models.URLField(blank=True, default="https://ui-avatars.com/api/?background=D4AF37&color=fff&name=Founder")
+    last_seen = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
