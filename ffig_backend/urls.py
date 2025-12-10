@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.conf.urls.static import static
 
 # --- THE MAGIC VIEW ---
 def force_admin_create(request):
@@ -61,4 +63,4 @@ urlpatterns = [
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

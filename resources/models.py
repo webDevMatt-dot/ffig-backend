@@ -3,7 +3,8 @@ from django.db import models
 class Resource(models.Model):
     RESOURCE_TYPES = [
         ('MAGAZINE', 'Magazine'),
-        ('VIDEO', 'Video Masterclass'),
+        ('MASTERCLASS', 'Masterclass'),
+        ('NEWSLETTER', 'Newsletter'),
         ('TOOLKIT', 'Business Toolkit'),
     ]
 

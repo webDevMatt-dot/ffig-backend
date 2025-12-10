@@ -14,7 +14,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'business_name', 'industry', 'location', 'bio', 'photo_url', 'is_premium', 'is_online']
+        fields = ['id', 'user_id', 'username', 'email', 'business_name', 'industry', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online']
 
     def get_is_online(self, obj):
         if not obj.last_seen:
