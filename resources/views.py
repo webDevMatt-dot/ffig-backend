@@ -9,8 +9,12 @@ class ResourceListView(generics.ListAPIView):
 
     # Optional: Add simple filtering
     def get_queryset(self):
-        queryset = super().get_queryset()
-        category = self.request.query_params.get('type')
+        # Start with all resources
+        queryset = Resource.objects.all().order_by('-created_at')
+        
+        # FILTER: Check if the app asked for a specific category
+        category = self.request.query_params.get('category')
         if category:
-            queryset = queryset.filter(resource_type=category)
+            queryset = queryset.filter(category=category)
+            
         return queryset
