@@ -5,7 +5,9 @@ from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializers import RegisterSerializer
+from rest_framework import status
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import RegisterSerializer, CustomTokenObtainPairSerializer, UserSerializer
 
 def welcome(request):
     return JsonResponse({"message": "Welcome to the FFIG API!"})
@@ -33,3 +35,16 @@ class AdminPasswordResetView(APIView):
         except User.DoesNotExist:
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+class AdminUserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
+
+class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
