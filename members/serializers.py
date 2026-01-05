@@ -13,9 +13,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     industry_label = serializers.CharField(source='get_industry_display', read_only=True)
     
+    is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
+    
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online']
+        fields = ['id', 'user_id', 'username', 'email', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online', 'is_staff']
 
     def get_is_online(self, obj):
         if not obj.last_seen:
