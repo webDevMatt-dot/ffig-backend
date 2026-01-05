@@ -36,3 +36,21 @@ class ResourceListView(generics.ListAPIView):
             queryset = queryset.filter(category=category)
             
         return queryset
+
+from rest_framework.permissions import IsAdminUser
+
+class AdminResourceListCreateView(generics.ListCreateAPIView):
+    serializer_class = ResourceSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        queryset = Resource.objects.all().order_by('-created_at')
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
+class AdminResourceDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    permission_classes = [IsAdminUser]
