@@ -43,7 +43,7 @@ from rest_framework_simplejwt.views import (
 )
 from events.views import FeaturedEventView, EventListView, EventDetailView
 from members.views import MemberListView, UserProfileView, premium_content
-from resources.views import ResourceListView
+from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView
 
 urlpatterns = [
@@ -59,6 +59,11 @@ urlpatterns = [
     path('api/members/', MemberListView.as_view(), name='member-list'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
+    
+    # Admin Resource Management
+    path('api/admin/resources/', AdminResourceListCreateView.as_view(), name='admin-resource-list'),
+    path('api/admin/resources/<int:pk>/', AdminResourceDetailView.as_view(), name='admin-resource-detail'),
+
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
