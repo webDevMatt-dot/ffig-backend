@@ -22,8 +22,20 @@ git add .
 echo "Committing with message: '$MSG'..."
 git commit -m "$MSG"
 
-echo "Pushing to remote..."
 # Get current branch name
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+echo "Pulling latest changes from remote..."
+git pull --rebase origin "$BRANCH"
+
+# Check if pull was successful
+if [ $? -ne 0 ]; then
+    echo "Error: Pull failed. You may have merge conflicts."
+    echo "Please resolve conflicts, then run: git add . && git rebase --continue"
+    echo "After that, you can try pushing again."
+    exit 1
+fi
+
+echo "Pushing to remote..."
 # Push and set upstream if it doesn't exist
 git push -u origin "$BRANCH"
