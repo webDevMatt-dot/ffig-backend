@@ -25,9 +25,38 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims
+        token['username'] = user.username
+        return token
+
     def validate(self, attrs):
+        # 1. Get the input "username" (which could be an email)
+        login_input = attrs.get("username")
+        password = attrs.get("password")
+
+        if login_input and password:
+            # 2. Check if it's an email
+            if '@' in login_input:
+                try:
+                    user = User.objects.get(email__iexact=login_input)
+                    attrs['username'] = user.username  # Switch to actual username for auth
+                except User.DoesNotExist:
+                    pass # Let the parent class fail naturally
+            else:
+                # 3. If it's a username, ensure case-insensitive match helps
+                try:
+                    user = User.objects.get(username__iexact=login_input)
+                    attrs['username'] = user.username
+                except User.DoesNotExist:
+                    pass
+
+        # 4. Standard Auth
         data = super().validate(attrs)
-        # Add extra responses to the login response
+        
+        # 5. Add Custom Response Data
         data['username'] = self.user.username
         data['is_staff'] = self.user.is_staff
         data['is_superuser'] = self.user.is_superuser
