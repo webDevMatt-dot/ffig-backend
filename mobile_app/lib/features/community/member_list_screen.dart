@@ -8,6 +8,7 @@ import '../chat/chat_screen.dart'; // Needed for navigation
 import '../premium/locked_screen.dart'; // Needed for navigation
 import '../../core/api/admin_service.dart'; // Admin Service
 import '../../core/theme/ffig_theme.dart';
+import '../../shared_widgets/user_avatar.dart';
 
 class MemberListScreen extends StatefulWidget {
   const MemberListScreen({super.key});
@@ -273,14 +274,16 @@ class _MemberListScreenState extends State<MemberListScreen> {
                             border: isPremium ? Border.all(color: const Color(0xFFD4AF37), width: 2) : null,
                           ),
                           padding: const EdgeInsets.all(2), // Space for border
-                          child: CircleAvatar(
-                              radius: 28,
-                              backgroundImage: member['photo'] != null 
-                                ? NetworkImage(member['photo']) 
-                                : (member['photo_url'] != null ? NetworkImage(member['photo_url']) : null),
-                              child: (member['photo'] == null && member['photo_url'] == null) 
-                                ? Icon(Icons.person, color: Colors.grey.shade400) 
-                                : null,
+                          child: UserAvatar(
+                            radius: 28,
+                            imageUrl: member['photo'] ?? member['photo_url'],
+                            username: member['username'],
+                            // member list often doesn't return full name in simple view, 
+                            // check if your API returns first_name/last_name. 
+                            // Based on ProfileScreen logic, it might not be in the list view payload.
+                            // We can safely fallback to username which IS available.
+                            firstName: member['first_name'], 
+                            lastName: member['last_name'],
                           ),
                         ),
                         title: Text(

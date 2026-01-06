@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:country_picker/country_picker.dart'; 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; 
 import '../../core/api/constants.dart'; 
+import '../../shared_widgets/user_avatar.dart'; 
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -193,18 +194,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             GestureDetector(
               onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: _pickedImage != null
-                    ? (kIsWeb 
-                        ? NetworkImage(_pickedImage!.path) 
-                        : FileImage(File(_pickedImage!.path)) as ImageProvider)
-                    : (_userPhotoUrl != null ? NetworkImage(_userPhotoUrl!) : null),
-                child: (_pickedImage == null && _userPhotoUrl == null)
-                    ? const Icon(Icons.camera_alt, size: 30, color: Colors.grey)
-                    : null,
-              ),
+              child: _pickedImage != null 
+                  ? CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: kIsWeb 
+                          ? NetworkImage(_pickedImage!.path) 
+                          : FileImage(File(_pickedImage!.path)) as ImageProvider,
+                    )
+                  : UserAvatar(
+                      radius: 60,
+                      imageUrl: _userPhotoUrl,
+                      firstName: _firstNameController.text,
+                      lastName: _lastNameController.text,
+                      username: "Member", // Fallback
+                      backgroundColor: Colors.grey[200],
+                      textColor: Colors.grey.shade600,
+                  ),
             ),
             const SizedBox(height: 8),
             const Text("Tap to change photo", style: TextStyle(color: Colors.grey)),

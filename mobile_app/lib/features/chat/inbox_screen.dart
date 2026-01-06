@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; // Import Chat Screen
 
 class InboxScreen extends StatefulWidget {
@@ -84,7 +85,12 @@ class _InboxScreenState extends State<InboxScreen> {
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    leading: UserAvatar(
+                      radius: 20, 
+                      username: title, // Use title (which is username list) as fallback
+                      // We don't have first/last name here easily without extra parsing or API change, 
+                      // but username initial is better than generic person icon.
+                    ),
                     title: Text(
                       title, 
                       style: TextStyle(

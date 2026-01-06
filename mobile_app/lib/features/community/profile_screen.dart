@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; 
 import '../../core/api/constants.dart'; 
 import '../../core/theme/ffig_theme.dart';
+import '../../shared_widgets/user_avatar.dart';
 import '../settings/settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -87,17 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                    shape: BoxShape.circle,
                    border: Border.all(color: FfigTheme.gold, width: 2),
                  ),
-                 child: CircleAvatar(
+                 child: UserAvatar(
                    radius: 60,
+                   imageUrl: photoUrl,
+                   firstName: firstName,
+                   lastName: lastName,
+                   username: username,
+                   textColor: Colors.black54,
                    backgroundColor: Colors.grey[200],
-                   backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                   child: photoUrl == null 
-                       ? Text(
-                           ((firstName.isNotEmpty ? firstName[0] : '') + 
-                            (lastName.isNotEmpty ? lastName[0] : (firstName.isEmpty && username.isNotEmpty ? username[0] : ''))).toUpperCase(),
-                           style: const TextStyle(fontSize: 40, color: Colors.black54),
-                         ) 
-                       : null,
                  ),
                ),
                const SizedBox(height: 16),
