@@ -44,22 +44,40 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: backgroundColor ?? Colors.grey.shade200,
-      backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty) 
-          ? NetworkImage(imageUrl!) 
-          : null,
-      child: (imageUrl == null || imageUrl!.isEmpty)
-          ? Text(
-              _getInitials(),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: radius * 0.8, 
-                color: textColor ?? Colors.grey.shade600,
-              ),
-            )
-          : null,
+    return ClipOval(
+      child: Container(
+        width: radius * 2,
+        height: radius * 2,
+        color: backgroundColor ?? Colors.grey.shade200,
+        child: (imageUrl != null && imageUrl!.isNotEmpty) 
+            ? Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildInitials();
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return _buildInitials(); // Show initials while loading or spinner? Initials is smoother.
+                },
+              )
+            : _buildInitials(),
+      ),
+    );
+  }
+
+  Widget _buildInitials() {
+    return Container(
+      color: backgroundColor ?? Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: Text(
+        _getInitials(),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.8, 
+          color: textColor ?? Colors.grey.shade600,
+        ),
+      ),
     );
   }
 }
