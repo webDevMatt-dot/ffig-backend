@@ -1,0 +1,157 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; 
+import '../../core/api/constants.dart'; 
+import '../../core/theme/ffig_theme.dart';
+import '../settings/settings_screen.dart';
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic> _profileData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMyProfile();
+  }
+
+  Future<void> _fetchMyProfile() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    if (token == null) return; 
+
+    try {
+      final response = await http.get(
+          Uri.parse('${baseUrl}members/me/'),
+          headers: {'Authorization': 'Bearer $token'}
+      ); 
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _profileData = jsonDecode(response.body);
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    final photoUrl = _profileData['photo'] ?? _profileData['photo_url'];
+    final firstName = _profileData['first_name'] ?? '';
+    final lastName = _profileData['last_name'] ?? '';
+    final fullName = (firstName + ' ' + lastName).trim();
+    final username = _profileData['username'] ?? 'Member';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("My Profile"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () async {
+              // Wait for return to refresh
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+              _fetchMyProfile();
+            },
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+             // Avatar
+             Container(
+               padding: const EdgeInsets.all(4),
+               decoration: BoxDecoration(
+                 shape: BoxShape.circle,
+                 border: Border.all(color: FfigTheme.gold, width: 2),
+               ),
+               child: CircleAvatar(
+                 radius: 60,
+                 backgroundColor: Colors.grey[200],
+                 backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                 child: photoUrl == null 
+                     ? Text(username[0].toUpperCase(), style: const TextStyle(fontSize: 40, color: Colors.black54)) 
+                     : null,
+               ),
+             ),
+             const SizedBox(height: 16),
+             
+             // Name & Business
+             Text(
+               fullName.isNotEmpty ? fullName : username,
+               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+             ),
+             if (_profileData['business_name'] != null)
+               Text(
+                 _profileData['business_name'], 
+                 style: const TextStyle(fontSize: 16, color: FfigTheme.gold, fontWeight: FontWeight.w600)
+               ),
+             
+             const SizedBox(height: 24),
+             
+             // Info Cards
+             _buildInfoCard(Icons.work_outline, "Industry", _profileData['industry_label'] ?? 'General'),
+             _buildInfoCard(Icons.location_on_outlined, "Location", _profileData['location'] ?? 'Global'),
+             
+             if (_profileData['bio'] != null && _profileData['bio'].toString().isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const Align(alignment: Alignment.centerLeft, child: Text("ABOUT", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                const SizedBox(height: 8),
+                Text(
+                  _profileData['bio'],
+                  style: const TextStyle(fontSize: 16, height: 1.5),
+                  textAlign: TextAlign.start,
+                ),
+             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0,2))
+        ]
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: FfigTheme.gold),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+}
