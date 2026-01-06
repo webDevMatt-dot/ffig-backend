@@ -221,12 +221,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 Expanded(child: TextField(
                   controller: _firstNameController,
+                  onChanged: (val) => setState(() {}),
                   style: Theme.of(context).textTheme.bodyLarge,
                   decoration: const InputDecoration(labelText: "First Name", prefixIcon: Icon(Icons.person)),
                 )),
                 const SizedBox(width: 16),
                 Expanded(child: TextField(
                   controller: _lastNameController,
+                  onChanged: (val) => setState(() {}),
                   style: Theme.of(context).textTheme.bodyLarge,
                   decoration: const InputDecoration(labelText: "Last Name"),
                 )),
