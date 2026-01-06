@@ -83,23 +83,27 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // 2. Smart Button Logic
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      // Disable button if sold out
-                      onPressed: (event['is_sold_out'] == true) ? null : () => _launchTicketUrl(context),
-                      
-                      // Change Icon/Text based on status
-                      icon: Icon((event['is_sold_out'] == true) ? Icons.block : Icons.confirmation_number_outlined),
-                      label: Text(
-                        (event['is_sold_out'] == true) ? "SOLD OUT" : "GET TICKETS",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (event['is_sold_out'] == true) ? Colors.grey : Theme.of(context).colorScheme.primary,
-                        foregroundColor: (event['is_sold_out'] == true) ? Colors.white : Colors.black,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 50),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        // Disable button if sold out
+                        onPressed: (event['is_sold_out'] == true) ? null : () => _launchTicketUrl(context),
+                        
+                        // Change Icon/Text based on status
+                        icon: Icon((event['is_sold_out'] == true) ? Icons.block : Icons.confirmation_number_outlined),
+                        label: Text(
+                          (event['is_sold_out'] == true) ? "SOLD OUT" : "GET TICKETS",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: (event['is_sold_out'] == true) ? Colors.grey : Theme.of(context).colorScheme.primary,
+                          foregroundColor: (event['is_sold_out'] == true) ? Colors.white : Colors.black,
+                        ),
                       ),
                     ),
                   ),

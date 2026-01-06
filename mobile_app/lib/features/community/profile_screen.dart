@@ -73,56 +73,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
           )
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-             // Avatar
-             Container(
-               padding: const EdgeInsets.all(4),
-               decoration: BoxDecoration(
-                 shape: BoxShape.circle,
-                 border: Border.all(color: FfigTheme.gold, width: 2),
+      body: RefreshIndicator(
+        onRefresh: _fetchMyProfile,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+               // Avatar
+               Container(
+                 padding: const EdgeInsets.all(4),
+                 decoration: BoxDecoration(
+                   shape: BoxShape.circle,
+                   border: Border.all(color: FfigTheme.gold, width: 2),
+                 ),
+                 child: CircleAvatar(
+                   radius: 60,
+                   backgroundColor: Colors.grey[200],
+                   backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                   child: photoUrl == null 
+                       ? Text(
+                           ((firstName.isNotEmpty ? firstName[0] : '') + 
+                            (lastName.isNotEmpty ? lastName[0] : (firstName.isEmpty && username.isNotEmpty ? username[0] : ''))).toUpperCase(),
+                           style: const TextStyle(fontSize: 40, color: Colors.black54),
+                         ) 
+                       : null,
+                 ),
                ),
-               child: CircleAvatar(
-                 radius: 60,
-                 backgroundColor: Colors.grey[200],
-                 backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                 child: photoUrl == null 
-                     ? Text(username[0].toUpperCase(), style: const TextStyle(fontSize: 40, color: Colors.black54)) 
-                     : null,
-               ),
-             ),
-             const SizedBox(height: 16),
-             
-             // Name & Business
-             Text(
-               fullName.isNotEmpty ? fullName : username,
-               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-             ),
-             if (_profileData['business_name'] != null)
+               const SizedBox(height: 16),
+               
+               // Name & Business
                Text(
-                 _profileData['business_name'], 
-                 style: const TextStyle(fontSize: 16, color: FfigTheme.gold, fontWeight: FontWeight.w600)
+                 fullName.isNotEmpty ? fullName : username,
+                 style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
                ),
-             
-             const SizedBox(height: 24),
-             
-             // Info Cards
-             _buildInfoCard(Icons.work_outline, "Industry", _profileData['industry_label'] ?? 'General'),
-             _buildInfoCard(Icons.location_on_outlined, "Location", _profileData['location'] ?? 'Global'),
-             
-             if (_profileData['bio'] != null && _profileData['bio'].toString().isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const Align(alignment: Alignment.centerLeft, child: Text("ABOUT", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-                const SizedBox(height: 8),
-                Text(
-                  _profileData['bio'],
-                  style: const TextStyle(fontSize: 16, height: 1.5),
-                  textAlign: TextAlign.start,
-                ),
-             ],
-          ],
+               if (_profileData['business_name'] != null)
+                 Text(
+                   _profileData['business_name'], 
+                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: FfigTheme.gold, fontWeight: FontWeight.w600)
+                 ),
+               
+               const SizedBox(height: 24),
+               
+               // Info Cards
+               _buildInfoCard(Icons.work_outline, "Industry", _profileData['industry_label'] ?? 'General'),
+               _buildInfoCard(Icons.location_on_outlined, "Location", _profileData['location'] ?? 'Global'),
+               
+               if (_profileData['bio'] != null && _profileData['bio'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Align(alignment: Alignment.centerLeft, child: Text("ABOUT", style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey))),
+                  const SizedBox(height: 8),
+                  Text(
+                    _profileData['bio'],
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, height: 1.5),
+                    textAlign: TextAlign.start,
+                  ),
+               ],
+            ],
+          ),
         ),
       ),
     );
@@ -146,8 +154,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: Colors.grey)),
+              Text(value, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.w500)),
             ],
           )
         ],

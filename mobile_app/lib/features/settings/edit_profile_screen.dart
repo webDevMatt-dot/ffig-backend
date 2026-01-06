@@ -215,11 +215,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 Expanded(child: TextField(
                   controller: _firstNameController,
+                  style: Theme.of(context).textTheme.bodyLarge,
                   decoration: const InputDecoration(labelText: "First Name", prefixIcon: Icon(Icons.person)),
                 )),
                 const SizedBox(width: 16),
                 Expanded(child: TextField(
                   controller: _lastNameController,
+                  style: Theme.of(context).textTheme.bodyLarge,
                   decoration: const InputDecoration(labelText: "Last Name"),
                 )),
               ],
@@ -229,12 +231,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
             TextField(
               controller: _businessController,
+              style: Theme.of(context).textTheme.bodyLarge,
               decoration: const InputDecoration(labelText: "Business Name", prefixIcon: Icon(Icons.business)),
             ),
             const SizedBox(height: 16),
 
             DropdownButtonFormField<String>(
               value: _selectedIndustry,
+              style: Theme.of(context).textTheme.bodyLarge,
               dropdownColor: Theme.of(context).cardTheme.color, // Fix visibility in dark mode
               decoration: const InputDecoration(labelText: "Industry", prefixIcon: Icon(Icons.work)),
               items: _industryItems,
@@ -245,6 +249,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             TextField(
               controller: _locationController,
               readOnly: true, 
+              style: Theme.of(context).textTheme.bodyLarge,
               decoration: const InputDecoration(
                 labelText: "Location", 
                 prefixIcon: Icon(Icons.location_on),
@@ -265,6 +270,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
             TextField(
               controller: _bioController,
+              style: Theme.of(context).textTheme.bodyLarge,
               decoration: const InputDecoration(labelText: "Bio / Mission", prefixIcon: Icon(Icons.info)),
               maxLines: 3,
             ),
