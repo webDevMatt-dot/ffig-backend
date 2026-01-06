@@ -85,7 +85,13 @@ class _InboxScreenState extends State<InboxScreen> {
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(
+                      title, 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
                     subtitle: Text(
                       lastMsg, 
                       maxLines: 1, 

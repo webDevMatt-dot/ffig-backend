@@ -472,7 +472,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     event['title'],
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 12),
+                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      fontSize: 12,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
