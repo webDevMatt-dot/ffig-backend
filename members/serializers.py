@@ -8,6 +8,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     # Fetch the username from the related User model
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
+    
+    # Allow updating these via the Profile endpoint
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
 
     user_id = serializers.IntegerField(source='user.id', read_only=True)
     is_online = serializers.SerializerMethodField()
@@ -17,7 +21,23 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online', 'is_staff']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online', 'is_staff']
+
+    def update(self, instance, validated_data):
+        # The 'source' fields (user.first_name) come in as a nested dictionary under 'user'
+        user_data = validated_data.pop('user', {})
+
+        # Update key User fields if provided
+        if user_data:
+            user = instance.user
+            if 'first_name' in user_data:
+                user.first_name = user_data['first_name']
+            if 'last_name' in user_data:
+                user.last_name = user_data['last_name']
+            user.save()
+
+        # Update remaining Profile fields normally
+        return super().update(instance, validated_data)
 
     def get_is_online(self, obj):
         if not obj.last_seen:
