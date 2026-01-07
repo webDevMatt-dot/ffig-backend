@@ -19,6 +19,7 @@ import 'package:overlay_support/overlay_support.dart';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
+import '../../core/services/admin_api_service.dart';
 
 import '../../core/theme/ffig_theme.dart';
 import 'models/hero_item.dart';
@@ -163,57 +164,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   }
 
-  void _loadHomepageContent() {
-    // MOCK DATA - Replace with API calls later
-    setState(() {
-      _heroItems = [
-        HeroItem(
-          id: '1', 
-          title: 'FFIG Global Summit 2026', 
-          imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80', 
-          type: 'Announcement',
-          actionUrl: 'https://ffig.com/summit'
-        ),
-        HeroItem(
-          id: '2', 
-          title: 'New Grant Opportunities', 
-          imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2664&q=80', 
-          type: 'Opportunity'
-        ),
-        HeroItem(
-          id: '3', 
-          title: 'Premium Member Spotlight', 
-          imageUrl: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80', 
-          type: 'Community'
-        ),
-      ];
+  Future<void> _loadHomepageContent() async {
+    final api = AdminApiService();
+    try {
+      // Run fetches in parallel for speed
+      final results = await Future.wait([
+        api.fetchItems('hero'),
+        api.fetchItems('founder'),
+        api.fetchItems('alerts'),
+        api.fetchItems('ticker'),
+      ]);
 
-      _founderProfile = FounderProfile(
-        id: 'f1',
-        name: 'Sarah Jenkins',
-        photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=988&q=80',
-        bio: 'Sarah is the CEO of TechNova, leading the charge in sustainable energy solutions across Africa.',
-        country: 'South Africa',
-        businessName: 'TechNova Solutions',
-        isPremium: true,
-      );
+      if (mounted) {
+        setState(() {
+          // 1. Hero Items
+          _heroItems = (results[0] as List).map((json) {
+            // Ensure ID is string safely
+            final Map<String, dynamic> data = Map<String, dynamic>.from(json);
+            data['id'] = data['id'].toString();
+            // Map 'image' (Django) to 'image_url' (Dart)
+            if (data.containsKey('image')) {
+                data['image_url'] = data['image']; 
+            }
+            return HeroItem.fromJson(data);
+          }).toList();
 
-      _flashAlert = FlashAlert(
-        id: 'a1',
-        title: 'Flash Sale',
-        message: 'Early Bird Tickets for London Summit close in 24h!',
-        expiryTime: DateTime.now().add(const Duration(hours: 24)),
-        type: 'Tickets Closing',
-        actionUrl: 'https://ffig.com/tickets',
-      );
+          // 2. Founder Profile (Take the first one)
+          final founders = results[1] as List;
+          if (founders.isNotEmpty) {
+            final Map<String, dynamic> data = Map<String, dynamic>.from(founders.first);
+            data['id'] = data['id'].toString();
+            // Map 'photo' (Django) to 'photo_url' (Dart)
+            if (data.containsKey('photo')) {
+                data['photo_url'] = data['photo'];
+            }
+            _founderProfile = FounderProfile.fromJson(data);
+          } else {
+            _founderProfile = null;
+          }
 
-      _newsTickerItems = [
-        "FFIG partners with Google for Startups",
-        "Congratulations to Jane Doe on her Series A funding!",
-        "New Mentorship Program launching next month",
-        "Award nominations are now open",
-      ];
-    });
+          // 3. Flash Alert (Take the newest valid one)
+          final alerts = results[2] as List;
+          if (alerts.isNotEmpty) {
+             final Map<String, dynamic> data = Map<String, dynamic>.from(alerts.last); // Last = Newest usually
+             data['id'] = data['id'].toString();
+             _flashAlert = FlashAlert.fromJson(data);
+          } else {
+            _flashAlert = null;
+          }
+
+          // 4. News Ticker
+          final tickers = results[3] as List;
+           // Map 'text' to string
+           _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error loading homepage content: $e");
+    }
   }
 
   // Logout Function
