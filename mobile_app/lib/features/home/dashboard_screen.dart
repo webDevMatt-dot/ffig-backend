@@ -19,7 +19,15 @@ import 'package:overlay_support/overlay_support.dart';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
 import '../../core/theme/ffig_theme.dart';
+import 'models/hero_item.dart';
+import 'models/founder_profile.dart';
+import 'models/flash_alert.dart';
+import 'widgets/hero_carousel.dart';
+import 'widgets/founder_card.dart';
+import 'widgets/flash_alert_banner.dart';
+import 'widgets/news_ticker.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -35,13 +43,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isPremium = false;
   bool _isAdmin = false;
   Timer? _notificationTimer;
+  Timer? _notificationTimer;
   int _lastUnreadCount = 0;
+
+  // New Data Sources (Mocked for now)
+  List<HeroItem> _heroItems = [];
+  FounderProfile? _founderProfile;
+  FlashAlert? _flashAlert;
+  List<String> _newsTickerItems = [];
 
   @override
   void initState() {
     super.initState();
     _fetchFeaturedEvents();
+    _fetchFeaturedEvents();
     _checkPremiumStatus();
+    _loadHomepageContent();
     // Start the Global Listener (Checks every 10 seconds)
     _notificationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkUnreadMessages();
@@ -73,20 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (currentCount > _lastUnreadCount) {
            final player = AudioPlayer();
            await player.play(AssetSource('sounds/ding.mp3'));
-
-           showSimpleNotification(
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
-                },
-                child: const Text("New Message Received! Tap to check."),
-              ),
-              subtitle: const Text("Someone wants to connect."),
-              background: Colors.amber, 
-              foreground: Colors.black,
-              duration: const Duration(seconds: 4),
-              slideDismissDirection: DismissDirection.up,
-           );
+           
+           // Notification removed as per user request
         }
         if (mounted) {
           setState(() {
@@ -155,6 +160,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
       print("Connection error: $e");
       setState(() => _isLoading = false);
     }
+    }
+  }
+
+  void _loadHomepageContent() {
+    // MOCK DATA - Replace with API calls later
+    setState(() {
+      _heroItems = [
+        HeroItem(
+          id: '1', 
+          title: 'FFIG Global Summit 2026', 
+          imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80', 
+          type: 'Announcement',
+          actionUrl: 'https://ffig.com/summit'
+        ),
+        HeroItem(
+          id: '2', 
+          title: 'New Grant Opportunities', 
+          imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2664&q=80', 
+          type: 'Opportunity'
+        ),
+        HeroItem(
+          id: '3', 
+          title: 'Premium Member Spotlight', 
+          imageUrl: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80', 
+          type: 'Community'
+        ),
+      ];
+
+      _founderProfile = FounderProfile(
+        id: 'f1',
+        name: 'Sarah Jenkins',
+        photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=988&q=80',
+        bio: 'Sarah is the CEO of TechNova, leading the charge in sustainable energy solutions across Africa.',
+        country: 'South Africa',
+        businessName: 'TechNova Solutions',
+        isPremium: true,
+      );
+
+      _flashAlert = FlashAlert(
+        id: 'a1',
+        title: 'Flash Sale',
+        message: 'Early Bird Tickets for London Summit close in 24h!',
+        expiryTime: DateTime.now().add(const Duration(hours: 24)),
+        type: 'Tickets Closing',
+        actionUrl: 'https://ffig.com/tickets',
+      );
+
+      _newsTickerItems = [
+        "FFIG partners with Google for Startups",
+        "Congratulations to Jane Doe on her Series A funding!",
+        "New Mentorship Program launching next month",
+        "Award nominations are now open",
+      ];
+    });
   }
 
   // Logout Function
@@ -263,6 +322,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 0. Flash Alert
+          if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
+
           // 1. Editorial Header
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
@@ -282,84 +344,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // 2. Featured "Hero" Card (Netflix Style)
-          if (!_isLoading && _events.isNotEmpty)
+          // 2. Hero Carousel (Replacing single static card)
+          if (_heroItems.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailScreen(event: _events[0]))),
-                child: Hero(
-                  tag: 'event-${_events[0]['id']}',
-                  child: Container(
-                    height: 420,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      image: DecorationImage(
-                        image: NetworkImage(_events[0]['image_url']),
-                        fit: BoxFit.cover,
-                      ),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10)),
-                      ],
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.2),
-                            Colors.black.withOpacity(0.9),
-                          ],
-                          stops: const [0.4, 0.7, 1.0],
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: FfigTheme.primaryBrown,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              "FEATURED EVENT",
-                              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 10),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _events[0]['title'],
-                            style: Theme.of(context).textTheme.displayMedium?.copyWith(color: Colors.white),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                _events[0]['location'],
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              padding: const EdgeInsets.only(bottom: 24),
+              child: HeroCarousel(items: _heroItems),
             ),
-            
-          const SizedBox(height: 48),
+          
+          // 3. News Ticker
+          if (_newsTickerItems.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 32),
+              child: NewsTicker(newsItems: _newsTickerItems),
+            ),
+
+          // 4. Founder of the Week
+          if (_founderProfile != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text("SPOTLIGHT", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)),
+                ),
+                FounderCard(profile: _founderProfile!),
+                const SizedBox(height: 32),
+              ],
+            ),
 
           // 3. Quick Actions Grid
           Padding(

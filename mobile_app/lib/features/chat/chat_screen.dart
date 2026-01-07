@@ -21,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<dynamic> _messages = [];
   int? _activeConversationId;
   Timer? _timer;
+  bool _isLoading = true; // Add loading state
 
   @override
   void initState() {
@@ -28,7 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _activeConversationId = widget.conversationId;
     _fetchMessages();
     // Auto-refresh every 5 seconds (Simple "Real-time")
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchMessages());
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchMessages(silent: true));
   }
 
   @override
@@ -37,8 +38,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchMessages() async {
-    if (_activeConversationId == null) return;
+  Future<void> _fetchMessages({bool silent = false}) async {
+    if (_activeConversationId == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+    }
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
     final String url = 'https://ffig-api.onrender.com/api/chat/conversations/$_activeConversationId/messages/';
@@ -46,10 +50,16 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
-        if (mounted) setState(() => _messages = jsonDecode(response.body));
+        if (mounted) {
+           setState(() {
+             _messages = jsonDecode(response.body);
+             _isLoading = false;
+           });
+        }
       }
     } catch (e) {
       if (kDebugMode) print(e);
+      if (mounted && !silent) setState(() => _isLoading = false);
     }
   }
 
@@ -57,6 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isEmpty) return;
     final text = _controller.text;
     _controller.clear(); // Clear input immediately for UX
+    // Optimistic Update could go here for even faster feel
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
     final String url = 'https://ffig-api.onrender.com/api/chat/messages/send/';
@@ -78,7 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (_activeConversationId == null) {
           setState(() => _activeConversationId = data['conversation_id']);
         }
-        _fetchMessages(); // Refresh immediately
+        _fetchMessages(silent: true); // Refresh immediately
       }
     } catch (e) {
       if (kDebugMode) print(e);
@@ -96,7 +107,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           // Message List
           Expanded(
-            child: ListView.builder(
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator()) 
+              : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
