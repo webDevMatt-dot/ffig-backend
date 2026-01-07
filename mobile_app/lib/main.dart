@@ -67,31 +67,12 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Placeholder for Logo
-            Container(
-              height: 120,
-              width: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: FfigTheme.gold,
-              ),
-              child: const Icon(Icons.diamond_outlined, size: 60, color: FfigTheme.matteBlack),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              "Female Founders Initiative Global",
-              style: FfigTheme.textTheme.displayLarge?.copyWith(
-                fontSize: 40,
-                letterSpacing: 2.0,
-                color: FfigTheme.gold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "FEMALE FOUNDERS INITIATIVE GLOBAL",
-              style: GoogleFonts.lato(
-                fontSize: 12,
-                letterSpacing: 1.5,
-                color: Colors.grey,
+            // Logo
+             Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Image.asset(
+                'assets/images/female_founders_logo_full.png',
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 40),
