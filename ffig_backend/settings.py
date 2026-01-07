@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'members',
     'resources',
     'chat',
+    'home',
 ]
 
 MIDDLEWARE = [

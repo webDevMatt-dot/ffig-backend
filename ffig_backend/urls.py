@@ -59,6 +59,7 @@ urlpatterns = [
     path('api/members/', MemberListView.as_view(), name='member-list'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
+    path('api/home/', include('home.urls')),
     
     # Admin Resource Management
     path('api/admin/resources/', AdminResourceListCreateView.as_view(), name='admin-resource-list'),
