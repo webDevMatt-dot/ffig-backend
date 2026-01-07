@@ -4,11 +4,23 @@ import 'package:overlay_support/overlay_support.dart';
 import 'features/auth/login_screen.dart';
 import 'core/theme/ffig_theme.dart';
 import 'core/theme/theme_controller.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'core/services/notification_service.dart';
+// import 'firebase_options.dart'; // Uncomment if you have generated firebase_options.dart using FlutterFire CLI
 
 // Global access to theme controller (Simple dependency injection)
 final themeController = ThemeController();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
+    await Firebase.initializeApp();
+     // Initialize Notifications
+    await NotificationService().init();
+  } catch (e) {
+    print("Firebase/Notification Init Error: $e");
+  }
   runApp(const FFIGApp());
 }
 

@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../../shared_widgets/user_avatar.dart';
-import 'chat_screen.dart'; // Import Chat Screen
+import 'chat_screen.dart'; 
+import '../../core/api/constants.dart'; // Assume constants exist or use raw URL if simpler
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -16,30 +17,69 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   List<dynamic> _conversations = [];
   bool _isLoading = true;
+  String? _myUsername;
 
   @override
   void initState() {
     super.initState();
-    _fetchConversations();
+    _fetchCurrentUserAndConversations();
   }
 
-  Future<void> _fetchConversations() async {
+  Future<void> _fetchCurrentUserAndConversations() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    const String baseUrl = 'https://ffig-api.onrender.com/api/chat/conversations/';
-
+    
+    // 1. Fetch "Me" to know who I am
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
+      final meResponse = await http.get(
+        // Use the same URL structure as MemberListScreen
+        Uri.parse('https://ffig-api.onrender.com/api/members/me/'), 
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      
+      if (meResponse.statusCode == 200) {
+        final meData = jsonDecode(meResponse.body);
+        _myUsername = meData['username'];
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error fetching me: $e");
+    }
+
+    // 2. Fetch Conversations
+    // const String baseUrl = 'https://ffig-api.onrender.com/api/chat/conversations/';
+    
+    try {
+      final response = await http.get(
+        Uri.parse('https://ffig-api.onrender.com/api/chat/conversations/'), 
+        headers: {'Authorization': 'Bearer $token'}
+      );
+
       if (response.statusCode == 200) {
-        setState(() {
-          _conversations = jsonDecode(response.body);
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _conversations = jsonDecode(response.body);
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (kDebugMode) print(e);
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _getOtherParticipantName(List<dynamic> participants) {
+    if (_myUsername == null) {
+        // Fallback if we failed to fetch "me"
+        // Return everybody joined
+        return participants.map((p) => p['username']).join(", ");
+    }
+    
+    // Filter ME out
+    final others = participants.where((p) => p['username'] != _myUsername).toList();
+    if (others.isEmpty) return "Me (Draft)"; // Should typically not happen in normal chats
+    
+    return others.map((p) => p['username']).join(", ");
   }
 
   @override
@@ -58,8 +98,7 @@ class _InboxScreenState extends State<InboxScreen> {
                     const Text("No messages yet."),
                     TextButton(
                       onPressed: () {
-                         // Logic to switch tab to Network could go here, 
-                         // but for now simple text is enough.
+                         // Navigation logic if needed
                       }, 
                       child: const Text("Find a founder to chat with!")
                     )
@@ -71,41 +110,64 @@ class _InboxScreenState extends State<InboxScreen> {
                 separatorBuilder: (c, i) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final chat = _conversations[index];
-                  
-                  // Logic to find "The Other Person" name
-                  // (The API returns a list of participants. We need the one that isn't ME.)
-                  // For simplicity, we'll just grab the first username for now, 
-                  // but in production, you'd check IDs.
                   final participants = chat['participants'] as List;
-                  final String title = participants.map((p) => p['username']).join(", "); 
+                  
+                  // Clean Name
+                  final String title = _getOtherParticipantName(participants);
                   
                   final lastMsg = chat['last_message'] != null 
                       ? chat['last_message']['text'] 
                       : "Start chatting...";
+                  
+                  // Live Count Logic
+                  // Assuming API structure. If not present, we default to 0.
+                  // Or we confirm unread logic.
+                  // For now, let's look for 'unread_count' from the backend.
+                  // If not explicitly sent, we can check basic `is_read` of last message if NOT me.
+                  final int unreadCount = chat['unread_count'] ?? 0; 
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: UserAvatar(
-                      radius: 20, 
-                      username: title, // Use title (which is username list) as fallback
-                      // We don't have first/last name here easily without extra parsing or API change, 
-                      // but username initial is better than generic person icon.
+                      radius: 24, 
+                      username: title,
                     ),
                     title: Text(
                       title, 
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     subtitle: Text(
                       lastMsg, 
                       maxLines: 1, 
-                      overflow: TextOverflow.ellipsis
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: unreadCount > 0 ? Colors.black87 : Colors.grey,
+                        fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (unreadCount > 0)
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary, // Using Theme Color
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              unreadCount.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else
+                           const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
                     onTap: () {
-                      // Open the chat with the Conversation ID directly
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -114,7 +176,7 @@ class _InboxScreenState extends State<InboxScreen> {
                             recipientName: title,
                           ),
                         ),
-                      ).then((_) => _fetchConversations()); // Refresh when coming back
+                      ).then((_) => _fetchCurrentUserAndConversations()); // Refresh on return
                     },
                   );
                 },
