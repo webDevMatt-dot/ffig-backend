@@ -14,10 +14,10 @@ class NewsTicker extends StatelessWidget {
 
     return Container(
       height: 40,
-      color: Colors.black,
+      color: Theme.of(context).colorScheme.surfaceVariant, // Adaptive background
       child: Marquee(
         text: fullText,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
         scrollAxis: Axis.horizontal,
         crossAxisAlignment: CrossAxisAlignment.center,
         blankSpace: 20.0,

@@ -13,30 +13,40 @@ class ResourceManagementScreen extends StatefulWidget {
   State<ResourceManagementScreen> createState() => _ResourceManagementScreenState();
 }
 
-class _ResourceManagementScreenState extends State<ResourceManagementScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _storage = const FlutterSecureStorage();
-  bool _isLoading = false;
+  
+  // Model & State
   List<dynamic> _resources = [];
+  List<dynamic> _filteredResources = [];
+  String _searchQuery = "";
+  bool _isLoading = false;
+  String? _editingId;
 
-  // Mapping for API
-  final Map<int, String> _tabToCategory = {
-    0: 'MAG',   // Magazines
-    1: 'CLASS', // Masterclass
-    2: 'NEWS',  // Newsletter
-  };
+  // Form Fields
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final _urlController = TextEditingController();
+  final _thumbController = TextEditingController();
+  String _selectedCategory = 'MAG'; // Default
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(_handleTabSelection);
     _fetchResources();
   }
-
-  void _handleTabSelection() {
-    if (_tabController.indexIsChanging) {
-      _fetchResources();
+  
+  void _filterResources() {
+    if (_searchQuery.isEmpty) {
+      _filteredResources = _resources;
+    } else {
+      _filteredResources = _resources.where((r) {
+        final title = (r['title'] ?? '').toString().toLowerCase();
+        final cat = (r['category'] ?? '').toString().toLowerCase();
+        final q = _searchQuery.toLowerCase();
+        return title.contains(q) || cat.contains(q);
+      }).toList();
     }
   }
 
@@ -44,387 +54,245 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> wit
     setState(() => _isLoading = true);
     try {
       final token = await _storage.read(key: 'access_token');
-      final category = _tabToCategory[_tabController.index];
+      final cats = ['MAG', 'CLASS', 'NEWS', 'GEN'];
+      List<dynamic> all = [];
       
-      final url = Uri.parse('${baseUrl}admin/resources/?category=$category');
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $token',
-      });
-
-      if (response.statusCode == 200) {
-        setState(() => _resources = json.decode(response.body));
-      } else {
-        _showError("Failed to load resources: ${response.statusCode}");
+      for (var cat in cats) {
+         final res = await http.get(Uri.parse('${baseUrl}admin/resources/?category=$cat'), headers: {'Authorization': 'Bearer $token'});
+         if (res.statusCode == 200) {
+           all.addAll(jsonDecode(res.body));
+         }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _resources = all;
+          _filterResources();
+        });
       }
     } catch (e) {
-      _showError("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _startEditing(Map<String, dynamic> item) {
+    setState(() {
+      _editingId = item['id'].toString();
+      _titleController.text = item['title'] ?? '';
+      _descController.text = item['description'] ?? '';
+      _urlController.text = item['url'] ?? '';
+      _thumbController.text = item['thumbnail_url'] ?? '';
+      _selectedCategory = item['category'] ?? 'MAG';
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingId = null;
+      _titleController.clear();
+      _descController.clear();
+      _urlController.clear();
+      _thumbController.clear();
+      _selectedCategory = 'MAG';
+    });
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final token = await _storage.read(key: 'access_token');
+      
+      var urlInput = _urlController.text.trim();
+      if (urlInput.isNotEmpty && !urlInput.startsWith('http')) urlInput = 'https://\$urlInput';
+
+      var thumbInput = _thumbController.text.trim();
+      if (thumbInput.isNotEmpty && !thumbInput.startsWith('http')) thumbInput = 'https://\$thumbInput';
+
+      final body = jsonEncode({
+        'title': _titleController.text.trim(),
+        'description': _descController.text.trim(),
+        'url': urlInput,
+        'thumbnail_url': thumbInput.isEmpty ? null : thumbInput,
+        'category': _selectedCategory,
+      });
+
+      final uri = _editingId != null 
+          ? Uri.parse('${baseUrl}admin/resources/\$_editingId/')
+          : Uri.parse('${baseUrl}admin/resources/');
+
+      final response = _editingId != null
+          ? await http.put(uri, headers: {'Authorization': 'Bearer \$token', 'Content-Type': 'application/json'}, body: body)
+          : await http.post(uri, headers: {'Authorization': 'Bearer \$token', 'Content-Type': 'application/json'}, body: body);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editingId != null ? 'Resource Updated' : 'Resource Created')));
+        _cancelEditing();
+        _fetchResources();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: \${response.body}')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: \$e')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _deleteResource(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: Theme.of(context).cardTheme.color,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Delete Resource", style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.displayMedium?.color)),
-              const SizedBox(height: 16),
-              Text("Are you sure you want to remove this resource permanently? This action cannot be undone.", 
-                   textAlign: TextAlign.center,
-                   style: GoogleFonts.lato(fontSize: 14, color: Colors.grey, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                   Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
-                      ),
-                      child: Text("CANCEL", style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600], letterSpacing: 1)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                         padding: const EdgeInsets.symmetric(vertical: 14),
-                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                         elevation: 0,
-                      ),
-                      child: Text("DELETE", style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                    ),
-                  ),
-                ],
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (confirm != true) return;
-
     try {
       final token = await _storage.read(key: 'access_token');
-      final response = await http.delete(
-        Uri.parse('${baseUrl}admin/resources/$id/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 204) {
-        _fetchResources(); // Refresh
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Resource deleted")));
-      } else {
-        _showError("Failed to delete");
-      }
+      await http.delete(Uri.parse('${baseUrl}admin/resources/\$id/'), headers: {'Authorization': 'Bearer \$token'});
+      _fetchResources();
     } catch (e) {
-      _showError("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: \$e')));
     }
-  }
-
-  void _showResourceDialog({Map<String, dynamic>? resource}) {
-    showDialog(
-      context: context,
-      builder: (context) => _ResourceEditorDialog(
-        resource: resource,
-        initialCategory: _tabToCategory[_tabController.index]!,
-        onSave: _fetchResources,
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text("RESOURCES", style: FfigTheme.textTheme.displaySmall?.copyWith(fontSize: 20)),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: FfigTheme.primaryBrown,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: FfigTheme.primaryBrown,
-          labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: "MAGAZINES"),
-            Tab(text: "MASTERCLASS"),
-            Tab(text: "NEWSLETTERS"),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: FfigTheme.primaryBrown))
-          : _resources.isEmpty
-              ? Center(child: Text("No resources found.", style: GoogleFonts.inter(color: Colors.grey)))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _resources.length,
-                  itemBuilder: (context, index) {
-                    final item = _resources[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Theme.of(context).dividerColor),
-                      ),
-                      color: Theme.of(context).cardTheme.color,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(12),
-                        leading: Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(
-                            color: FfigTheme.accentBrown.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(8),
-                            image: item['thumbnail_url'] != null && item['thumbnail_url'].toString().isNotEmpty
-                                ? DecorationImage(image: NetworkImage(item['thumbnail_url']), fit: BoxFit.cover)
-                                : null,
-                          ),
-                          child: item['thumbnail_url'] == null || item['thumbnail_url'].toString().isEmpty
-                              ? const Icon(Icons.article, color: FfigTheme.primaryBrown)
-                              : null,
-                        ),
-                        title: Text(item['title'], style: FfigTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                        subtitle: Text(item['description'] ?? "", maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+      appBar: AppBar(title: const Text("Manage Resources")),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left: Form
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 20, color: Colors.blueGrey),
-                              onPressed: () => _showResourceDialog(resource: item),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
-                              onPressed: () => _deleteResource(item['id']),
-                            ),
+                            Text(_editingId != null ? "Edit Resource" : "Add Resource", style: Theme.of(context).textTheme.titleLarge),
+                            if (_editingId != null)
+                              TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
                           ],
                         ),
-                      ),
-                    );
-                  },
+                        const SizedBox(height: 24),
+                        
+                        _buildField(_titleController, "Title", Icons.title),
+                        const SizedBox(height: 16),
+                        _buildField(_descController, "Description", Icons.description, maxLines: 3),
+                        const SizedBox(height: 16),
+                        _buildField(_urlController, "Content URL", Icons.link),
+                        const SizedBox(height: 16),
+                        _buildField(_thumbController, "Thumbnail URL", Icons.image, required: false),
+                        const SizedBox(height: 16),
+                        
+                         DropdownButtonFormField<String>(
+                           value: _selectedCategory,
+                           decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                           items: const [
+                             DropdownMenuItem(value: 'MAG', child: Text("Magazine")),
+                             DropdownMenuItem(value: 'CLASS', child: Text("Masterclass")),
+                             DropdownMenuItem(value: 'NEWS', child: Text("Newsletter")),
+                             DropdownMenuItem(value: 'GEN', child: Text("General")),
+                           ],
+                           onChanged: (v) => setState(() => _selectedCategory = v!),
+                         ),
+                        
+                        const SizedBox(height: 24),
+                         SizedBox(
+                           width: double.infinity,
+                           height: 50,
+                           child: ElevatedButton(
+                             onPressed: _isLoading ? null : _submitForm,
+                             style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+                             child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE" : "PUBLISH"),
+                           ),
+                         ),
+                      ],
+                    ),
+                  ),
                 ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: FfigTheme.pureBlack,
-        onPressed: () => _showResourceDialog(),
-        child: const Icon(Icons.add, color: FfigTheme.primaryBrown),
+              ),
+            ),
+          ),
+          
+          // Right: List
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Existing Resources", style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                     decoration: const InputDecoration(
+                       hintText: "Search Resources...",
+                       prefixIcon: Icon(Icons.search),
+                       border: OutlineInputBorder(),
+                       isDense: true,
+                     ),
+                     onChanged: (val) {
+                       setState(() {
+                         _searchQuery = val;
+                         _filterResources();
+                       });
+                     },
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (_isLoading && _resources.isEmpty)
+                     const Center(child: CircularProgressIndicator())
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _filteredResources.length,
+                        itemBuilder: (context, index) {
+                          final item = _filteredResources[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: item['thumbnail_url'] != null 
+                                  ? Image.network(item['thumbnail_url'], width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.broken_image))
+                                  : const Icon(Icons.article),
+                              title: Text(item['title']),
+                              subtitle: Text(item['category'] ?? ''),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
+                                  IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteResource(item['id'])),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _ResourceEditorDialog extends StatefulWidget {
-  final Map<String, dynamic>? resource;
-  final String initialCategory;
-  final VoidCallback onSave;
-
-  const _ResourceEditorDialog({this.resource, required this.initialCategory, required this.onSave});
-
-  @override
-  State<_ResourceEditorDialog> createState() => _ResourceEditorDialogState();
-}
-
-class _ResourceEditorDialogState extends State<_ResourceEditorDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleController;
-  late TextEditingController _descController;
-  late TextEditingController _urlController;
-  late TextEditingController _thumbController;
-  late String _category;
-  bool _isSaving = false;
-  final _storage = const FlutterSecureStorage();
-
-  @override
-  void initState() {
-    super.initState();
-    _titleController = TextEditingController(text: widget.resource?['title'] ?? '');
-    _descController = TextEditingController(text: widget.resource?['description'] ?? '');
-    _urlController = TextEditingController(text: widget.resource?['url'] ?? '');
-    _thumbController = TextEditingController(text: widget.resource?['thumbnail_url'] ?? '');
-    _category = widget.resource?['category'] ?? widget.initialCategory;
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-
-    try {
-      final token = await _storage.read(key: 'access_token');
-      final isEdit = widget.resource != null;
-      final endpoint = isEdit
-          ? '${baseUrl}admin/resources/${widget.resource!['id']}/'
-          : '${baseUrl}admin/resources/';
-      
-      var urlInput = _urlController.text.trim();
-      if (urlInput.isNotEmpty && !urlInput.startsWith('http')) {
-        urlInput = 'https://$urlInput';
-      }
-
-      var thumbInput = _thumbController.text.trim();
-      if (thumbInput.isNotEmpty && !thumbInput.startsWith('http')) {
-        thumbInput = 'https://$thumbInput';
-      }
-
-      final body = json.encode({
-        'title': _titleController.text.trim(),
-        'description': _descController.text.trim(),
-        'url': urlInput,
-        'thumbnail_url': thumbInput.isEmpty ? null : thumbInput,
-        'category': _category,
-      });
-
-      final response = isEdit
-          ? await http.put(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: body)
-          : await http.post(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        widget.onSave();
-        Navigator.pop(context);
-      } else {
-        // Try to decode error message
-        String errorMsg = "Error: ${response.statusCode}";
-        try {
-          final errorData = json.decode(response.body);
-          errorMsg = "Error: $errorData";
-          // If it's a map, make it cleaner
-          if (errorData is Map) {
-            final firstKey = errorData.keys.first;
-            final firstVal = errorData[firstKey];
-             errorMsg = "$firstKey: $firstVal";
-          }
-        } catch (_) {}
-        
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg)));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => _isSaving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Custom Premium Dialog
-    return Dialog(
-       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-       backgroundColor: Theme.of(context).cardTheme.color,
-       elevation: 10,
-       child: Container(
-         padding: const EdgeInsets.all(24),
-         constraints: const BoxConstraints(maxWidth: 400),
-         child: SingleChildScrollView(
-           child: Form(
-             key: _formKey,
-             child: Column(
-               mainAxisSize: MainAxisSize.min,
-               crossAxisAlignment: CrossAxisAlignment.stretch,
-               children: [
-                 // Header
-                 Row(
-                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                   children: [
-                     Expanded(child: Text(widget.resource == null ? "New Resource" : "Edit Resource", 
-                        style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.displayMedium?.color))
-                     ),
-                     IconButton(
-                       icon: const Icon(Icons.close, color: Colors.grey), 
-                       onPressed: () => Navigator.pop(context),
-                       padding: EdgeInsets.zero,
-                       constraints: const BoxConstraints(),
-                     )
-                   ],
-                 ),
-                 const SizedBox(height: 24),
-                 
-                 // Fields
-                 _buildPremiumField(_titleController, "Title", Icons.title),
-                 const SizedBox(height: 16),
-                 _buildPremiumField(_descController, "Description", Icons.description, maxLines: 3),
-                 const SizedBox(height: 16),
-                 _buildPremiumField(_urlController, "Link / File URL", Icons.link),
-                 const SizedBox(height: 16),
-                 _buildPremiumField(_thumbController, "Thumbnail URL (Optional)", Icons.image, required: false),
-                 const SizedBox(height: 16),
-                 
-                 DropdownButtonFormField<String>(
-                   value: _category,
-                   dropdownColor: Theme.of(context).cardTheme.color,
-                   decoration: InputDecoration(
-                     filled: true,
-                     fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-                     labelText: "Category",
-                     labelStyle: GoogleFonts.lato(color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey),
-                     prefixIcon: Icon(Icons.category_outlined, color: FfigTheme.primaryBrown, size: 20),
-                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                   ),
-                   items: const [
-                     DropdownMenuItem(value: 'MAG', child: Text("Magazine")),
-                     DropdownMenuItem(value: 'CLASS', child: Text("Masterclass")),
-                     DropdownMenuItem(value: 'NEWS', child: Text("Newsletter")),
-                   ],
-                   onChanged: (v) => setState(() => _category = v!),
-                 ),
-                 
-                 const SizedBox(height: 32),
-                 
-                 // Save Button
-                 ElevatedButton(
-                   onPressed: _isSaving ? null : _save,
-                   style: ElevatedButton.styleFrom(
-                     backgroundColor: Theme.of(context).colorScheme.primary,
-                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                     padding: const EdgeInsets.symmetric(vertical: 16),
-                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                     elevation: 5,
-                     shadowColor: Colors.black26,
-                   ),
-                   child: _isSaving 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: FfigTheme.primaryBrown))
-                      : Text("SAVE RESOURCE", style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                 ),
-               ],
-             ),
-           ),
-         ),
-       ),
-    );
-  }
-
-  Widget _buildPremiumField(TextEditingController controller, String label, IconData icon, {int maxLines = 1, bool required = true}) {
+  Widget _buildField(TextEditingController controller, String label, IconData icon, {int maxLines = 1, bool required = true}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      style: GoogleFonts.lato(fontSize: 15),
       decoration: InputDecoration(
-        filled: true,
-        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
         labelText: label,
-        labelStyle: GoogleFonts.lato(color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey),
-        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown, size: 20),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 1)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
       ),
       validator: required ? (v) => v!.isEmpty ? "Required" : null : null,
     );

@@ -18,6 +18,8 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
   
   bool _isLoading = false;
   List<dynamic> _tickerItems = [];
+  List<dynamic> _filteredTickerItems = [];
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -29,11 +31,24 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
     setState(() => _isLoading = true);
     try {
       final items = await _apiService.fetchItems('ticker');
-      setState(() => _tickerItems = items);
+      setState(() {
+        _tickerItems = items;
+        _filterItems();
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+  
+  void _filterItems() {
+    if (_searchQuery.isEmpty) {
+      _filteredTickerItems = _tickerItems;
+    } else {
+      _filteredTickerItems = _tickerItems.where((i) => 
+         (i['text'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
     }
   }
 
@@ -135,14 +150,32 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                 children: [
                   Text("Current News", style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
+                  
+                  // Search
+                  TextField(
+                     decoration: const InputDecoration(
+                       hintText: "Search News...",
+                       prefixIcon: Icon(Icons.search),
+                       border: OutlineInputBorder(),
+                       isDense: true,
+                     ),
+                     onChanged: (val) {
+                       setState(() {
+                         _searchQuery = val;
+                         _filterItems();
+                       });
+                     },
+                  ),
+                  const SizedBox(height: 16),
+
                   if (_isLoading && _tickerItems.isEmpty)
                     const Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: ListView.builder(
-                        itemCount: _tickerItems.length,
+                        itemCount: _filteredTickerItems.length,
                         itemBuilder: (context, index) {
-                          final item = _tickerItems[index];
+                          final item = _filteredTickerItems[index];
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),

@@ -17,7 +17,80 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  String _email = "Loading...";
+  bool _isPremium = false;
   
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserInfo();
+  }
+
+  Future<void> _fetchUserInfo() async {
+      try {
+        const storage = FlutterSecureStorage();
+        final token = await storage.read(key: 'access_token');
+        final response = await http.get(Uri.parse('${baseUrl}members/me/'), headers: {'Authorization': 'Bearer $token'});
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (mounted) {
+            setState(() {
+              _email = data['email'] ?? "Unknown";
+              _isPremium = data['is_premium'] ?? false;
+            });
+          }
+        }
+      } catch (e) {}
+  }
+
+  void _showDeleteConfirmation() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("DELETE ACCOUNT", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("This action cannot be undone. Type 'sudo delete this account.' to confirm:"),
+            const SizedBox(height: 16),
+            TextField(controller: controller, decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "sudo delete this account.")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+               if (controller.text.trim() == "sudo delete this account.") {
+                 Navigator.pop(context);
+                 _deleteAccount();
+               } else {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Incorrect text.")));
+               }
+            },
+            child: const Text("DELETE PERMANENTLY"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+       const storage = FlutterSecureStorage();
+       final token = await storage.read(key: 'access_token');
+       final response = await http.delete(Uri.parse('${baseUrl}auth/delete/'), headers: {'Authorization': 'Bearer $token'}); // Updated URL
+       if (response.statusCode == 204) {
+          _logout();
+       } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to delete account.")));
+       }
+    } catch (e) {
+       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
   Future<void> _logout() async {
      const storage = FlutterSecureStorage();
      await storage.deleteAll();
@@ -101,8 +174,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         children: [
           const SizedBox(height: 16),
-          // 1. Account Config
-          _buildSectionHeader("Account"),
+          
+          // 0. Account Info (New Request)
+          _buildSectionHeader("Account & Subscription"),
+          Container(
+             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+             padding: const EdgeInsets.all(16),
+             decoration: BoxDecoration(
+               color: Theme.of(context).cardColor,
+               borderRadius: BorderRadius.circular(12),
+               border: Border.all(color: Theme.of(context).dividerColor),
+             ),
+             child: Column(
+               children: [
+                 Row(
+                   children: [
+                     const Icon(Icons.email_outlined, color: FfigTheme.primaryBrown),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                            const Text("Email Address", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(_email, style: const TextStyle(fontWeight: FontWeight.bold)),
+                         ],
+                       ),
+                     )
+                   ],
+                 ),
+                 const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
+                 Row(
+                   children: [
+                     Icon(Icons.verified_outlined, color: _isPremium ? Colors.amber : Colors.grey),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                            const Text("Subscription", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(_isPremium ? "Premium Member" : "Free Tier", style: const TextStyle(fontWeight: FontWeight.bold)),
+                         ],
+                       ),
+                     )
+                   ],
+                 ),
+               ],
+             ),
+          ),
+          
+          // 1. Account Actions
           ListTile(
             leading: const Icon(Icons.person_outline),
             title: const Text("Edit Profile"),
@@ -126,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           
           // Theme Toggle
           AnimatedBuilder(
-            animation: themeController, // From main.dart or pass via provider
+            animation: themeController, 
             builder: (context, _) {
               return ExpansionTile(
                 leading: const Icon(Icons.brightness_6_outlined),
@@ -159,10 +279,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title: const Text("Sign Out", style: TextStyle(color: Colors.redAccent)),
+            leading: const Icon(Icons.logout, color: Colors.grey),
+            title: const Text("Sign Out"),
             onTap: _logout,
           ),
+          
+          const SizedBox(height: 48),
+          
+          // 3. Danger Zone
+          _buildSectionHeader("DANGER ZONE"),
+           Container(
+             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+             decoration: BoxDecoration(
+               color: Colors.red.withOpacity(0.05),
+               borderRadius: BorderRadius.circular(12),
+               border: Border.all(color: Colors.red.withOpacity(0.3)),
+             ),
+             child: ListTile(
+               leading: const Icon(Icons.delete_forever, color: Colors.red),
+               title: const Text("Delete Account", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+               subtitle: const Text("This action is permanent and cannot be undone."),
+               onTap: _showDeleteConfirmation,
+             ),
+           ),
+           const SizedBox(height: 24),
         ],
       ),
     );

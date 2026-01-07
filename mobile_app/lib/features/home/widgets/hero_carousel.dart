@@ -13,7 +13,7 @@ class HeroCarousel extends StatelessWidget {
 
     return CarouselSlider(
       options: CarouselOptions(
-        height: 200.0, // Reduced from 250
+        height: 180.0, // Reduced further
         autoPlay: true,
         enlargeCenterPage: true,
         aspectRatio: 2.0, // Wider aspect ratio

@@ -25,6 +25,8 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   
   bool _isLoading = false;
   List<dynamic> _heroItems = [];
+  List<dynamic> _filteredHeroItems = [];
+  String _searchQuery = "";
 
   final List<String> _types = [
     'Announcement',
@@ -39,12 +41,25 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     super.initState();
     _fetchItems();
   }
+  
+  void _filterItems() {
+    if (_searchQuery.isEmpty) {
+      _filteredHeroItems = _heroItems;
+    } else {
+      _filteredHeroItems = _heroItems.where((i) => 
+        (i['title'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
+    }
+  }
 
   Future<void> _fetchItems() async {
     setState(() => _isLoading = true);
     try {
       final items = await _apiService.fetchItems('hero');
-      setState(() => _heroItems = items);
+      setState(() {
+        _heroItems = items;
+        _filterItems();
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -257,14 +272,31 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                 children: [
                   Text("Current Items", style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
+                  
+                  TextField(
+                     decoration: const InputDecoration(
+                       hintText: "Search Items...",
+                       prefixIcon: Icon(Icons.search),
+                       border: OutlineInputBorder(),
+                       isDense: true,
+                     ),
+                     onChanged: (val) {
+                       setState(() {
+                         _searchQuery = val;
+                         _filterItems();
+                       });
+                     },
+                  ),
+                  const SizedBox(height: 16),
+
                   if (_isLoading && _heroItems.isEmpty)
                     const Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: ListView.builder(
-                        itemCount: _heroItems.length,
+                        itemCount: _filteredHeroItems.length,
                         itemBuilder: (context, index) {
-                          final item = _heroItems[index];
+                          final item = _filteredHeroItems[index];
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),
                             child: ListTile(

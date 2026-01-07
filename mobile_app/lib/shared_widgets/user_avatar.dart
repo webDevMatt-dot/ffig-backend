@@ -44,25 +44,14 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: Container(
-        width: radius * 2,
-        height: radius * 2,
-        color: backgroundColor ?? Colors.grey.shade200,
-        child: (imageUrl != null && imageUrl!.isNotEmpty) 
-            ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildInitials();
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return _buildInitials(); // Show initials while loading or spinner? Initials is smoother.
-                },
-              )
-            : _buildInitials(),
-      ),
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: backgroundColor ?? Colors.grey.shade200,
+      backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty) ? NetworkImage(imageUrl!) : null,
+      onBackgroundImageError: (_, __) {},
+      child: (imageUrl == null || imageUrl!.isEmpty) 
+          ? _buildInitials() // Show initials if no image
+          : null, // Image is shown via backgroundImage
     );
   }
 

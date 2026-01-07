@@ -21,9 +21,12 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
   String _selectedType = 'Alert';
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 0);
+  String? _editingId;
   
   bool _isLoading = false;
   List<dynamic> _alerts = [];
+  List<dynamic> _filteredAlerts = [];
+  String _searchQuery = "";
 
   final List<String> _types = [
     'Happening Soon',
@@ -37,12 +40,28 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
     super.initState();
     _fetchItems();
   }
+  
+  void _filterItems() {
+    if (_searchQuery.isEmpty) {
+      _filteredAlerts = _alerts;
+    } else {
+      _filteredAlerts = _alerts.where((a) {
+        final title = (a['title'] ?? '').toString().toLowerCase();
+        final msg = (a['message'] ?? '').toString().toLowerCase();
+        final q = _searchQuery.toLowerCase();
+        return title.contains(q) || msg.contains(q);
+      }).toList();
+    }
+  }
 
   Future<void> _fetchItems() async {
     setState(() => _isLoading = true);
     try {
       final items = await _apiService.fetchItems('alerts');
-      setState(() => _alerts = items);
+      setState(() {
+        _alerts = items;
+        _filterItems();
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -72,6 +91,34 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
     }
   }
 
+  void _startEditing(Map<String, dynamic> item) {
+    setState(() {
+      _editingId = item['id'].toString();
+      _titleController.text = item['title'] ?? '';
+      _messageController.text = item['message'] ?? '';
+      _urlController.text = item['action_url'] ?? '';
+      _selectedType = item['type'] ?? 'Alert';
+      // Parse expiry
+      try {
+        final expiry = DateTime.parse(item['expiry_time']);
+        _selectedDate = expiry;
+        _selectedTime = TimeOfDay.fromDateTime(expiry);
+      } catch (_) {}
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingId = null;
+      _titleController.clear();
+      _messageController.clear();
+      _urlController.clear();
+      _selectedType = 'Alert';
+      _selectedDate = DateTime.now().add(const Duration(days: 1));
+      _selectedTime = const TimeOfDay(hour: 12, minute: 0);
+    });
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -85,20 +132,27 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
       _selectedTime.minute,
     );
 
-    try {
-      await _apiService.createFlashAlert({
-        'title': _titleController.text,
-        'message': _messageController.text,
-        'action_url': _urlController.text,
-        'type': _selectedType,
-        'expiry_time': dateTime.toIso8601String(),
-        'is_active': true,
-      });
+    final data = {
+      'title': _titleController.text,
+      'message': _messageController.text,
+      'action_url': _urlController.text,
+      'type': _selectedType,
+      'expiry_time': dateTime.toIso8601String(),
+      'is_active': true,
+    };
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Created!')));
-      _titleController.clear();
-      _messageController.clear();
-      _urlController.clear();
+    try {
+      if (_editingId != null) {
+        await _apiService.updateFlashAlert(_editingId!, data);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Updated!')));
+        _cancelEditing();
+      } else {
+        await _apiService.createFlashAlert(data);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Created!')));
+        _titleController.clear();
+        _messageController.clear();
+        _urlController.clear();
+      }
       _fetchItems();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
@@ -136,7 +190,14 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Create New Alert", style: Theme.of(context).textTheme.titleLarge),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_editingId != null ? "Edit Alert" : "Create New Alert", style: Theme.of(context).textTheme.titleLarge),
+                            if (_editingId != null)
+                              TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         
                         DropdownButtonFormField<String>(
@@ -191,7 +252,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                               backgroundColor: FfigTheme.primaryBrown,
                               foregroundColor: Colors.white,
                             ),
-                            child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("PUBLISH ALERT"),
+                            child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE ALERT" : "PUBLISH ALERT"),
                           ),
                         ),
                       ],
@@ -212,29 +273,60 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                 children: [
                   Text("Active Alerts", style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
+                  
+                  TextField(
+                     decoration: const InputDecoration(
+                       hintText: "Search Alerts...",
+                       prefixIcon: Icon(Icons.search),
+                       border: OutlineInputBorder(),
+                       isDense: true,
+                     ),
+                     onChanged: (val) {
+                       setState(() {
+                         _searchQuery = val;
+                         _filterItems();
+                       });
+                     },
+                  ),
+                  const SizedBox(height: 16),
+
                   if (_isLoading && _alerts.isEmpty)
                     const Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: ListView.builder(
-                        itemCount: _alerts.length,
+                        itemCount: _filteredAlerts.length,
                         itemBuilder: (context, index) {
-                          final item = _alerts[index];
+                          final item = _filteredAlerts[index];
                           // Check expiry
                           final expiry = DateTime.tryParse(item['expiry_time']) ?? DateTime.now();
                           final isExpired = expiry.isBefore(DateTime.now());
+                          
+                          // Dark mode friendly expired color
+                          final expiredColor = Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey.withOpacity(0.2) 
+                              : Colors.grey.shade200;
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),
-                            color: isExpired ? Colors.grey.shade200 : null,
+                            color: isExpired ? expiredColor : null,
                             child: ListTile(
                               leading: Icon(Icons.notifications_active, color: isExpired ? Colors.grey : Colors.amber),
                               title: Text(item['title'] ?? 'No Title'),
                               subtitle: Text("${item['message']}\nExpires: ${DateFormat('MM/dd HH:mm').format(expiry.toLocal())}"),
                               isThreeLine: true,
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteItem(item['id']),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _startEditing(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteItem(item['id']),
+                                  ),
+                                ],
                               ),
                             ),
                           );

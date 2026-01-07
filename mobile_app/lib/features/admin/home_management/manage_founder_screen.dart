@@ -27,18 +27,36 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   
   bool _isLoading = false;
   List<dynamic> _profiles = [];
+  List<dynamic> _filteredProfiles = [];
+  String _searchQuery = "";
 
   @override
   void initState() {
     super.initState();
     _fetchItems();
   }
+  
+  void _filterItems() {
+    if (_searchQuery.isEmpty) {
+      _filteredProfiles = _profiles;
+    } else {
+      _filteredProfiles = _profiles.where((p) {
+        final name = (p['name'] ?? '').toString().toLowerCase();
+        final biz = (p['business_name'] ?? '').toString().toLowerCase();
+        final q = _searchQuery.toLowerCase();
+        return name.contains(q) || biz.contains(q);
+      }).toList();
+    }
+  }
 
   Future<void> _fetchItems() async {
     setState(() => _isLoading = true);
     try {
       final items = await _apiService.fetchItems('founder');
-      setState(() => _profiles = items);
+      setState(() {
+        _profiles = items;
+        _filterItems();
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -262,14 +280,31 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                 children: [
                   Text("Past Spotlights", style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
+                  
+                  TextField(
+                     decoration: const InputDecoration(
+                       hintText: "Search Founders...",
+                       prefixIcon: Icon(Icons.search),
+                       border: OutlineInputBorder(),
+                       isDense: true,
+                     ),
+                     onChanged: (val) {
+                       setState(() {
+                         _searchQuery = val;
+                         _filterItems();
+                       });
+                     },
+                  ),
+                  const SizedBox(height: 16),
+
                    if (_isLoading && _profiles.isEmpty)
                     const Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: ListView.builder(
-                        itemCount: _profiles.length,
+                        itemCount: _filteredProfiles.length,
                         itemBuilder: (context, index) {
-                          final item = _profiles[index];
+                          final item = _filteredProfiles[index];
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),
                             child: ListTile(

@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -69,4 +70,9 @@ urlpatterns = [
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
+    path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
+    
+    # Explicitly serve media files (Required for Render/Production if not using S3)
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]
