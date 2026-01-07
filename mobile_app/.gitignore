@@ -24,6 +24,7 @@
 .pub/
 /build/
 !/build/web/
+!/build/web/
 
 # Android
 android/**/*.gradle
