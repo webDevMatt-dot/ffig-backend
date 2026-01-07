@@ -8,86 +8,121 @@ class FounderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final goldColor = const Color(0xFFD4AF37); // FFIG Gold
+    
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: goldColor.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: InkWell(
         onTap: () {
-          // Navigate to Founder Detail
-          print("Navigate to Founder: ${profile.name}");
+           // Navigation placeholder
         },
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
-                Image.network(
-                  profile.photoUrl,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 200,
-                    color: Colors.grey[300],
-                    child: const Center(child: Icon(Icons.person, size: 50, color: Colors.grey)),
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                  child: Image.network(
+                    profile.photoUrl,
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(child: Icon(Icons.person, size: 50, color: Colors.grey)),
+                    ),
                   ),
                 ),
                 Positioned(
                   top: 16,
                   left: 16,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: goldColor, width: 1),
                     ),
-                    child: const Text(
-                      "FOUNDER OF THE WEEK",
-                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, color: goldColor, size: 12),
+                        const SizedBox(width: 6),
+                        Text(
+                          "FOUNDER OF THE WEEK",
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        profile.name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      Expanded(
+                        child: Text(
+                          profile.name,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ),
                       if (profile.isPremium)
-                        const Icon(Icons.diamond, color: Colors.amber, size: 20),
+                         Container(
+                           padding: const EdgeInsets.all(6),
+                           decoration: BoxDecoration(color: goldColor.withOpacity(0.1), shape: BoxShape.circle),
+                           child: Icon(Icons.diamond, color: goldColor, size: 20),
+                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    profile.businessName,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.w600,
+                   Text(
+                    profile.businessName.toUpperCase(),
+                    style: TextStyle(
+                      color: goldColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.2
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     profile.bio,
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                    style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                      Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[500]),
                       const SizedBox(width: 4),
-                      Text(profile.country, style: const TextStyle(color: Colors.grey)),
+                      Text(profile.country, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                     ],
                   ),
                 ],

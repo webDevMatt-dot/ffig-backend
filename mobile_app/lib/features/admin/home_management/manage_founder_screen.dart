@@ -23,6 +23,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   
   bool _isPremium = false;
   Uint8List? _selectedImageBytes;
+  String? _editingId; // If null, we are creating. If set, we are updating.
   
   bool _isLoading = false;
   List<dynamic> _profiles = [];
@@ -57,9 +58,30 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     }
   }
 
+  void _startEditing(Map<String, dynamic> item) {
+     setState(() {
+       _editingId = item['id'].toString();
+       _nameController.text = item['name'] ?? '';
+       _businessController.text = item['business_name'] ?? '';
+       _countryController.text = item['country'] ?? '';
+       _bioController.text = item['bio'] ?? '';
+       _isPremium = item['is_premium'] ?? false;
+       _selectedImageBytes = null; // Reset image
+     });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingId = null;
+      _clearForm();
+    });
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImageBytes == null) {
+    
+    // Validation: Image optional if editing
+    if (_editingId == null && _selectedImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a photo')));
       return;
     }
@@ -67,18 +89,28 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _apiService.createFounderProfile({
+      final fields = {
         'name': _nameController.text,
         'business_name': _businessController.text,
         'country': _countryController.text,
         'bio': _bioController.text,
         'is_premium': _isPremium.toString(),
         'is_active': 'true',
-      }, _selectedImageBytes);
+      };
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Founder Profile Published!')));
-      _clearForm();
-      _fetchItems();
+      if (_editingId != null) {
+         // UPDATE
+         await _apiService.updateFounderProfile(_editingId!, fields, _selectedImageBytes);
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Founder Profile Updated!')));
+         _cancelEditing();
+         _fetchItems();
+      } else {
+         // CREATE
+         await _apiService.createFounderProfile(fields, _selectedImageBytes);
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Founder Profile Published!')));
+         _clearForm();
+         _fetchItems();
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Failed: $e')));
     } finally {
@@ -92,10 +124,11 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     _countryController.clear();
     _bioController.clear();
     setState(() => _selectedImageBytes = null);
+    // Do NOT reset editingId here, handled by cancelEditing/submit
   }
 
   Future<void> _deleteItem(int id) async {
-    // Simple confirm
+    if (!confirm('Are you sure you want to delete this item?')) return;
     try {
       await _apiService.deleteItem('founder', id);
        _fetchItems();
@@ -103,6 +136,8 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
     }
   }
+  
+  bool confirm(String message) => true;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +159,19 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Publish Founder Profile", style: Theme.of(context).textTheme.titleLarge),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_editingId != null ? "Edit Founder Profile" : "Publish Founder Profile", 
+                                 style: Theme.of(context).textTheme.titleLarge),
+                            if (_editingId != null)
+                              TextButton.icon(
+                                onPressed: _cancelEditing,
+                                icon: const Icon(Icons.close),
+                                label: const Text("Cancel"),
+                              )
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         
                         // Photo
@@ -143,6 +190,9 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                 : const Icon(Icons.person_add, size: 50, color: Colors.grey),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        if (_editingId != null)
+                           const Text("Tap to change photo (Optional)", style: TextStyle(color: Colors.grey, fontSize: 12)),
                         const SizedBox(height: 24),
                         
                         TextFormField(
@@ -189,7 +239,9 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                               backgroundColor: FfigTheme.primaryBrown,
                               foregroundColor: Colors.white,
                             ),
-                            child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("PUBLISH PROFILE"),
+                            child: _isLoading 
+                                ? const CircularProgressIndicator(color: Colors.white) 
+                                : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
                           ),
                         ),
                       ],
@@ -226,9 +278,18 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                   : const CircleAvatar(child: Icon(Icons.person)),
                               title: Text(item['name'] ?? 'No Name'),
                               subtitle: Text("${item['business_name']} • ${item['country']}"),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteItem(item['id']),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _startEditing(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteItem(item['id']),
+                                  ),
+                                ],
                               ),
                             ),
                           );

@@ -21,6 +21,8 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   String _selectedType = 'Announcement';
   Uint8List? _selectedImageBytes;
   
+  String? _editingId; // If null, we are creating. If set, we are updating.
+  
   bool _isLoading = false;
   List<dynamic> _heroItems = [];
 
@@ -62,9 +64,31 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     }
   }
 
+  void _startEditing(Map<String, dynamic> item) {
+     setState(() {
+       _editingId = item['id'].toString();
+       _titleController.text = item['title'] ?? '';
+       _urlController.text = item['action_url'] ?? '';
+       _selectedType = _types.contains(item['type']) ? item['type'] : _types.first;
+       _selectedImageBytes = null; // Reset image (optional to update)
+     });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingId = null;
+      _titleController.clear();
+      _urlController.clear();
+      _selectedImageBytes = null;
+      _selectedType = _types.first;
+    });
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImageBytes == null) {
+    
+    // Validation: Image is required for CREATE, but optional for UPDATE
+    if (_editingId == null && _selectedImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image')));
       return;
     }
@@ -72,27 +96,38 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _apiService.createHeroItem({
+      final fields = {
         'title': _titleController.text,
         'action_url': _urlController.text,
         'type': _selectedType,
         'is_active': 'true',
-      }, _selectedImageBytes); // Sending bytes for Web
+      };
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Added!')));
-      _titleController.clear();
-      _urlController.clear();
-      setState(() => _selectedImageBytes = null);
+      if (_editingId != null) {
+         // UPDATE
+         await _apiService.updateHeroItem(_editingId!, fields, _selectedImageBytes);
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Updated!')));
+         _cancelEditing();
+      } else {
+         // CREATE
+         await _apiService.createHeroItem(fields, _selectedImageBytes); // Sending bytes for Web
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Added!')));
+         _titleController.clear();
+         _urlController.clear();
+         setState(() => _selectedImageBytes = null);
+      }
+      
       _fetchItems(); // Refresh list
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Operation Failed: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _deleteItem(int id) async {
-    if (!confirm('Are you sure you want to delete this item?')) return; // Simple confirm placeholder
+    // In a real app this would be a dialog
+    if (!confirm('Are you sure you want to delete this item?')) return; 
     
     try {
       await _apiService.deleteItem('hero', id);
@@ -103,7 +138,6 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   }
   
   bool confirm(String message) {
-    // In a real app this would be a dialog
     return true; 
   }
 
@@ -127,7 +161,19 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Add New Hero Item", style: Theme.of(context).textTheme.titleLarge),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_editingId != null ? "Edit Hero Item" : "Add New Hero Item", 
+                                 style: Theme.of(context).textTheme.titleLarge),
+                            if (_editingId != null)
+                              TextButton.icon(
+                                onPressed: _cancelEditing,
+                                icon: const Icon(Icons.close),
+                                label: const Text("Cancel"),
+                              )
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         
                         // Image Picker
@@ -146,12 +192,12 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                     child: Image.memory(_selectedImageBytes!, fit: BoxFit.cover),
                                   )
-                                : const Column(
+                                : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                                      SizedBox(height: 8),
-                                      Text("Click to upload image"),
+                                      const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                                      const SizedBox(height: 8),
+                                      Text(_editingId != null ? "Click to change image (optional)" : "Click to upload image"),
                                     ],
                                   ),
                           ),
@@ -188,7 +234,9 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                               backgroundColor: FfigTheme.primaryBrown,
                               foregroundColor: Colors.white,
                             ),
-                            child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("PUBLISH ITEM"),
+                            child: _isLoading 
+                                ? const CircularProgressIndicator(color: Colors.white) 
+                                : Text(_editingId != null ? "UPDATE ITEM" : "PUBLISH ITEM"),
                           ),
                         ),
                       ],
@@ -225,9 +273,18 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                                   : const Icon(Icons.image),
                               title: Text(item['title'] ?? 'No Title'),
                               subtitle: Text(item['type'] ?? ''),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteItem(item['id']),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _startEditing(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteItem(item['id']),
+                                  ),
+                                ],
                               ),
                             ),
                           );

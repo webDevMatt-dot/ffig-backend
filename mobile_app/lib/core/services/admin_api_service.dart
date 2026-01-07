@@ -39,91 +39,90 @@ class AdminApiService {
     }
   }
 
-  // Upload Hero Item
-  Future<void> createHeroItem(Map<String, String> fields, dynamic imageFile) async {
-    await _uploadWithImage('hero', fields, imageFile, 'image');
+  // Update Hero Item
+  Future<void> updateHeroItem(String id, Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('hero', fields, imageFile, 'image', id: id, method: 'PATCH');
   }
 
-  // Upload Founder Profile
-  Future<void> createFounderProfile(Map<String, String> fields, dynamic imageFile) async {
-    await _uploadWithImage('founder', fields, imageFile, 'photo');
+  // Update Founder Profile
+  Future<void> updateFounderProfile(String id, Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('founder', fields, imageFile, 'photo', id: id, method: 'PATCH');
   }
 
   // Create Flash Alert (JSON)
   Future<void> createFlashAlert(Map<String, dynamic> data) async {
-    final token = await _getToken();
-    final response = await http.post(
-      Uri.parse('$_baseUrl/alerts/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(data),
-    );
-    if (response.statusCode != 201) {
-      throw Exception('Failed to create alert: ${response.body}');
-    }
+    await _postJson('alerts', data);
+  }
+
+  // Update Flash Alert
+  Future<void> updateFlashAlert(String id, Map<String, dynamic> data) async {
+    await _patchJson('alerts', id, data);
   }
   
   // Create Ticker Item (JSON)
   Future<void> createTickerItem(Map<String, dynamic> data) async {
+    await _postJson('ticker', data);
+  }
+
+  // Update Ticker Item
+  Future<void> updateTickerItem(String id, Map<String, dynamic> data) async {
+    await _patchJson('ticker', id, data);
+  }
+
+  // Helpers
+  Future<void> _postJson(String endpoint, Map<String, dynamic> data) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse('$_baseUrl/ticker/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+      Uri.parse('$_baseUrl/$endpoint/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
       body: jsonEncode(data),
     );
-    if (response.statusCode != 201) {
-      throw Exception('Failed to create ticker item: ${response.body}');
-    }
+     if (response.statusCode != 201) throw Exception('Failed to create: ${response.body}');
+  }
+
+  Future<void> _patchJson(String endpoint, String id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/$endpoint/$id/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+     if (response.statusCode != 200) throw Exception('Failed to update: ${response.body}');
   }
 
   // Helper for Multipart requests (Handles Web (Uint8List) and Mobile (File))
-  Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField) async {
+  Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
     final token = await _getToken();
-    var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/$endpoint/'));
+    final url = id != null ? '$_baseUrl/$endpoint/$id/' : '$_baseUrl/$endpoint/';
+    
+    var request = http.MultipartRequest(method, Uri.parse(url));
     
     request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
 
     if (imageFile != null) {
       if (kIsWeb) {
-        // Web: imageFile should be Uint8List (bytes) or platform file with bytes
-        // Assuming imageFile is Uint8List for simplicity in this helper, 
-        // or a PlatformFile wrapper. Let's assume bytes for now.
-        // We need the filename too.
          if (imageFile is List<int>) {
              request.files.add(http.MultipartFile.fromBytes(
               fileField,
               imageFile,
-              filename: 'upload.jpg', // Default name
+              filename: 'upload.jpg', 
               contentType: MediaType('image', 'jpeg'),
             ));
          }
       } else if (imageFile is File) {
-        // Mobile/Desktop
         request.files.add(await http.MultipartFile.fromPath(
           fileField,
           imageFile.path,
-          contentType: MediaType('image', 'jpeg'),
-        ));
-      } else if (imageFile is String) {
-         // Path string
-         request.files.add(await http.MultipartFile.fromPath(
-          fileField,
-          imageFile,
           contentType: MediaType('image', 'jpeg'),
         ));
       }
     }
 
     final response = await request.send();
-    if (response.statusCode != 201) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
       final respStr = await response.stream.bytesToString();
-      throw Exception('Failed to upload: $respStr');
+      throw Exception('Failed to upload/update: $respStr');
     }
   }
 }

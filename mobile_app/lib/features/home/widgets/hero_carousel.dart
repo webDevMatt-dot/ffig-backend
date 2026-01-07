@@ -13,14 +13,14 @@ class HeroCarousel extends StatelessWidget {
 
     return CarouselSlider(
       options: CarouselOptions(
-        height: 250.0,
+        height: 200.0, // Reduced from 250
         autoPlay: true,
         enlargeCenterPage: true,
-        aspectRatio: 16 / 9,
+        aspectRatio: 2.0, // Wider aspect ratio
         autoPlayCurve: Curves.fastOutSlowIn,
         enableInfiniteScroll: true,
         autoPlayAnimationDuration: const Duration(milliseconds: 800),
-        viewportFraction: 0.92,
+        viewportFraction: 0.9,
       ),
       items: items.map((item) {
         return Builder(
