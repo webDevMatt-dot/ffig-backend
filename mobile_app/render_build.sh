@@ -3,6 +3,8 @@
 # Exit on error
 set -o errexit
 
+
+# Trigger Deploy
 echo "🚀 Starting Flutter Web Build on Render..."
 
 # 1. Install Flutter
