@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "Sign in to your FFIG account.",
+                  "Sign in to your Female Founders Initiative Global account.",
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),

@@ -178,7 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text("FFIG MEMBER PORTAL", style: GoogleFonts.lato(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
+        title: Text("FEMALE FOUNDERS INITIATIVE GLOBAL MEMBER PORTAL", style: GoogleFonts.lato(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           if (_isAdmin)

@@ -99145,7 +99145,7 @@ case 1:return A.E(p.at(-1),r)}})
 return A.G($async$nn,r)},
 W6(a){var s=null
 this.c.a0(t.J).f.dr(A.hd(s,s,s,B.d8,s,B.q,s,A.al(a,s,s,s,s,s,s,s),s,B.ag,s,s,s,s,s,s,s,s,s,s))},
-J(a){var s,r,q=this,p=null,o=A.b([A.o(a).ax.k2,B.He],t.t_),n=A.cz(B.O,B.La,B.p,p,p,new A.c_(A.aa(B.d.aG(25.5),B.H.t()>>>16&255,B.H.t()>>>8&255,B.H.t()&255),p,p,p,p,p,B.cC),p,64,p,p,p,p,64),m=A.al("Welcome back.",p,p,p,p,A.o(a).ok.b,B.bX,p),l=A.al("Sign in to your FFIG account.",p,p,p,p,A.o(a).ok.z,B.bX,p),k=A.fV(!1,B.aN,!1,p,!0,B.q,p,A.hs(),q.d,p,p,p,p,p,2,B.Mm,B.I,!0,p,!1,p,!1,p,B.aK,p,p,p,p,B.CO,p,p,p,1,p,p,!1,"\u2022",p,p,p,p,p,!1,p,p,!1,p,!0,p,B.b1,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.a0,p,B.bd,p,B.CN,p,p),j=A.fV(!1,B.aN,!1,p,!0,B.q,p,A.hs(),q.e,p,p,p,p,p,2,B.Mk,B.I,!0,p,!1,p,!1,p,B.aK,p,p,p,p,p,p,p,p,1,p,p,!0,"\u2022",p,p,p,new A.ayn(q),p,!1,p,p,!1,p,!0,p,B.b1,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.a0,p,B.bd,p,B.CM,p,p),i=q.f,h=i?p:q.gaja()
+J(a){var s,r,q=this,p=null,o=A.b([A.o(a).ax.k2,B.He],t.t_),n=A.cz(B.O,B.La,B.p,p,p,new A.c_(A.aa(B.d.aG(25.5),B.H.t()>>>16&255,B.H.t()>>>8&255,B.H.t()&255),p,p,p,p,p,B.cC),p,64,p,p,p,p,64),m=A.al("Welcome back.",p,p,p,p,A.o(a).ok.b,B.bX,p),l=A.al("Sign in to your Female Founders Initiative Global account.",p,p,p,p,A.o(a).ok.z,B.bX,p),k=A.fV(!1,B.aN,!1,p,!0,B.q,p,A.hs(),q.d,p,p,p,p,p,2,B.Mm,B.I,!0,p,!1,p,!1,p,B.aK,p,p,p,p,B.CO,p,p,p,1,p,p,!1,"\u2022",p,p,p,p,p,!1,p,p,!1,p,!0,p,B.b1,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.a0,p,B.bd,p,B.CN,p,p),j=A.fV(!1,B.aN,!1,p,!0,B.q,p,A.hs(),q.e,p,p,p,p,p,2,B.Mk,B.I,!0,p,!1,p,!1,p,B.aK,p,p,p,p,p,p,p,p,1,p,p,!0,"\u2022",p,p,p,new A.ayn(q),p,!1,p,p,!1,p,!0,p,B.b1,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.a0,p,B.bd,p,B.CM,p,p),i=q.f,h=i?p:q.gaja()
 h=A.jT(!1,i?B.Wj:B.a1r,p,p,p,p,p,p,h,p,p)
 s=A.o(a)
 r=t.p
@@ -99937,7 +99937,7 @@ return A.F(null,r)}})
 return A.G($async$Af,r)},
 J(a){var s,r,q,p=this,o=null
 A.o(a)
-s=A.al("FFIG MEMBER PORTAL",o,o,o,o,A.fB().$3$fontSize$fontWeight$letterSpacing(14,B.N,2),o,o)
+s=A.al("FEMALE FOUNDERS INITIATIVE GLOBAL MEMBER PORTAL",o,o,o,o,A.fB().$3$fontSize$fontWeight$letterSpacing(14,B.N,2),o,o)
 r=A.b([],t.p)
 if(p.w)r.push(A.jX(o,o,B.Lk,o,o,new A.auO(a),o,o,o))
 q=p.y
@@ -100619,7 +100619,7 @@ j=A.aIZ(new A.du(4,A.bA(12),B.m),r,B.c7,r,new A.du(4,A.bA(12),new A.aF(A.aa(13,B
 p=A.jU(r,r,B.H,r,r,r,4,r,r,B.bq,r,r,B.i9,A.aa(102,B.H.t()>>>16&255,B.H.t()>>>8&255,B.H.t()&255),new A.bL(A.bA(12),B.m),r,r,r,A.fh().$3$fontSize$fontWeight$letterSpacing(15,B.N,0.5),r)
 n=A.aOQ(r,B.H,B.i9,new A.bL(A.bA(12),B.m),B.hx,A.fh().$2$fontSize$fontWeight(15,B.bi))
 s=A.Fz(r,r,r,r,r,r,r,r,r,B.H,r,r,r,r,r,r,r,r,A.fh().$2$fontSize$fontWeight(14,B.bi),r)
-return new A.ws(new A.CQ(B.WL,"FFIG Mobile",o,A.tx(m,new A.uK(B.H2,r,r,r,B.H,B.a3,r,r,!0,!0,B.E4,r,r,r),B.ak,new A.nG(r,B.pg,r,r,0,B.fv,new A.bL(A.bA(16),new A.aF(A.aa(B.d.aG(25.5),B.H.t()>>>16&255,B.H.t()>>>8&255,B.H.t()&255),1,B.o,-1))),l,new A.nT(B.cG,24,1,r,r,r),new A.qs(p),j,new A.rw(n),B.bq,new A.to(s),k,!0),q,!1,r),r)},
+return new A.ws(new A.CQ(B.WL,"Female Founders Initiative Global Mobile",o,A.tx(m,new A.uK(B.H2,r,r,r,B.H,B.a3,r,r,!0,!0,B.E4,r,r,r),B.ak,new A.nG(r,B.pg,r,r,0,B.fv,new A.bL(A.bA(16),new A.aF(A.aa(B.d.aG(25.5),B.H.t()>>>16&255,B.H.t()>>>8&255,B.H.t()&255),1,B.o,-1))),l,new A.nT(B.cG,24,1,r,r,r),new A.qs(p),j,new A.rw(n),B.bq,new A.to(s),k,!0),q,!1,r),r)},
 $S:631}
 A.F7.prototype={
 a4(){return new A.a1C()}}
@@ -100630,7 +100630,7 @@ J(a){var s,r=null,q=A.o(a).ax,p=q.y1
 q=p==null?q.k2:p
 p=A.cz(r,B.Lb,B.p,r,r,new A.c_(B.H,r,r,r,r,r,B.cC),r,120,r,r,r,r,120)
 s=A.OG().a
-return A.fs(r,q,A.eC(A.c0(A.b([p,B.bV,A.al("FFIG",r,r,r,r,s==null?r:s.asJ(B.H,40,2),r,r),B.bW,A.al("FEMALE FOUNDERS INITIATIVE GLOBAL",r,r,r,r,A.fB().$3$color$fontSize$letterSpacing(B.a3,12,1.5),r,r),B.eS,A.al('"We don\'t compete,\nwe collaborate."',r,r,r,r,A.b8o().$2$color$fontSize(A.o(a).ax.y,24),B.bX,r)],t.p),B.D,B.dK,B.E),r,r),r,r)}}
+return A.fs(r,q,A.eC(A.c0(A.b([p,B.bV,A.al("Female Founders Initiative Global",r,r,r,r,s==null?r:s.asJ(B.H,40,2),r,r),B.bW,A.al("FEMALE FOUNDERS INITIATIVE GLOBAL",r,r,r,r,A.fB().$3$color$fontSize$letterSpacing(B.a3,12,1.5),r,r),B.eS,A.al('"We don\'t compete,\nwe collaborate."',r,r,r,r,A.b8o().$2$color$fontSize(A.o(a).ax.y,24),B.bX,r)],t.p),B.D,B.dK,B.E),r,r),r,r)}}
 A.aDa.prototype={
 $0(){var s=this.a.c
 s.toString

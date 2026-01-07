@@ -22,7 +22,7 @@ class FFIGApp extends StatelessWidget {
       builder: (context, child) {
         return OverlaySupport.global(
           child: MaterialApp(
-            title: 'FFIG Mobile',
+            title: 'Female Founders Initiative Global Mobile',
             debugShowCheckedModeBanner: false,
             // Mode
             themeMode: themeController.themeMode,
@@ -78,7 +78,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              "FFIG",
+              "Female Founders Initiative Global",
               style: FfigTheme.textTheme.displayLarge?.copyWith(
                 fontSize: 40,
                 letterSpacing: 2.0,
