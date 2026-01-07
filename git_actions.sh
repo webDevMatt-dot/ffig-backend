@@ -22,7 +22,7 @@ sync_repo() {
     echo "------------------------------------------------"
     echo "Processing $DIR..."
     
-    # Store original directory to ensure we can return if cd fails (though script exits on fail)
+    # Store original director to ensure we can return if cd fails (though script exits on fail)
     ORIG_DIR=$(pwd)
     
     if [ "$DIR" != "." ]; then
