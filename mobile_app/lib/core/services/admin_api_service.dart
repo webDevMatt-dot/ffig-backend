@@ -39,9 +39,19 @@ class AdminApiService {
     }
   }
 
+  // Upload Hero Item
+  Future<void> createHeroItem(Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('hero', fields, imageFile, 'image');
+  }
+
   // Update Hero Item
   Future<void> updateHeroItem(String id, Map<String, String> fields, dynamic imageFile) async {
     await _uploadWithImage('hero', fields, imageFile, 'image', id: id, method: 'PATCH');
+  }
+
+  // Upload Founder Profile
+  Future<void> createFounderProfile(Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('founder', fields, imageFile, 'photo');
   }
 
   // Update Founder Profile
