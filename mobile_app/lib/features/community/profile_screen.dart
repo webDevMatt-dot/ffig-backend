@@ -86,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                  padding: const EdgeInsets.all(4),
                  decoration: BoxDecoration(
                    shape: BoxShape.circle,
-                   border: Border.all(color: FfigTheme.gold, width: 2),
+                   border: Border.all(color: FfigTheme.primaryBrown, width: 2),
                  ),
                  child: UserAvatar(
                    radius: 60,
@@ -108,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                if (_profileData['business_name'] != null)
                  Text(
                    _profileData['business_name'], 
-                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: FfigTheme.gold, fontWeight: FontWeight.w600)
+                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: FfigTheme.primaryBrown, fontWeight: FontWeight.w600)
                  ),
                
                const SizedBox(height: 24),
@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: FfigTheme.gold),
+          Icon(icon, color: FfigTheme.primaryBrown),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

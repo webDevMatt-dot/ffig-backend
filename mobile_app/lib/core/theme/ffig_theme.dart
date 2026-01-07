@@ -2,17 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FfigTheme {
-  // --- PREMIUM COLOR PALETTE ---
-  // "Matte Black" - Deep, rich, not pure black
-  static const Color matteBlack = Color(0xFF0F0F0F); 
-  static const Color darkGrey = Color(0xFF1A1A1A);
-  
-  // "Soft Gold" - Elegant, desaturated gold
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color paleGold = Color(0xFFF3E5AB);
-
-  // "Alabaster/Snow" - Clean modern background
-  static const Color alabaster = Color(0xFFFAFAFA);
+  // --- NEW COLOR PALETTE ---
+  static const Color primaryBrown = Color(0xFF723e31);
+  static const Color accentBrown = Color(0xFFc29a77);
+  static const Color pureBlack = Color(0xFF000000);
   static const Color pureWhite = Color(0xFFFFFFFF);
   
   static const Color textDark = Color(0xFF0A0A0A);
@@ -56,16 +49,16 @@ class FfigTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: alabaster,
+      scaffoldBackgroundColor: pureWhite,
       
       // Color Scheme
       colorScheme: ColorScheme.fromSeed(
-        seedColor: gold,
-        primary: gold,
-        onPrimary: matteBlack, 
-        secondary: matteBlack,
-        onSecondary: Colors.white,
-        background: alabaster,
+        seedColor: primaryBrown,
+        primary: primaryBrown,
+        onPrimary: pureWhite, 
+        secondary: accentBrown,
+        onSecondary: pureWhite,
+        background: pureWhite,
         surface: pureWhite,
         onSurface: textDark,
         outline: Colors.grey.shade200,
@@ -76,7 +69,7 @@ class FfigTheme {
 
       // AppBar Theme (Clean & Minimal)
       appBarTheme: AppBarTheme(
-        backgroundColor: alabaster,
+        backgroundColor: pureWhite,
         scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: false, // Left aligned is more "Web"
@@ -102,7 +95,7 @@ class FfigTheme {
         ),
         focusedBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
-           borderSide: const BorderSide(color: gold, width: 1),
+           borderSide: const BorderSide(color: primaryBrown, width: 1),
         ),
         errorBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
@@ -113,7 +106,7 @@ class FfigTheme {
       // Button Theme (Slick & Rounded)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: matteBlack, // High contrast black buttons
+          backgroundColor: pureBlack, // High contrast black buttons
           foregroundColor: Colors.white,
           elevation: 0, 
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
@@ -171,20 +164,20 @@ class FfigTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: matteBlack, // #0F0F0F or #0A0A0A
+      scaffoldBackgroundColor: pureBlack, 
       
       // Color Scheme
       colorScheme: ColorScheme.fromSeed(
-        seedColor: gold,
+        seedColor: primaryBrown,
         brightness: Brightness.dark,
-        primary: gold,
-        onPrimary: matteBlack,
-        secondary: gold,
-        onSecondary: matteBlack,
-        background: matteBlack,
-        surface: const Color(0xFF1E1E1E), // Dark Gunmetal for cards
+        primary: primaryBrown,
+        onPrimary: pureWhite,
+        secondary: accentBrown,
+        onSecondary: pureBlack,
+        background: pureBlack,
+        surface: const Color(0xFF1E1E1E), // Dark Gunmetal for cards to differentiate from bg
         onSurface: const Color(0xFFF0F0F0), // Off-white text
-        outline: gold.withOpacity(0.3), // Subtle gold outlines
+        outline: accentBrown.withOpacity(0.3), // Subtle accent outlines
       ),
 
       // Typography
@@ -195,7 +188,7 @@ class FfigTheme {
 
       // AppBar Theme
       appBarTheme: AppBarTheme(
-        backgroundColor: matteBlack,
+        backgroundColor: pureBlack,
         scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: false,
@@ -221,17 +214,17 @@ class FfigTheme {
         ),
         focusedBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
-           borderSide: const BorderSide(color: gold, width: 1),
+           borderSide: const BorderSide(color: primaryBrown, width: 1),
         ),
       ),
 
       // Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: gold, // Gold buttons on dark
-          foregroundColor: matteBlack, // Black text on gold
+          backgroundColor: primaryBrown, // Primary Brown buttons on dark
+          foregroundColor: pureWhite,
           elevation: 4,
-          shadowColor: gold.withOpacity(0.4),
+          shadowColor: primaryBrown.withOpacity(0.4),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12), 
@@ -244,8 +237,8 @@ class FfigTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: gold,
-          side: const BorderSide(color: gold),
+          foregroundColor: accentBrown,
+          side: const BorderSide(color: accentBrown),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -258,7 +251,7 @@ class FfigTheme {
       
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: gold,
+          foregroundColor: accentBrown,
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       ),
@@ -269,7 +262,7 @@ class FfigTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: gold.withOpacity(0.1), width: 1), // Subtle gold border
+          side: BorderSide(color: accentBrown.withOpacity(0.1), width: 1), // Subtle accent border
         ),
         margin: const EdgeInsets.only(bottom: 12),
       ),
@@ -283,7 +276,7 @@ class FfigTheme {
       // Bottom Navigation Bar
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: const Color(0xFF141414),
-        selectedItemColor: gold,
+        selectedItemColor: accentBrown,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: true,

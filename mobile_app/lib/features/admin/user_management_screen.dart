@@ -186,8 +186,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     }
                  }, 
                  style: ElevatedButton.styleFrom(
-                   backgroundColor: FfigTheme.matteBlack,
-                   foregroundColor: FfigTheme.gold,
+                   backgroundColor: FfigTheme.pureBlack,
+                   foregroundColor: FfigTheme.primaryBrown,
                    padding: const EdgeInsets.symmetric(vertical: 16),
                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                  ),
@@ -231,15 +231,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             title: const Text("Admin Access"),
                             secondary: Icon(Icons.shield_outlined, color: Theme.of(context).iconTheme.color),
                             value: isStaff, 
-                            activeColor: FfigTheme.gold,
+                            activeColor: FfigTheme.primaryBrown,
                             onChanged: (val) => setState(() => isStaff = val)
                           ),
                           Divider(height: 1, color: Theme.of(context).dividerColor),
                           SwitchListTile(
                             title: const Text("Premium Member"),
-                            secondary: const Icon(Icons.diamond_outlined, color: FfigTheme.gold),
+                            secondary: const Icon(Icons.diamond_outlined, color: FfigTheme.primaryBrown),
                             value: isPremium, 
-                            activeColor: FfigTheme.gold,
+                            activeColor: FfigTheme.primaryBrown,
                             onChanged: (val) => setState(() => isPremium = val)
                           ),
                        ],
@@ -250,8 +250,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ElevatedButton(
                     onPressed: () => _updateUser(user['id'], isStaff, isPremium), 
                     style: ElevatedButton.styleFrom(
-                       backgroundColor: FfigTheme.matteBlack,
-                       foregroundColor: FfigTheme.gold,
+                       backgroundColor: FfigTheme.pureBlack,
+                       foregroundColor: FfigTheme.primaryBrown,
                        padding: const EdgeInsets.symmetric(vertical: 16),
                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -278,7 +278,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Remove Member", style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: FfigTheme.matteBlack)),
+              Text("Remove Member", style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: FfigTheme.pureBlack)),
               const SizedBox(height: 16),
               Text("Are you sure you want to remove $username? They will lose all access immediately.", 
                    textAlign: TextAlign.center,
@@ -333,7 +333,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         fillColor: Theme.of(context).inputDecorationTheme.fillColor,
         labelText: label,
         labelStyle: GoogleFonts.lato(color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey),
-        prefixIcon: Icon(icon, color: FfigTheme.gold, size: 20),
+        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown, size: 20),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),

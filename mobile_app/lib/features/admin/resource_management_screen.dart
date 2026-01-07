@@ -160,9 +160,9 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> wit
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: FfigTheme.gold,
+          labelColor: FfigTheme.primaryBrown,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: FfigTheme.gold,
+          indicatorColor: FfigTheme.primaryBrown,
           labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
           tabs: const [
             Tab(text: "MAGAZINES"),
@@ -172,7 +172,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> wit
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: FfigTheme.gold))
+          ? const Center(child: CircularProgressIndicator(color: FfigTheme.primaryBrown))
           : _resources.isEmpty
               ? Center(child: Text("No resources found.", style: GoogleFonts.inter(color: Colors.grey)))
               : ListView.builder(
@@ -193,14 +193,14 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> wit
                         leading: Container(
                           width: 50, height: 50,
                           decoration: BoxDecoration(
-                            color: FfigTheme.paleGold.withOpacity(0.3),
+                            color: FfigTheme.accentBrown.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(8),
                             image: item['thumbnail_url'] != null && item['thumbnail_url'].toString().isNotEmpty
                                 ? DecorationImage(image: NetworkImage(item['thumbnail_url']), fit: BoxFit.cover)
                                 : null,
                           ),
                           child: item['thumbnail_url'] == null || item['thumbnail_url'].toString().isEmpty
-                              ? const Icon(Icons.article, color: FfigTheme.gold)
+                              ? const Icon(Icons.article, color: FfigTheme.primaryBrown)
                               : null,
                         ),
                         title: Text(item['title'], style: FfigTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
@@ -223,9 +223,9 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> wit
                   },
                 ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: FfigTheme.matteBlack,
+        backgroundColor: FfigTheme.pureBlack,
         onPressed: () => _showResourceDialog(),
-        child: const Icon(Icons.add, color: FfigTheme.gold),
+        child: const Icon(Icons.add, color: FfigTheme.primaryBrown),
       ),
     );
   }
@@ -373,7 +373,7 @@ class _ResourceEditorDialogState extends State<_ResourceEditorDialog> {
                      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                      labelText: "Category",
                      labelStyle: GoogleFonts.lato(color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey),
-                     prefixIcon: Icon(Icons.category_outlined, color: FfigTheme.gold, size: 20),
+                     prefixIcon: Icon(Icons.category_outlined, color: FfigTheme.primaryBrown, size: 20),
                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                    ),
@@ -399,7 +399,7 @@ class _ResourceEditorDialogState extends State<_ResourceEditorDialog> {
                      shadowColor: Colors.black26,
                    ),
                    child: _isSaving 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: FfigTheme.gold))
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: FfigTheme.primaryBrown))
                       : Text("SAVE RESOURCE", style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                  ),
                ],
@@ -420,10 +420,10 @@ class _ResourceEditorDialogState extends State<_ResourceEditorDialog> {
         fillColor: Theme.of(context).inputDecorationTheme.fillColor,
         labelText: label,
         labelStyle: GoogleFonts.lato(color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey),
-        prefixIcon: Icon(icon, color: FfigTheme.gold, size: 20),
+        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown, size: 20),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.gold, width: 1)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 1)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       validator: required ? (v) => v!.isEmpty ? "Required" : null : null,

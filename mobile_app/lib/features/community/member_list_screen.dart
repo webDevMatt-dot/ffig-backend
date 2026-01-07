@@ -254,7 +254,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
               ? const Center(child: CircularProgressIndicator()) 
               : RefreshIndicator(
                   onRefresh: _fetchMembers,
-                  color: FfigTheme.gold,
+                  color: FfigTheme.primaryBrown,
                   child: ListView.builder(
                     itemCount: _members.length,
                   itemBuilder: (context, index) {

@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 64, width: 64,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: FfigTheme.gold.withOpacity(0.1),
+                    color: FfigTheme.primaryBrown.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(

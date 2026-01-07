@@ -223,31 +223,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: FfigTheme.gold.withOpacity(0.15),
+        indicatorColor: FfigTheme.primaryBrown.withOpacity(0.15),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined), 
-            selectedIcon: Icon(Icons.home, color: FfigTheme.darkGrey),
+            selectedIcon: Icon(Icons.home, color: FfigTheme.textGrey),
             label: 'Home'
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined), 
-            selectedIcon: Icon(Icons.calendar_month, color: FfigTheme.darkGrey),
+            selectedIcon: Icon(Icons.calendar_month, color: FfigTheme.textGrey),
             label: 'Events'
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline), 
-            selectedIcon: Icon(Icons.people, color: FfigTheme.darkGrey),
+            selectedIcon: Icon(Icons.people, color: FfigTheme.textGrey),
             label: 'Network'
           ),
           NavigationDestination(
-            icon: Icon(Icons.diamond_outlined, color: FfigTheme.gold), // Always Gold
-            selectedIcon: Icon(Icons.diamond, color: FfigTheme.gold),
+            icon: Icon(Icons.diamond_outlined, color: FfigTheme.primaryBrown), // Always Gold
+            selectedIcon: Icon(Icons.diamond, color: FfigTheme.primaryBrown),
             label: 'VVIP'
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline), 
-            selectedIcon: Icon(Icons.person, color: FfigTheme.darkGrey),
+            selectedIcon: Icon(Icons.person, color: FfigTheme.textGrey),
             label: 'Profile'
           ),
         ],
@@ -258,7 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: _fetchFeaturedEvents,
-      color: FfigTheme.gold,
+      color: FfigTheme.primaryBrown,
       child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: FfigTheme.gold,
+                              color: FfigTheme.primaryBrown,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -400,7 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           isLabelVisible: _lastUnreadCount > 0,
                           label: Text('$_lastUnreadCount'),
                           offset: const Offset(5, -5),
-                          child: const Icon(Icons.chat_bubble_outline, color: FfigTheme.matteBlack, size: 28),
+                          child: const Icon(Icons.chat_bubble_outline, color: FfigTheme.pureBlack, size: 28),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -423,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("TRENDING NOW", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)),
-                const Text("View All", style: TextStyle(color: FfigTheme.gold, fontWeight: FontWeight.bold, fontSize: 12)),
+                const Text("View All", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12)),
               ],
             ),
           ),
