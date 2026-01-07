@@ -6,26 +6,42 @@ from .serializers import (
 )
 from django.utils import timezone
 
-class HeroItemViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = HeroItem.objects.filter(is_active=True)
+class BaseHomeViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        # Allow anyone to Read, but only Staff to Write (Create, Update, Delete)
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
+class HeroItemViewSet(BaseHomeViewSet):
     serializer_class = HeroItemSerializer
-    permission_classes = [permissions.AllowAny]
-
-class FounderProfileViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = FounderProfile.objects.filter(is_active=True)
-    serializer_class = FounderProfileSerializer
-    permission_classes = [permissions.AllowAny]
-
-class FlashAlertViewSet(viewsets.ReadOnlyModelViewSet):
-    # Only show active alerts that haven't expired
-    queryset = FlashAlert.objects.filter(is_active=True)
-    serializer_class = FlashAlertSerializer
-    permission_classes = [permissions.AllowAny]
-
+    
     def get_queryset(self):
-        return super().get_queryset().filter(expiry_time__gt=timezone.now())
+        # Admins see everything, Users see only active
+        if self.request.user and self.request.user.is_staff:
+            return HeroItem.objects.all()
+        return HeroItem.objects.filter(is_active=True)
 
-class NewsTickerItemViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = NewsTickerItem.objects.filter(is_active=True)
+class FounderProfileViewSet(BaseHomeViewSet):
+    serializer_class = FounderProfileSerializer
+    
+    def get_queryset(self):
+        if self.request.user and self.request.user.is_staff:
+            return FounderProfile.objects.all()
+        return FounderProfile.objects.filter(is_active=True)
+
+class FlashAlertViewSet(BaseHomeViewSet):
+    serializer_class = FlashAlertSerializer
+    
+    def get_queryset(self):
+        if self.request.user and self.request.user.is_staff:
+            return FlashAlert.objects.all()
+        return FlashAlert.objects.filter(is_active=True, expiry_time__gt=timezone.now())
+
+class NewsTickerItemViewSet(BaseHomeViewSet):
     serializer_class = NewsTickerItemSerializer
-    permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        if self.request.user and self.request.user.is_staff:
+            return NewsTickerItem.objects.all()
+        return NewsTickerItem.objects.filter(is_active=True)
