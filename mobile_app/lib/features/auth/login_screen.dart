@@ -102,7 +102,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: FfigTheme.gold.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.diamond_outlined, size: 32, color: FfigTheme.gold),
+                  child: Image.asset(
+                    'assets/images/female_founders_icon.png',
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 
