@@ -19,7 +19,7 @@ import 'package:overlay_support/overlay_support.dart';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
-import '../admin/admin_dashboard_screen.dart';
+
 import '../../core/theme/ffig_theme.dart';
 import 'models/hero_item.dart';
 import 'models/founder_profile.dart';
@@ -43,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isPremium = false;
   bool _isAdmin = false;
   Timer? _notificationTimer;
-  Timer? _notificationTimer;
+
   int _lastUnreadCount = 0;
 
   // New Data Sources (Mocked for now)
@@ -56,7 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchFeaturedEvents();
-    _fetchFeaturedEvents();
+
     _checkPremiumStatus();
     _loadHomepageContent();
     // Start the Global Listener (Checks every 10 seconds)
@@ -160,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       print("Connection error: $e");
       setState(() => _isLoading = false);
     }
-    }
+
   }
 
   void _loadHomepageContent() {
