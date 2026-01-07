@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'features/auth/login_screen.dart';
@@ -11,13 +12,18 @@ import 'core/services/notification_service.dart';
 // Global access to theme controller (Simple dependency injection)
 final themeController = ThemeController();
 
-void main() async {
+
+
+  void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
-    await Firebase.initializeApp();
-     // Initialize Notifications
-    await NotificationService().init();
+    // on Web, we skip Firebase unless configured (to avoid crash)
+    if (!kIsWeb) {
+      // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
+      await Firebase.initializeApp();
+       // Initialize Notifications
+      await NotificationService().init();
+    }
   } catch (e) {
     print("Firebase/Notification Init Error: $e");
   }
