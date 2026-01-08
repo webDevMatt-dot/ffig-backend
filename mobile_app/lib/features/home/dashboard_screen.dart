@@ -22,6 +22,7 @@ import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/services/version_service.dart'; 
 import 'package:url_launcher/url_launcher.dart';
+import '../../shared_widgets/user_avatar.dart';
 
 import '../../core/theme/ffig_theme.dart';
 import 'models/hero_item.dart';
@@ -54,6 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   FounderProfile? _founderProfile;
   FlashAlert? _flashAlert;
   List<String> _newsTickerItems = [];
+  Map<String, dynamic>? _userProfile;
 
   @override
   void initState() {
@@ -125,6 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (data.containsKey('is_staff')) {
                _isAdmin = data['is_staff'];
             }
+            _userProfile = data; // Store full profile for Avatar
           });
           
           await storage.write(key: 'is_premium', value: _isPremium.toString());
@@ -281,13 +284,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text("FEMALE FOUNDERS INITIATIVE GLOBAL MEMBER PORTAL", style: GoogleFonts.lato(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          if (_isAdmin)
-             IconButton(
-              icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.amber),
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
-              },
-            ),
+          // Profile Avatar (Top Right)
+          if (_userProfile != null)
+             InkWell(
+               onTap: () async {
+                 await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                 // Refresh profile on return in case edited
+                 _checkPremiumStatus();
+               },
+               child: Container(
+                 padding: const EdgeInsets.all(2),
+                 margin: const EdgeInsets.only(right: 8),
+                 decoration: BoxDecoration(
+                   shape: BoxShape.circle,
+                   border: Border.all(color: FfigTheme.primaryBrown, width: 1.5),
+                 ),
+                 child: UserAvatar(
+                   radius: 16, // Small for AppBar
+                   imageUrl: _userProfile!['photo'] ?? _userProfile!['photo_url'],
+                   firstName: _userProfile!['first_name'] ?? '',
+                   lastName: _userProfile!['last_name'] ?? '',
+                   username: _userProfile!['username'] ?? 'M',
+                 ),
+               ),
+             ),
+
           IconButton(
             icon: Badge(
               isLabelVisible: _lastUnreadCount > 0,
@@ -319,11 +340,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           : _buildPlaceholder("Coming Soon"),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) {
+           // Handle Admin Tab (Index 4 if Admin)
+           if (_isAdmin && index == 4) {
+               Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
+               return; // Do not switch tab
+           }
+           setState(() => _selectedIndex = index);
+        },
         backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
         indicatorColor: FfigTheme.primaryBrown.withOpacity(0.15),
-        destinations: const [
+        destinations: [
           NavigationDestination(
             icon: Icon(Icons.home_outlined), 
             selectedIcon: Icon(Icons.home, color: FfigTheme.textGrey),
@@ -344,10 +372,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             selectedIcon: Icon(Icons.diamond, color: FfigTheme.primaryBrown),
             label: 'VVIP'
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline), 
-            selectedIcon: Icon(Icons.person, color: FfigTheme.textGrey),
-            label: 'Profile'
+
+          if (_isAdmin)
+          const NavigationDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined, color: Colors.amber), 
+            label: 'Admin'
           ),
         ],
       ),

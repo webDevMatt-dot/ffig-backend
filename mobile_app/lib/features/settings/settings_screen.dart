@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../core/api/constants.dart';
@@ -18,12 +19,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _email = "Loading...";
+  String _appVersion = "";
   bool _isPremium = false;
   
   @override
   void initState() {
     super.initState();
     _fetchUserInfo();
+    _fetchVersion();
+  }
+
+  Future<void> _fetchVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) setState(() => _appVersion = info.version);
   }
 
   Future<void> _fetchUserInfo() async {
@@ -175,7 +183,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SizedBox(height: 16),
           
-          // 0. Account Info (New Request)
+          // 1. General (Edit Profile, Change Password)
+          _buildSectionHeader("General"),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text("Edit Profile"),
+            subtitle: const Text("Name, Bio, Industry, Photo"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+               Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text("Change Password"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showPasswordChangeDialog,
+          ),
+          
+          const Divider(),
+
+          // 2. Preferences (Theme)
+          _buildSectionHeader("Preferences"),
+          AnimatedBuilder(
+            animation: themeController, 
+            builder: (context, _) {
+              return ExpansionTile(
+                leading: const Icon(Icons.brightness_6_outlined),
+                title: const Text("Theme"),
+                subtitle: Text(themeController.themeMode.toString().split('.').last.toUpperCase()),
+                children: [
+                   RadioListTile<ThemeMode>(
+                     title: const Text("Light Mode"),
+                     value: ThemeMode.light,
+                     groupValue: themeController.themeMode,
+                     onChanged: (val) => themeController.setTheme(val!),
+                   ),
+                   RadioListTile<ThemeMode>(
+                     title: const Text("Dark Mode"),
+                     value: ThemeMode.dark,
+                     groupValue: themeController.themeMode,
+                     onChanged: (val) => themeController.setTheme(val!),
+                   ),
+                   RadioListTile<ThemeMode>(
+                     title: const Text("System Default"),
+                     value: ThemeMode.system,
+                     groupValue: themeController.themeMode,
+                     onChanged: (val) => themeController.setTheme(val!),
+                   ),
+                ]
+              );
+            }
+          ),
+
+          const Divider(),
+
+          // 3. Account & Subscription
           _buildSectionHeader("Account & Subscription"),
           Container(
              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -222,62 +285,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
              ),
           ),
           
-          // 1. Account Actions
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text("Edit Profile"),
-            subtitle: const Text("Name, Bio, Industry, Photo"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text("Change Password"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showPasswordChangeDialog,
-          ),
-          
           const Divider(),
 
-          // 2. App Config
-          _buildSectionHeader("Preferences"),
-          
-          // Theme Toggle
-          AnimatedBuilder(
-            animation: themeController, 
-            builder: (context, _) {
-              return ExpansionTile(
-                leading: const Icon(Icons.brightness_6_outlined),
-                title: const Text("Theme"),
-                subtitle: Text(themeController.themeMode.toString().split('.').last.toUpperCase()),
-                children: [
-                   RadioListTile<ThemeMode>(
-                     title: const Text("Light Mode"),
-                     value: ThemeMode.light,
-                     groupValue: themeController.themeMode,
-                     onChanged: (val) => themeController.setTheme(val!),
-                   ),
-                   RadioListTile<ThemeMode>(
-                     title: const Text("Dark Mode"),
-                     value: ThemeMode.dark,
-                     groupValue: themeController.themeMode,
-                     onChanged: (val) => themeController.setTheme(val!),
-                   ),
-                   RadioListTile<ThemeMode>(
-                     title: const Text("System Default"),
-                     value: ThemeMode.system,
-                     groupValue: themeController.themeMode,
-                     onChanged: (val) => themeController.setTheme(val!),
-                   ),
-                ]
-              );
-            }
-          ),
+          // 4. System (Version)
+           _buildSectionHeader("System"),
+           ListTile(
+             leading: const Icon(Icons.info_outline),
+             title: const Text("App Version"),
+             trailing: Text(_appVersion, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+           ),
 
-          const Divider(),
+           const Divider(),
 
+          // 5. Sign Out
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.grey),
             title: const Text("Sign Out"),
@@ -286,7 +306,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           
           const SizedBox(height: 48),
           
-          // 3. Danger Zone
+          // 6. Danger Zone
           _buildSectionHeader("DANGER ZONE"),
            Container(
              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
