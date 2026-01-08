@@ -7,7 +7,10 @@ import 'home_management/manage_hero_screen.dart';
 import 'home_management/manage_founder_screen.dart';
 import 'home_management/manage_alerts_screen.dart';
 import 'home_management/manage_ticker_screen.dart';
+import 'home_management/manage_ticker_screen.dart';
 import 'events_management/manage_events_screen.dart';
+import 'approvals/admin_approvals_screen.dart';
+import 'analytics/admin_analytics_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -52,6 +55,32 @@ class AdminDashboardScreen extends StatelessWidget {
           title: "Manage Events",
           subtitle: "Create, edit, and ticket events",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
+        ),
+        
+        _buildAdminTile(
+          context,
+          icon: Icons.event,
+          title: "Manage Events",
+          subtitle: "Create, edit, and ticket events",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
+        ),
+        
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "Approvals & Analytics"),
+
+        _buildAdminTile(
+          context,
+          icon: Icons.rule, 
+          title: "Approvals Center",
+          subtitle: "Review Business Profiles & Ads",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen())),
+        ),
+        _buildAdminTile(
+          context,
+          icon: Icons.analytics_outlined, 
+          title: "Analytics",
+          subtitle: "View platform growth & stats",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen())),
         ),
         
         const SizedBox(height: 24),
@@ -124,6 +153,18 @@ class AdminDashboardScreen extends StatelessWidget {
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen()))
                 ),
                  _buildWideTile(
+                   context, 
+                   "Approvals", 
+                   Icons.rule, 
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen()))
+                 ),
+                 _buildWideTile(
+                   context, 
+                   "Analytics", 
+                   Icons.analytics_outlined, 
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen()))
+                 ),
+                 _buildWideTile(
                   context, 
                   "Hero Carousel", 
                   Icons.view_carousel_outlined, 
@@ -185,12 +226,12 @@ class AdminDashboardScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
           ],
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

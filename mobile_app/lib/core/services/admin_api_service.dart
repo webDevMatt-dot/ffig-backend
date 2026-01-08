@@ -131,6 +131,44 @@ class AdminApiService {
      if (response.statusCode != 204) throw Exception('Failed to delete tier');
   }
 
+  Future<void> deleteEvent(int id) async {
+    final token = await _getToken();
+     final response = await http.delete(Uri.parse('$_eventsBaseUrl/$id/delete/'), headers: {'Authorization': 'Bearer $token'});
+     if (response.statusCode != 204) throw Exception('Failed to delete event');
+  }
+
+  // Sub-Items Generic Helpers
+  Future<void> _createSubItem(String endpoint, Map<String, dynamic> data) async {
+    final token = await _getToken();
+     final response = await http.post(
+      Uri.parse('$_eventsBaseUrl/$endpoint/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 201) throw Exception('Failed to create item');
+  }
+
+  Future<void> _deleteSubItem(String endpoint, int id) async {
+    final token = await _getToken();
+     final response = await http.delete(
+      Uri.parse('$_eventsBaseUrl/$endpoint/$id/'),
+      headers: {'Authorization': 'Bearer $token'}
+    );
+     if (response.statusCode != 204) throw Exception('Failed to delete item');
+  }
+
+  // Speakers
+  Future<void> createEventSpeaker(Map<String, dynamic> data) async => _createSubItem('speakers', data);
+  Future<void> deleteEventSpeaker(int id) async => _deleteSubItem('speakers', id);
+
+  // Agenda
+  Future<void> createAgendaItem(Map<String, dynamic> data) async => _createSubItem('agenda', data);
+  Future<void> deleteAgendaItem(int id) async => _deleteSubItem('agenda', id);
+
+  // FAQ
+  Future<void> createEventFAQ(Map<String, dynamic> data) async => _createSubItem('faqs', data);
+  Future<void> deleteEventFAQ(int id) async => _deleteSubItem('faqs', id);
+
   // Helpers
   Future<void> _postJson(String endpoint, Map<String, dynamic> data) async {
     final token = await _getToken();

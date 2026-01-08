@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
 from django.utils import timezone
 from datetime import timedelta
 
@@ -21,7 +21,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'is_online', 'is_staff']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff']
 
     def update(self, instance, validated_data):
         # The 'source' fields (user.first_name) come in as a nested dictionary under 'user'
@@ -44,3 +44,20 @@ class ProfileSerializer(serializers.ModelSerializer):
             return False
         # Online if active in last 5 minutes
         return (timezone.now() - obj.last_seen) < timedelta(minutes=5)
+
+class BusinessProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessProfile
+        fields = '__all__'
+
+class MarketingRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MarketingRequest
+        fields = '__all__'
+        read_only_fields = ['status', 'feedback']
+
+class ContentReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContentReport
+        fields = '__all__'
+        read_only_fields = ['status', 'reporter']

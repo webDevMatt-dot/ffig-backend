@@ -42,6 +42,31 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
     _loadEvents();
   }
 
+  Future<void> _deleteEvent(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Event?"),
+        content: const Text("This action cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      )
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _apiService.deleteEvent(id);
+      _loadEvents();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,18 +78,36 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
+              padding: const EdgeInsets.all(16),
               itemCount: _events.length,
               itemBuilder: (context, index) {
                 final e = _events[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(e['image_url']),
-                  ),
-                  title: Text(e['title']),
-                  subtitle: Text("${e['date']} • ${e['ticket_tiers']?.length ?? 0} Tiers"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => _editEvent(e),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: CircleAvatar(
+                      radius: 30,
+                      backgroundImage: NetworkImage(e['image_url']),
+                      onBackgroundImageError: (_, __) {},
+                      child: e['image_url'].isEmpty ? const Icon(Icons.event) : null,
+                    ),
+                    title: Text(e['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("${e['date']} • ${e['ticket_tiers']?.length ?? 0} Tiers\n${e['location']}"),
+                    isThreeLine: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _editEvent(e),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteEvent(e['id']),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

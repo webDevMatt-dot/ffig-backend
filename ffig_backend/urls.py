@@ -42,8 +42,20 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from events.views import FeaturedEventView, EventListView, EventDetailView, MyTicketsView, purchase_ticket, TicketTierCreateView, TicketTierDeleteView
-from members.views import MemberListView, UserProfileView, premium_content
+from events.views import (
+    FeaturedEventView, EventListView, EventDetailView, MyTicketsView, purchase_ticket, 
+    TicketTierCreateView, TicketTierDeleteView, EventDeleteView,
+    EventSpeakerCreateView, EventSpeakerDeleteView,
+    AgendaItemCreateView, AgendaItemDeleteView,
+    EventFAQCreateView, EventFAQDeleteView
+)
+from members.views import (
+    MemberListView, UserProfileView, premium_content,
+    BusinessProfileCreateView, MarketingRequestCreateView, ContentReportCreateView,
+    AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
+    AdminMarketingRequestListView, AdminMarketingRequestDetailView,
+    AdminContentReportListView, AdminContentReportDetailView
+)
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView
 
@@ -58,6 +70,16 @@ urlpatterns = [
     path('api/events/', EventListView.as_view(), name='event-list'),
     path('api/events/<int:pk>/', EventDetailView.as_view(), name='event-detail'),
     path('api/events/<int:pk>/purchase/', purchase_ticket, name='purchase-ticket'),
+    path('api/events/<int:pk>/delete/', EventDeleteView.as_view(), name='event-delete'),
+    path('api/events/my-tickets/', MyTicketsView.as_view(), name='my-tickets'),
+    
+    # Nested Items
+    path('api/events/speakers/', EventSpeakerCreateView.as_view(), name='speaker-create'),
+    path('api/events/speakers/<int:pk>/', EventSpeakerDeleteView.as_view(), name='speaker-delete'),
+    path('api/events/agenda/', AgendaItemCreateView.as_view(), name='agenda-create'),
+    path('api/events/agenda/<int:pk>/', AgendaItemDeleteView.as_view(), name='agenda-delete'),
+    path('api/events/faqs/', EventFAQCreateView.as_view(), name='faq-create'),
+    path('api/events/faqs/<int:pk>/', EventFAQDeleteView.as_view(), name='faq-delete'),
     path('api/events/my-tickets/', MyTicketsView.as_view(), name='my-tickets'),
     path('api/events/tiers/', TicketTierCreateView.as_view(), name='tier-create'),
     path('api/events/tiers/<int:pk>/', TicketTierDeleteView.as_view(), name='tier-delete'),
@@ -69,6 +91,24 @@ urlpatterns = [
     # Admin Resource Management
     path('api/admin/resources/', AdminResourceListCreateView.as_view(), name='admin-resource-list'),
     path('api/admin/resources/<int:pk>/', AdminResourceDetailView.as_view(), name='admin-resource-detail'),
+
+    # Phase 2: RBAC & Admin
+    path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    
+    # Admin Approvals
+    path('api/admin/approvals/business/', AdminBusinessProfileListView.as_view(), name='admin-business-list'),
+    path('api/admin/approvals/business/<int:pk>/', AdminBusinessProfileDetailView.as_view(), name='admin-business-detail'),
+    path('api/admin/approvals/marketing/', AdminMarketingRequestListView.as_view(), name='admin-marketing-list'),
+    path('api/admin/approvals/marketing/<int:pk>/', AdminMarketingRequestDetailView.as_view(), name='admin-marketing-detail'),
+    
+    # Admin Moderation
+    path('api/admin/moderation/reports/', AdminContentReportListView.as_view(), name='admin-report-list'),
+    path('api/admin/moderation/reports/<int:pk>/', AdminContentReportDetailView.as_view(), name='admin-report-detail'),
+
+    # User Submissions
+    path('api/members/me/business/', BusinessProfileCreateView.as_view(), name='create-business-profile'),
+    path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
+    path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
 
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),

@@ -6,6 +6,7 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../settings/settings_screen.dart';
+import '../../core/services/membership_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -109,6 +110,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                  Text(
                    _profileData['business_name'], 
                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: FfigTheme.primaryBrown, fontWeight: FontWeight.w600)
+                 ),
+               
+               const SizedBox(height: 24),
+               
+               const SizedBox(height: 16),
+               if (MembershipService.canCreateBusinessProfile)
+                 OutlinedButton.icon(
+                   icon: const Icon(Icons.business),
+                   label: const Text("Manage Business Profile"),
+                   onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Business Profile Manager coming soon!")));
+                   },
+                 )
+               else
+                 TextButton.icon(
+                   icon: const Icon(Icons.lock, size: 16),
+                   label: const Text("Unlock Business Profile"),
+                   onPressed: () => MembershipService.showUpgradeDialog(context, "Business Profile"),
                  ),
                
                const SizedBox(height: 24),

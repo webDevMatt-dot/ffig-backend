@@ -2,7 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .models import Event, Ticket, TicketTier
-from .serializers import EventSerializer, TicketSerializer, TicketTierSerializer
+from .models import Event, Ticket, TicketTier, EventSpeaker, AgendaItem, EventFAQ
+from .serializers import EventSerializer, TicketSerializer, TicketTierSerializer, EventSpeakerSerializer, AgendaItemSerializer, EventFAQSerializer
 
 class FeaturedEventView(generics.ListAPIView):
     # Only authenticated members can see this!
@@ -78,3 +79,38 @@ class TicketTierDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TicketTierSerializer
     queryset = TicketTier.objects.all()
+
+# 6. Event Management (Delete)
+class EventDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Event.objects.all()
+
+# 7. Speakers Management
+class EventSpeakerCreateView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EventSpeakerSerializer
+
+class EventSpeakerDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EventSpeakerSerializer
+    queryset = EventSpeaker.objects.all()
+
+# 8. Agenda Management
+class AgendaItemCreateView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AgendaItemSerializer
+
+class AgendaItemDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AgendaItemSerializer
+    queryset = AgendaItem.objects.all()
+
+# 9. FAQ Management
+class EventFAQCreateView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EventFAQSerializer
+
+class EventFAQDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EventFAQSerializer
+    queryset = EventFAQ.objects.all()

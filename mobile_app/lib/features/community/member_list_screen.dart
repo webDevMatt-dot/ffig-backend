@@ -9,6 +9,7 @@ import '../premium/locked_screen.dart'; // Needed for navigation
 import '../../core/api/admin_service.dart'; // Admin Service
 import '../../core/theme/ffig_theme.dart';
 import '../../shared_widgets/user_avatar.dart';
+import '../../core/services/membership_service.dart';
 
 class MemberListScreen extends StatefulWidget {
   const MemberListScreen({super.key});
@@ -299,34 +300,8 @@ class _MemberListScreenState extends State<MemberListScreen> {
                         ),
                         trailing: const Icon(Icons.arrow_forward, size: 16),
                         onTap: () async {
-                            // THE VELVET ROPE Logic
-                            const storage = FlutterSecureStorage();
-                            final isPremiumString = await storage.read(key: 'is_premium');
-                            final bool iAmPremium = isPremiumString == 'true';
-                            final bool memberIsPremium = member['is_premium'] ?? false;
-
-                            // Restrict access if SHE is Premium and I am NOT
-                            if (memberIsPremium && !iAmPremium) {
-                                showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                    title: const Text("VIP Member 🔒"),
-                                    content: const Text("This founder is in the Premium Circle. Upgrade your membership to connect with her."),
-                                    actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-                                    ElevatedButton(
-                                        onPressed: () {
-                                        Navigator.pop(context);
-                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const LockedScreen())); 
-                                        },
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                                        child: const Text("Upgrade Now", style: TextStyle(color: Colors.black)),
-                                    )
-                                    ],
-                                )
-                                );
-                            } else {
-                                // Access Granted
+                            // RBAC: Direct Messaging is for Premium Only (Inbox)
+                            if (MembershipService.canInbox) {
                                 Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -336,6 +311,8 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                     ),
                                     ),
                                 );
+                            } else {
+                                MembershipService.showUpgradeDialog(context, "Direct Messaging");
                             }
                         },
                         // ADMIN: Long Press to Reset Password

@@ -20,6 +20,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
+import '../../core/services/membership_service.dart';
 import '../../core/services/version_service.dart'; 
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/user_avatar.dart';
@@ -128,6 +129,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                _isAdmin = data['is_staff'];
             }
             _userProfile = data; // Store full profile for Avatar
+            // Update Global Membership State
+            MembershipService.setTier(data['tier']);
+            _isPremium = MembershipService.isPremium; // Keep for now, or replace usage
           });
           
           await storage.write(key: 'is_premium', value: _isPremium.toString());
@@ -294,10 +298,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () {
               // Reset count on tap instantly for better UX
               setState(() => _lastUnreadCount = 0); 
-              if (_isPremium) {
+              if (MembershipService.canInbox) {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
               } else {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const LockedScreen()));
+                MembershipService.showUpgradeDialog(context, "Inbox");
               }
             },
           ),
@@ -335,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : _selectedIndex == 2 
                   ? const MemberListScreen() 
                   : _selectedIndex == 3
-                      ? (_isPremium ? const PremiumScreen() : const LockedScreen())
+                      ? (MembershipService.isPremium ? const PremiumScreen() : const LockedScreen())
                       : _selectedIndex == 4
                           ? const ProfileScreen()
                           : _buildPlaceholder("Coming Soon"),

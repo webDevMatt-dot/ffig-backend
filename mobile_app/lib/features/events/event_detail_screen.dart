@@ -148,7 +148,7 @@ class EventDetailScreen extends StatelessWidget {
            Container(
              padding: const EdgeInsets.all(16),
              decoration: BoxDecoration(
-               color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+               color: Theme.of(context).cardColor,
                borderRadius: BorderRadius.circular(12),
                border: Border.all(color: Theme.of(context).dividerColor),
              ),
@@ -156,7 +156,7 @@ class EventDetailScreen extends StatelessWidget {
                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                children: [
                  const Text("Starting Price:", style: TextStyle(fontSize: 16)),
-                 Text(event['price_label'] ?? 'Free', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
+                 Text(event['price_label'] ?? 'Free', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                ],
              ),
            ),
