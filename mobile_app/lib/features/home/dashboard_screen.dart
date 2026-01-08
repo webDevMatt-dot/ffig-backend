@@ -20,6 +20,8 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
+import '../../core/services/version_service.dart'; 
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/ffig_theme.dart';
 import 'models/hero_item.dart';
@@ -59,7 +61,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _fetchFeaturedEvents();
 
     _checkPremiumStatus();
+    _checkPremiumStatus();
     _loadHomepageContent();
+    _checkForUpdates();
     // Start the Global Listener (Checks every 10 seconds)
     _notificationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkUnreadMessages();
@@ -221,6 +225,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       if (kDebugMode) print("Error loading homepage content: $e");
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateData = await VersionService().checkUpdate();
+    if (updateData != null && mounted) {
+      final bool required = updateData['required'];
+      final String url = updateData['url'];
+      final String version = updateData['latestVersion'];
+
+      showDialog(
+        context: context,
+        barrierDismissible: !required,
+        builder: (context) => AlertDialog(
+          title: const Text("Update Available"),
+          content: Text("A new version ($version) of the app is available. Please update to continue enjoying the latest features."),
+          actions: [
+            if (!required)
+              TextButton(child: const Text("Later"), onPressed: () => Navigator.pop(context)),
+            ElevatedButton(
+              onPressed: () {
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+              child: const Text("Update Now"),
+            )
+          ],
+        ),
+      );
     }
   }
 

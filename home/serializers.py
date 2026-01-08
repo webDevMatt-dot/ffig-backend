@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
+
+class AppVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppVersion
+        fields = '__all__'
 
 class HeroItemSerializer(serializers.ModelSerializer):
     class Meta:

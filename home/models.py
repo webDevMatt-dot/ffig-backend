@@ -67,3 +67,17 @@ class NewsTickerItem(models.Model):
 
     def __str__(self):
         return self.text
+
+class AppVersion(models.Model):
+    PLATFORM_CHOICES = [
+        ('ANDROID', 'Android'),
+        ('IOS', 'iOS'),
+    ]
+    platform = models.CharField(max_length=10, choices=PLATFORM_CHOICES)
+    latest_version = models.CharField(max_length=20, help_text="e.g. 1.0.3")
+    required = models.BooleanField(default=False, help_text="Force update?")
+    update_url = models.URLField(help_text="Play Store or Direct Link")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.platform} - {self.latest_version}"

@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
 from .serializers import (
     HeroItemSerializer, FounderProfileSerializer, 
-    FlashAlertSerializer, NewsTickerItemSerializer
+    FlashAlertSerializer, NewsTickerItemSerializer, AppVersionSerializer
 )
 from django.utils import timezone
 
@@ -45,3 +45,9 @@ class NewsTickerItemViewSet(BaseHomeViewSet):
         if self.request.user and self.request.user.is_staff:
             return NewsTickerItem.objects.all()
         return NewsTickerItem.objects.filter(is_active=True)
+
+class AppVersionViewSet(BaseHomeViewSet):
+    serializer_class = AppVersionSerializer
+    
+    def get_queryset(self):
+        return AppVersion.objects.all()

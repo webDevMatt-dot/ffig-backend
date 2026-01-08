@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
+
+@admin.register(AppVersion)
+class AppVersionAdmin(admin.ModelAdmin):
+    list_display = ('platform', 'latest_version', 'required', 'updated_at')
 
 @admin.register(HeroItem)
 class HeroItemAdmin(admin.ModelAdmin):
