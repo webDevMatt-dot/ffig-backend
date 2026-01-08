@@ -9,7 +9,7 @@ from .serializers import ConversationSerializer, MessageSerializer
 
 # 1. List all my conversations
 class ConversationListView(generics.ListAPIView):
-    permission_classes = [IsStandardUser]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
@@ -17,7 +17,7 @@ class ConversationListView(generics.ListAPIView):
 
 # 2. Get messages for a specific conversation
 class MessageListView(generics.ListAPIView):
-    permission_classes = [IsStandardUser]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = MessageSerializer
 
     def get_queryset(self):
@@ -38,7 +38,7 @@ class MessageListView(generics.ListAPIView):
         return messages
 
 class UnreadCountView(APIView):
-    permission_classes = [IsStandardUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         # Count messages sent to ME that are NOT read
@@ -51,7 +51,7 @@ class UnreadCountView(APIView):
 
 # 3. Send a message (Auto-creates conversation if needed)
 class SendMessageView(APIView):
-    permission_classes = [IsStandardUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         recipient_id = request.data.get('recipient_id')
