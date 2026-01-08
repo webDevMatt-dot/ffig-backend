@@ -19,6 +19,7 @@ class Resource(models.Model):
     thumbnail_url = models.URLField(blank=True, null=True) 
     
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True) # Soft Delete / Deactivation
 
     def __str__(self):
         return f"[{self.get_category_display()}] {self.title}"

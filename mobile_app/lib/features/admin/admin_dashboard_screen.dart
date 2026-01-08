@@ -210,7 +210,10 @@ class AdminDashboardScreen extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-          child: Icon(icon, color: Theme.of(context).primaryColor),
+          // Adaptive Icon Color: Primary (Dark) for Light Mode, Secondary (Gold) for Dark Mode
+          child: Icon(icon, color: Theme.of(context).brightness == Brightness.dark 
+              ? Theme.of(context).colorScheme.secondary 
+              : Theme.of(context).primaryColor),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
@@ -236,7 +239,9 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: Theme.of(context).primaryColor),
+            Icon(icon, size: 48, color: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.secondary 
+                : Theme.of(context).primaryColor),
             const SizedBox(height: 16),
             Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           ],

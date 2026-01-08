@@ -10,32 +10,55 @@ class AdminAnalyticsScreen extends StatefulWidget {
 }
 
 class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
-  // TODO: Fetch from AdminApiService
-  bool _isLoading = false; 
+  Map<String, dynamic>? _data;
+  bool _isLoading = false;
+  final _apiService = AdminApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _apiService.fetchAnalytics();
+      if (mounted) setState(() => _data = data);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Analytics Dashboard")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildStatCard("Total Active Users", "3,450", "+12%"),
-            const SizedBox(height: 16),
-            _buildStatCard("Monthly Revenue", "\$12,400", "+8%"),
-            const SizedBox(height: 16),
-            _buildStatCard("Conversion Rate", "4.2%", "-1%"),
-            const SizedBox(height: 32),
-            const Text("Detailed Charts Coming Soon"),
-          ],
-        ),
-      ),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                if (_data != null) ...[
+                   _buildStatCard("Total Active Users", "${_data!['active_users']['monthly']}", "+${_data!['active_users']['daily']} Daily"),
+                   const SizedBox(height: 16),
+                   _buildStatCard("Total Revenue", "\$${_data!['revenue']['total']}", "Events: \$${_data!['revenue']['events']}"),
+                   const SizedBox(height: 16),
+                   _buildStatCard("Conversion Rate", "${_data!['conversion_rates']['standard_to_premium']}", "Free->Std: ${_data!['conversion_rates']['free_to_standard']}"),
+                   const SizedBox(height: 32),
+                ],
+                const Text("Detailed Charts Coming Soon"),
+              ],
+            ),
+          ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, String growth) {
-    final isPositive = growth.startsWith('+');
+  Widget _buildStatCard(String title, String value, String subtitle) {
+    // Determine color based on context (simple logic for now)
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -51,16 +74,16 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             children: [
               Text(title, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 8),
-              Text(value, style: Theme.of(context).textTheme.displaySmall),
+              Text(value, style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32)),
             ],
           ),
           Container(
              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
              decoration: BoxDecoration(
-               color: isPositive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+               color: FfigTheme.primaryBrown.withOpacity(0.1),
                borderRadius: BorderRadius.circular(20),
              ),
-             child: Text(growth, style: TextStyle(color: isPositive ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+             child: Text(subtitle, style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12)),
           )
         ],
       ),

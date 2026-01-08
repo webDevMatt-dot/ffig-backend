@@ -8,8 +8,8 @@ class ResourceListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated] # User MUST be logged in
 
     def get_queryset(self):
-        # 1. Start with everything
-        queryset = Resource.objects.all().order_by('-created_at')
+        # 1. Start with everything (that is active!)
+        queryset = Resource.objects.filter(is_active=True).order_by('-created_at')
         
         # 2. Get the category the app is asking for (e.g., "MAG")
         category = self.request.query_params.get('category')

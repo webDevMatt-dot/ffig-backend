@@ -22,6 +22,12 @@ class MessageListView(generics.ListAPIView):
 
     def get_queryset(self):
         conversation_id = self.kwargs['pk']
+        
+        # Security Check
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        if not conversation.is_public and self.request.user not in conversation.participants.all():
+             return Message.objects.none()
+
         # 1. Get messages
         messages = Message.objects.filter(conversation__id=conversation_id).order_by('created_at')
 
@@ -58,7 +64,9 @@ class SendMessageView(APIView):
         if conversation_id:
             # We need to filter by participants to ensure the sender is part of it
             # But simpler for now: just get the object
-            conversation = get_object_or_404(Conversation, id=conversation_id, participants=sender)
+            conversation = get_object_or_404(Conversation, id=conversation_id)
+            if not conversation.is_public and sender not in conversation.participants.all():
+                 return Response({"error": "You are not a participant"}, status=403)
 
         # Scenario B: Starting a new chat with a User ID
         elif recipient_id:
@@ -78,3 +86,11 @@ class SendMessageView(APIView):
         conversation.save() 
 
         return Response({"status": "Message sent", "conversation_id": conversation.id}, status=201)
+
+# 4. Get/Create Global Community Chat
+class CommunityChatView(APIView):
+    permission_classes = [IsPremiumUser]
+
+    def get(self, request):
+        conversation, created = Conversation.objects.get_or_create(is_public=True)
+        return Response({"id": conversation.id, "created": created})

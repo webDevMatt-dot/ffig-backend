@@ -107,9 +107,24 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   }
 
   Future<void> _deleteEvent(int id) async {
-     // Keep delete but maybe ask confirmation
+     // Legacy Delete (Hidden or Administrative only if absolutely needed)
+     // For now, we prefer Deactivation.
      await _apiService.deleteEvent(id);
      _loadEvents();
+  }
+  
+  Future<void> _toggleEventActive(Map<String, dynamic> event) async {
+    final id = event['id'];
+    final isActive = event['is_active'] ?? true;
+    final newState = !isActive;
+    
+    try {
+      await _apiService.updateEvent(id, {'is_active': newState});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Event Activated" : "Event Deactivated")));
+      _loadEvents();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to toggle: $e")));
+    }
   }
   
   void _manageFullDetails(Map<String, dynamic> event) async {
@@ -234,7 +249,11 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                        mainAxisSize: MainAxisSize.min,
                        children: [
                           IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(e)),
-                          IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteEvent(e['id'])),
+                          // Power Toggle Logic
+                          IconButton(
+                            icon: Icon(Icons.power_settings_new, color: (e['is_active'] ?? true) ? Colors.green : Colors.red),
+                            onPressed: () => _toggleEventActive(e),
+                          ),
                        ],
                      ),
                      onTap: () => _startEditing(e), 

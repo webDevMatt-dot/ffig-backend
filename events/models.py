@@ -19,6 +19,7 @@ class Event(models.Model):
     ticket_url = models.URLField(blank=True, help_text="Link to Eventbrite or external payment page (optional)")
     price_label = models.CharField(max_length=50, default="Free", help_text="e.g. '$50' or 'Starting at $99'")
     is_sold_out = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True) # Soft Delete / Deactivation
 
     def __str__(self):
         return self.title

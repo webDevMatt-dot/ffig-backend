@@ -2,7 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Conversation(models.Model):
-    participants = models.ManyToManyField(User, related_name='conversations')
+    participants = models.ManyToManyField(User, related_name='conversations', blank=True) # Blank for public
+    is_public = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True) # To sort by recent activity
 
     def __str__(self):

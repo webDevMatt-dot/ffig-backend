@@ -143,12 +143,36 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   }
 
   Future<void> _deleteResource(int id) async {
+    // Legacy Delete
     try {
       final token = await _storage.read(key: 'access_token');
-      await http.delete(Uri.parse('${baseUrl}admin/resources/\$id/'), headers: {'Authorization': 'Bearer \$token'});
+      await http.delete(Uri.parse('${baseUrl}admin/resources/$id/'), headers: {'Authorization': 'Bearer $token'});
       _fetchResources();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: \$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _toggleResourceActive(Map<String, dynamic> item) async {
+    final id = item['id'];
+    final isActive = item['is_active'] ?? true;
+    final newState = !isActive;
+    try {
+      final token = await _storage.read(key: 'access_token');
+      final uri = Uri.parse('${baseUrl}admin/resources/$id/');
+      final response = await http.patch(uri, 
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+        body: jsonEncode({'is_active': newState})
+      );
+      
+      if (response.statusCode == 200) {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Resource Activated" : "Resource Deactivated")));
+         _fetchResources();
+      } else {
+         throw Exception(response.body);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error toggling: $e')));
     }
   }
 
@@ -299,11 +323,15 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                       : const Icon(Icons.article),
                   title: Text(item['title']),
                   subtitle: Text(item['category'] ?? ''),
-                  trailing: Row(
+                    trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteResource(item['id'])),
+                      // Power Toggle Logic
+                      IconButton(
+                        icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.red),
+                        onPressed: () => _toggleResourceActive(item),
+                      ),
                     ],
                   ),
                 ),

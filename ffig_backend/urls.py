@@ -57,7 +57,7 @@ from members.views import (
     AdminContentReportListView, AdminContentReportDetailView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
-from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView
+from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -116,6 +116,7 @@ urlpatterns = [
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
+    path('api/chat/community/', CommunityChatView.as_view(), name='community-chat'),
     
     # Explicitly serve media files (Required for Render/Production if not using S3)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),

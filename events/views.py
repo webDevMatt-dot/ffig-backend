@@ -11,13 +11,19 @@ class FeaturedEventView(generics.ListAPIView):
     serializer_class = EventSerializer
 
     def get_queryset(self):
-        return Event.objects.filter(is_featured=True)
+        return Event.objects.filter(is_featured=True, is_active=True)
 
 # 1. List ALL Events (ordered by date)
 class EventListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = EventSerializer
     queryset = Event.objects.all().order_by('date')
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff: 
+            return Event.objects.all().order_by('date')
+        return Event.objects.filter(is_active=True).order_by('date')
 
 # 2. Get Single Event Details
 class EventDetailView(generics.RetrieveAPIView):
