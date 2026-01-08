@@ -116,33 +116,56 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = _messages[index];
                   final isMe = msg['is_me'];
                   final isRead = msg['is_read'] ?? false;
+                  final username = msg['sender']['username'] ?? 'Unknown';
+                  final createdAt = DateTime.parse(msg['created_at']).toLocal();
+                  final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
 
                   return Align(
                     alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isMe ? Colors.amber[300] : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            msg['text'],
-                            style: const TextStyle(fontSize: 16),
+                    child: Column(
+                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      children: [
+                        if (!isMe)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, bottom: 4),
+                            child: Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                           ),
-                          if (isMe) ...[
-                            const SizedBox(height: 4),
-                            Icon(
-                              isRead ? Icons.done_all : Icons.check, 
-                              size: 16,
-                              color: isRead ? Colors.blueAccent : Colors.black54, 
-                            ),
-                          ],
-                        ],
-                      ),
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isMe ? Colors.amber[300] : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                msg['text'],
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    timeString,
+                                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                  ),
+                                  if (isMe) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      isRead ? Icons.done_all : Icons.check, 
+                                      size: 14,
+                                      color: isRead ? Colors.blueAccent : Colors.black54, 
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   );
               },
