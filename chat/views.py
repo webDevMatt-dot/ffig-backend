@@ -89,7 +89,7 @@ class SendMessageView(APIView):
 
 # 4. Get/Create Global Community Chat
 class CommunityChatView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsStandardUser]
 
     def get(self, request):
         conversation, created = Conversation.objects.get_or_create(is_public=True)

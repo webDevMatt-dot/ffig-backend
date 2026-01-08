@@ -199,9 +199,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _showEditDialog(Map<String, dynamic> user) {
     bool isStaff = user['is_staff'] ?? false;
-    bool isPremium = user['is_premium'] ?? false; // Fixed: Use field from profile if needed, or dict
+
+    // Determine current Tier
+    String currentTier = 'FREE';
     if (user['profile'] != null && user['profile'] is Map) {
-       isPremium = user['profile']['is_premium'] ?? isPremium;
+       currentTier = user['profile']['tier'] ?? 'FREE';
+    } else {
+       // Fallback for older API/Structure
+       bool isPremium = user['is_premium'] ?? false;
+       if (isPremium) currentTier = 'PREMIUM';
     }
     
     final userController = TextEditingController(text: user['username']);
@@ -239,7 +245,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                    const SizedBox(height: 24),
                    
                    SwitchListTile(title: const Text("Admin Access"), value: isStaff, onChanged: (v) => setState(() => isStaff = v)),
-                   SwitchListTile(title: const Text("Premium Member"), value: isPremium, onChanged: (v) => setState(() => isPremium = v)),
+
+                   
+                   const SizedBox(height: 16),
+                   DropdownButtonFormField<String>(
+                     decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Membership Tier"),
+                     value: currentTier, // "FREE", "STANDARD", "PREMIUM"
+                     items: const [
+                       DropdownMenuItem(value: 'FREE', child: Text("Free")),
+                       DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),
+                       DropdownMenuItem(value: 'PREMIUM', child: Text("Premium")),
+                     ], 
+                     onChanged: (val) {
+                       if (val != null) setState(() => currentTier = val);
+                     }
+                   ),
                    
                    const SizedBox(height: 24),
                    OutlinedButton.icon(
@@ -265,7 +285,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                        'first_name': fNameController.text,
                        'last_name': lNameController.text,
                        'is_staff': isStaff,
-                       'profile': {'is_premium': isPremium} 
+
+                       'profile': {'tier': currentTier} // Send structured profile update
                      }), 
                      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown, padding: const EdgeInsets.all(16)),
                      child: const Text("SAVE CHANGES"),
