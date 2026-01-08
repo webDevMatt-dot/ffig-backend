@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ticket_flow/ticket_selection_screen.dart';
+import '../../core/services/membership_service.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final Map<String, dynamic> event;
@@ -20,6 +21,11 @@ class EventDetailScreen extends StatelessWidget {
   }
 
   void _onGetTickets(BuildContext context) {
+    if (!MembershipService.canBuyTickets) {
+      MembershipService.showUpgradeDialog(context, "Ticket Purchase");
+      return;
+    }
+
     // If ticket_tiers exist, go to In-App Selection
     // Else fall back to external URL
     final tiers = event['ticket_tiers'] as List?;

@@ -21,12 +21,19 @@ class MembershipService {
   static bool get isStandard => currentTier == UserTier.standard;
   static bool get isPremium => currentTier == UserTier.premium;
 
-  // Permissions Logic
-  static bool get canChat => !isFree; // Standard+
-  static bool get canInbox => isPremium; // Premium only
+  // Permissions Logic based on Matrix
+  static bool get canCommunityChat => !isFree; // Standard & Premium
+  static bool get canInbox => isPremium; // Premium only ('Inbox or email members directly')
+  
+  static bool get canBuyTickets => !isFree; // Standard & Premium ('Attend and buy tickets')
+  
   static bool get canAdvertise => isPremium; // Premium only
   static bool get canCreateBusinessProfile => isPremium; // Premium only
-  static bool get canViewFullDirectory => !isFree; // Standard+
+  
+  // Directory: Standard sees "limited info", Premium sees all.
+  // We'll treat "View Full Directory" as the ability to see contact info or interact.
+  static bool get canViewFullDirectory => isPremium; // Premium only
+  static bool get canViewLimitedDirectory => !isFree; // Standard & Premium
 
   // Helper to show dialog
   static void showUpgradeDialog(BuildContext context, String feature) {

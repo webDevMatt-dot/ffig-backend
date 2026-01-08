@@ -6,6 +6,7 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../settings/settings_screen.dart';
+import '../marketing/business_profile_editor_screen.dart';
 import '../../core/services/membership_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -120,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                    icon: const Icon(Icons.business),
                    label: const Text("Manage Business Profile"),
                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Business Profile Manager coming soon!")));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const BusinessProfileEditorScreen()));
                    },
                  )
                else

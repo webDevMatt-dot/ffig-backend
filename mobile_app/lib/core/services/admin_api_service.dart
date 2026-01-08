@@ -225,4 +225,26 @@ class AdminApiService {
       throw Exception('Failed to upload/update: $respStr');
     }
   }
+  // --- MEMBER SUBMISSIONS (RBAC) ---
+  static const String _membersBaseUrl = 'https://ffig-api.onrender.com/api/members';
+
+  Future<void> createBusinessProfile(Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_membersBaseUrl/me/business/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 201) throw Exception('Failed to create business profile: ${response.body}');
+  }
+
+  Future<void> createMarketingRequest(Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_membersBaseUrl/me/marketing/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 201) throw Exception('Failed to create marketing request: ${response.body}');
+  }
 }

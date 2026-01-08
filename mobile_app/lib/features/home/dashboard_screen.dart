@@ -351,6 +351,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
                return; // Do not switch tab
            }
+           
+           // RBAC: Network/Members Tab (Index 2)
+           if (index == 2 && !MembershipService.canViewLimitedDirectory) {
+               MembershipService.showUpgradeDialog(context, "Member Directory");
+               return;
+           }
+
            setState(() => _selectedIndex = index);
         },
         backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
@@ -468,7 +475,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
-                _buildQuickAction(Icons.people_outline, "Members", () => setState(() => _selectedIndex = 2)),
+                _buildQuickAction(Icons.people_outline, "Members", () {
+                   if (MembershipService.canViewLimitedDirectory) {
+                      setState(() => _selectedIndex = 2);
+                   } else {
+                      MembershipService.showUpgradeDialog(context, "Member Directory");
+                   }
+                }),
                 const SizedBox(width: 16),
                 _buildQuickAction(Icons.calendar_today_outlined, "Events", () => setState(() => _selectedIndex = 1)),
                 const SizedBox(width: 16),
