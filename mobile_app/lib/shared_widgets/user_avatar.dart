@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/ffig_theme.dart';
 
 class UserAvatar extends StatelessWidget {
   final String? imageUrl;
@@ -44,27 +45,36 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Hack: Ignore the Backend's default "Yellow" UI Avatar so we can use our own Themed one.
+    bool useUrl = imageUrl != null && imageUrl!.isNotEmpty && !imageUrl!.contains("ui-avatars.com");
+
+    final bgColor = backgroundColor ?? FfigTheme.primaryBrown.withOpacity(0.1);
+    final txtColor = textColor ?? FfigTheme.primaryBrown;
+
     return CircleAvatar(
       radius: radius,
-      backgroundColor: backgroundColor ?? Colors.grey.shade200,
-      backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty) ? NetworkImage(imageUrl!) : null,
+      backgroundColor: bgColor,
+      backgroundImage: useUrl ? NetworkImage(imageUrl!) : null,
       onBackgroundImageError: (_, __) {},
-      child: (imageUrl == null || imageUrl!.isEmpty) 
-          ? _buildInitials() // Show initials if no image
+      child: !useUrl 
+          ? _buildInitials(bgColor, txtColor) // Show initials if no image
           : null, // Image is shown via backgroundImage
     );
   }
 
-  Widget _buildInitials() {
+  Widget _buildInitials(Color bg, Color txt) {
     return Container(
-      color: backgroundColor ?? Colors.grey.shade200,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Text(
         _getInitials(),
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: radius * 0.8, 
-          color: textColor ?? Colors.grey.shade600,
+          color: txt,
         ),
       ),
     );

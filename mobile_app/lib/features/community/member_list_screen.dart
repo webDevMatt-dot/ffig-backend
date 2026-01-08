@@ -272,7 +272,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                         leading: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: isPremium ? Border.all(color: const Color(0xFFD4AF37), width: 2) : null,
+                            border: isPremium ? Border.all(color: FfigTheme.accentBrown, width: 2) : null,
                           ),
                           padding: const EdgeInsets.all(2), // Space for border
                           child: UserAvatar(
