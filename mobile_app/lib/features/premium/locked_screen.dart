@@ -50,7 +50,7 @@ class LockedScreen extends StatelessWidget {
             _buildPlanCard(
               context,
               title: "STANDARD MEMBER",
-              price: "Join the Community", // You can add actual price like "$25/mo" here
+              price: "\$200 / year",
               features: ["Global Networking", "Member Directory Access", "Basic Resources"],
               buttonText: "JOIN STANDARD",
               isRecommended: false,
@@ -63,7 +63,7 @@ class LockedScreen extends StatelessWidget {
             _buildPlanCard(
               context,
               title: "PREMIUM MEMBER",
-              price: "Full Access",
+              price: "\$400 / year",
               features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
               buttonText: "GO PREMIUM",
               isRecommended: true,

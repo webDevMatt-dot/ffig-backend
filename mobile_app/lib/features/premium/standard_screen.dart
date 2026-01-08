@@ -66,7 +66,7 @@ class StandardScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                       showDialog(context: context, builder: (c) => const UpgradeModal(feature: "VVIP Upgrade"));
+                       showDialog(context: context, builder: (c) => const UpgradeModal(message: "Upgrade to Premium to unlock VVIP features, including Direct Messaging and Marketing Tools."));
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD4AF37),

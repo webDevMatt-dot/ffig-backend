@@ -38,10 +38,16 @@ class MembershipService {
   static bool get canViewLimitedDirectory => !isFree; // Standard & Premium
 
   // Helper to show dialog
-  static void showUpgradeDialog(BuildContext context, String feature) {
+  static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {
+    String message = "Unlock this feature by becoming an FFIG Member. Upgrade now.";
+
+    if (currentTier == UserTier.standard && requiredTier == UserTier.premium) {
+      message = "This feature is available to Premium Members. Upgrade to unlock.";
+    }
+
     showDialog(
       context: context,
-      builder: (context) => UpgradeModal(feature: feature),
+      builder: (context) => UpgradeModal(message: message),
     );
   }
 }
