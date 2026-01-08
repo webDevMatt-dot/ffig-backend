@@ -42,7 +42,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from events.views import FeaturedEventView, EventListView, EventDetailView, MyTicketsView, purchase_ticket
+from events.views import FeaturedEventView, EventListView, EventDetailView, MyTicketsView, purchase_ticket, TicketTierCreateView, TicketTierDeleteView
 from members.views import MemberListView, UserProfileView, premium_content
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView
@@ -59,6 +59,8 @@ urlpatterns = [
     path('api/events/<int:pk>/', EventDetailView.as_view(), name='event-detail'),
     path('api/events/<int:pk>/purchase/', purchase_ticket, name='purchase-ticket'),
     path('api/events/my-tickets/', MyTicketsView.as_view(), name='my-tickets'),
+    path('api/events/tiers/', TicketTierCreateView.as_view(), name='tier-create'),
+    path('api/events/tiers/<int:pk>/', TicketTierDeleteView.as_view(), name='tier-delete'),
     path('api/members/', MemberListView.as_view(), name='member-list'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),

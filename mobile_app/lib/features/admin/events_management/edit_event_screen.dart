@@ -56,6 +56,48 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
 
+  Future<void> _deleteTier(int id) async {
+    // Call API and reload? Ideally we reload the full event. 
+    // Since we don't have a reload method here easily, we rely on parent or implement logic.
+    // Simpler: Just delete and warn user they need to reopen to see changes? 
+    // Better: Re-fetch event. But EditEventScreen takes event as param.
+    // Best for MVP: Delete and close screen or show snackbar.
+    await AdminApiService().deleteTicketTier(id);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tier deleted. Re-open to refresh.")));
+  }
+
+  void _showAddTierDialog() {
+    final nameCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final capCtrl = TextEditingController();
+
+    showDialog(context: context, builder: (context) => AlertDialog(
+      title: const Text("Add Ticket Tier"),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Name (e.g. VIP)")),
+        TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Price"), keyboardType: TextInputType.number),
+        TextField(controller: capCtrl, decoration: const InputDecoration(labelText: "Capacity"), keyboardType: TextInputType.number),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        ElevatedButton(onPressed: () async {
+            if (nameCtrl.text.isEmpty) return;
+            try {
+               await AdminApiService().createTicketTier({
+                 'event': widget.event!['id'],
+                 'name': nameCtrl.text,
+                 'price': double.tryParse(priceCtrl.text) ?? 0.0,
+                 'capacity': int.tryParse(capCtrl.text) ?? 100,
+                 'available': int.tryParse(capCtrl.text) ?? 100
+               });
+               Navigator.pop(context);
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tier added. Re-open to refresh.")));
+            } catch(e) { /* handle */ }
+        }, child: const Text("Add"))
+      ],
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,6 +115,29 @@ class _EditEventScreenState extends State<EditEventScreen> {
               TextFormField(controller: _locationController, decoration: const InputDecoration(labelText: "Location"), validator: (v) => v!.isEmpty ? "Required" : null),
                const SizedBox(height: 16),
               TextFormField(controller: _priceLabelController, decoration: const InputDecoration(labelText: "Price Label (e.g. Free, \$50)")),
+               const SizedBox(height: 32),
+               
+              TextFormField(controller: _priceLabelController, decoration: const InputDecoration(labelText: "Price Label (e.g. Free, \$50)")),
+               const SizedBox(height: 32),
+               
+               if (widget.event != null) ...[
+                 const Divider(),
+                 const Text("Ticket Tiers", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                 const SizedBox(height: 8),
+                 ...(widget.event!['ticket_tiers'] as List? ?? []).map<Widget>((t) => ListTile(
+                   title: Text(t['name']),
+                   subtitle: Text("\$${t['price']} • ${t['available']}/${t['capacity']} left"),
+                   trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteTier(t['id'])),
+                 )).toList(),
+                 TextButton.icon(
+                   icon: const Icon(Icons.add),
+                   label: const Text("Add Ticket Tier"),
+                   onPressed: _showAddTierDialog,
+                 ),
+                 const Divider(),
+               ] else 
+                 const Text("Save event to add tickets.", style: TextStyle(color: Colors.grey)),
+
                const SizedBox(height: 32),
                
                ElevatedButton(

@@ -2,7 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .models import Event, Ticket, TicketTier
-from .serializers import EventSerializer, TicketSerializer
+from .serializers import EventSerializer, TicketSerializer, TicketTierSerializer
 
 class FeaturedEventView(generics.ListAPIView):
     # Only authenticated members can see this!
@@ -68,3 +68,13 @@ class MyTicketsView(generics.ListAPIView):
     
     def get_queryset(self):
         return Ticket.objects.filter(user=self.request.user).order_by('-purchase_date')
+
+# 5. Manage Tiers (Admin)
+class TicketTierCreateView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated] 
+    serializer_class = TicketTierSerializer
+
+class TicketTierDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TicketTierSerializer
+    queryset = TicketTier.objects.all()

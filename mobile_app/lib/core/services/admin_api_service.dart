@@ -112,6 +112,25 @@ class AdminApiService {
      if (response.statusCode != 200) throw Exception('Failed to update event: ${response.body}');
   }
 
+  Future<void> createTicketTier(Map<String, dynamic> data) async {
+    final token = await _getToken();
+     final response = await http.post(
+      Uri.parse('$_eventsBaseUrl/tiers/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 201) throw Exception('Failed to create tier: ${response.body}');
+  }
+
+  Future<void> deleteTicketTier(int id) async {
+    final token = await _getToken();
+     final response = await http.delete(
+      Uri.parse('$_eventsBaseUrl/tiers/$id/'),
+      headers: {'Authorization': 'Bearer $token'}
+    );
+     if (response.statusCode != 204) throw Exception('Failed to delete tier');
+  }
+
   // Helpers
   Future<void> _postJson(String endpoint, Map<String, dynamic> data) async {
     final token = await _getToken();
