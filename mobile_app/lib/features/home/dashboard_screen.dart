@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import '../community/member_list_screen.dart';
 import '../community/profile_screen.dart';
 import '../resources/resources_screen.dart';
@@ -63,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchFeaturedEvents();
-
+    _checkMobileWeb(); // Check for mobile web
     _checkPremiumStatus();
     _checkPremiumStatus();
     _loadHomepageContent();
@@ -278,6 +279,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
+    }
+  }
+
+  void _checkMobileWeb() {
+    // If on Web AND (Android OR iOS)
+    if (kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+       // Wait a beat so it doesn't clash with other dialogs
+       Future.delayed(const Duration(seconds: 2), () {
+           showDialog(
+             context: context, 
+             builder: (context) => AlertDialog(
+               title: const Text("Get the Full Experience"),
+               content: const Text("For the best experience, including Push Notifications and Offline Access, download our mobile app."),
+               actions: [
+                 TextButton(onPressed: () => Navigator.pop(context), child: const Text("Stay on Web")),
+                 ElevatedButton(
+                   onPressed: () {
+                      // Navigate to APK download
+                      launchUrl(Uri.parse('https://ffig-mobile-app.onrender.com/app.apk'), mode: LaunchMode.externalApplication);
+                   }, 
+                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+                   child: const Text("Download App")
+                 )
+               ],
+             )
+           );
+       });
     }
   }
 

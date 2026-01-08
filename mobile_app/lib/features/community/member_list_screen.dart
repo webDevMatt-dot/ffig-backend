@@ -271,8 +271,9 @@ class _MemberListScreenState extends State<MemberListScreen> {
                         contentPadding: EdgeInsets.zero, // Clean edge-to-edge
                         leading: Container(
                           decoration: BoxDecoration(
+                             // Removed circle border as requested
                             shape: BoxShape.circle,
-                            border: isPremium ? Border.all(color: FfigTheme.accentBrown, width: 2) : null,
+                            // border: isPremium ? Border.all(color: FfigTheme.accentBrown, width: 2) : null, 
                           ),
                           padding: const EdgeInsets.all(2), // Space for border
                           child: UserAvatar(
@@ -287,9 +288,19 @@ class _MemberListScreenState extends State<MemberListScreen> {
                             lastName: member['last_name'],
                           ),
                         ),
-                        title: Text(
-                          member['username'].toString().toUpperCase(), 
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold)
+                        title: Row(
+                          children: [
+                            Text(
+                              member['username'].toString().toUpperCase(), 
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold)
+                            ),
+                            const SizedBox(width: 6),
+                            // Verified Badge Logic
+                            if (isPremium)
+                               const Icon(Icons.verified, color: Colors.amber, size: 16)
+                            else if (member['tier'] == 'STANDARD') // Assuming backend sends 'tier' now, or fallback to !isPremium but not "Free"
+                               const Icon(Icons.verified, color: Colors.blue, size: 16)
+                          ],
                         ),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4.0),

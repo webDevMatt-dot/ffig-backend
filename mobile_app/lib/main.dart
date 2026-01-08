@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'features/auth/login_screen.dart';
+import 'features/home/dashboard_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/theme/ffig_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -65,15 +67,34 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   @override
+  @override
   void initState() {
     super.initState();
-    // Simulate checking for a Django Token, then navigate
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => const LoginScreen())
-      );
-    });
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    // Artificial Delay for Branding
+    await Future.delayed(const Duration(seconds: 3));
+
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+
+    if (mounted) {
+      if (token != null) {
+        // Token exists, go to Dashboard
+         Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => const DashboardScreen())
+        );
+      } else {
+        // No token, go to Login
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => const LoginScreen())
+        );
+      }
+    }
   }
 
   @override
