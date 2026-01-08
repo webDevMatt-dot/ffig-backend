@@ -32,12 +32,17 @@ class _PremiumScreenState extends State<PremiumScreen> {
       final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          _vipPerks = data['exclusive_data'];
-          _isLoading = false;
-        });
+        if (mounted) {
+           setState(() {
+             _vipPerks = data['exclusive_data'];
+             _isLoading = false;
+           });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
       print(e);
     }
   }
