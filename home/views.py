@@ -56,4 +56,4 @@ class AppVersionViewSet(BaseHomeViewSet):
     filterset_fields = ['platform']
     
     def get_queryset(self):
-        return AppVersion.objects.all()
+        return AppVersion.objects.order_by('-updated_at')
