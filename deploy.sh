@@ -20,6 +20,9 @@ flutter build web --release
 echo "📦 Building Android APK (Release)..."
 flutter build apk --release
 
+echo "📂 Copying APK to Web Directory..."
+cp build/app/outputs/flutter-apk/app-release.apk build/web/app.apk
+
 echo "📁 Staging mobile_app files..."
 git add .
 

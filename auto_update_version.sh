@@ -44,7 +44,7 @@ RESPONSE=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"ANDROID\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://play.google.com/store/apps/details?id=com.ffig.mobile\",
+    \"update_url\": \"https://ffig-mobile.onrender.com/app.apk\",
     \"required\": false
   }")
 
@@ -55,7 +55,7 @@ RESPONSE_IOS=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"IOS\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://apps.apple.com/app/id123456789\",
+    \"update_url\": \"https://ffig-mobile.onrender.com/app.apk\",
     \"required\": false
   }")
 
