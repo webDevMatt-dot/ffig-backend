@@ -131,6 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _userProfile = data; // Store full profile for Avatar
             // Update Global Membership State
             MembershipService.setTier(data['tier']);
+            MembershipService.isAdmin = _isAdmin;
             _isPremium = MembershipService.isPremium; // Keep for now, or replace usage
           });
           

@@ -17,9 +17,11 @@ class MembershipService {
     }
   }
 
-  static bool get isFree => currentTier == UserTier.free;
-  static bool get isStandard => currentTier == UserTier.standard;
-  static bool get isPremium => currentTier == UserTier.premium;
+  static bool isAdmin = false;
+
+  static bool get isFree => !isAdmin && currentTier == UserTier.free;
+  static bool get isStandard => isAdmin || currentTier == UserTier.standard;
+  static bool get isPremium => isAdmin || currentTier == UserTier.premium;
 
   // Permissions Logic based on Matrix
   static bool get canCommunityChat => !isFree; // Standard & Premium

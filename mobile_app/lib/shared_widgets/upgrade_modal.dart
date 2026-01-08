@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/premium/locked_screen.dart';
 
 class UpgradeModal extends StatelessWidget {
   final String feature;
@@ -23,8 +24,7 @@ class UpgradeModal extends StatelessWidget {
         ElevatedButton(
           onPressed: () {
              Navigator.pop(context);
-             // TODO: Navigate to Subscription Screen
-             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Redirecting to Plans...")));
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const LockedScreen()));
           },
           child: const Text("Upgrade Now"),
         )
