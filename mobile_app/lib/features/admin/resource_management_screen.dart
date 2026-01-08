@@ -329,8 +329,12 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                       IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
                       // Power Toggle Logic
                       IconButton(
-                        icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.red),
+                        icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
                         onPressed: () => _toggleResourceActive(item),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteResource(item['id']),
                       ),
                     ],
                   ),

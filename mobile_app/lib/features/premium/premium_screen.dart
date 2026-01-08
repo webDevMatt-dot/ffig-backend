@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../marketing/business_profile_editor_screen.dart';
+import '../../core/theme/ffig_theme.dart';
 import '../marketing/marketing_requests_screen.dart';
 import '../chat/community_chat_screen.dart';
 class PremiumScreen extends StatefulWidget {
@@ -50,21 +51,30 @@ class _PremiumScreenState extends State<PremiumScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("VIP LOUNGE"), backgroundColor: Colors.amber, foregroundColor: Colors.black),
+      appBar: AppBar(
+        title: const Text("VIP LOUNGE"), 
+        backgroundColor: Colors.black, 
+        foregroundColor: FfigTheme.accentBrown
+      ),
+      backgroundColor: Colors.black,
       body: _isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
+        ? const Center(child: CircularProgressIndicator(color: FfigTheme.accentBrown)) 
         : SingleChildScrollView(
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
                   color: Colors.black,
+                  width: double.infinity,
                   child: Column(
                     children: [
-                      const Text("EXCLUSIVE ACCESS", style: TextStyle(color: Colors.amber, letterSpacing: 1.5, fontSize: 10, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
+                      const Icon(Icons.diamond_outlined, size: 60, color: FfigTheme.accentBrown),
+                      const SizedBox(height: 12),
+                      const Text("EXCLUSIVE ACCESS", style: TextStyle(color: FfigTheme.accentBrown, letterSpacing: 2.0, fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildHeaderAction(context, "Community\nChat", Icons.forum, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const CommunityChatScreen()))),
                           _buildHeaderAction(context, "Manage\nBusiness", Icons.business, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const BusinessProfileEditorScreen()))),
@@ -81,10 +91,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   itemCount: _vipPerks.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      color: Colors.black87,
+                      color: const Color(0xFF1E1E1E), // Dark card
                       margin: const EdgeInsets.only(bottom: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: FfigTheme.accentBrown.withOpacity(0.2))),
                       child: ListTile(
-                        leading: const Icon(Icons.star, color: Colors.amber),
+                        leading: const Icon(Icons.star, color: FfigTheme.accentBrown),
                         title: Text(_vipPerks[index], style: const TextStyle(color: Colors.white)),
                       ),
                     );
@@ -102,12 +113,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: Colors.black, size: 28),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E), 
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3))
+            ),
+            child: Icon(icon, color: FfigTheme.accentBrown, size: 30),
           ),
-          const SizedBox(height: 8),
-          Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12))
+          const SizedBox(height: 10),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(color: FfigTheme.accentBrown, fontWeight: FontWeight.w600, fontSize: 12))
         ],
       ),
     );

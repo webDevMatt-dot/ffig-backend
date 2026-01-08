@@ -352,6 +352,10 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                           icon: Icon(item['is_active'] == true ? Icons.visibility : Icons.visibility_off, color: item['is_active'] == true ? Colors.green : Colors.grey),
                           onPressed: () => _toggleActive(item),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteItem(item['id']),
+                        ),
                       ],
                     ),
                   ),

@@ -39,10 +39,10 @@ class MembershipService {
 
   // Helper to show dialog
   static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {
-    String message = "Unlock this feature by becoming an FFIG Member. Upgrade now.";
+    String message = "Unlock '$feature' by becoming an FFIG Member. Choose Standard or Premium to access.";
 
     if (currentTier == UserTier.standard && requiredTier == UserTier.premium) {
-      message = "This feature is available to Premium Members. Upgrade to unlock.";
+      message = "The '$feature' feature is exclusive to Premium Members. Upgrade to unlock.";
     }
 
     showDialog(

@@ -251,9 +251,13 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                           IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(e)),
                           // Power Toggle Logic
                           IconButton(
-                            icon: Icon(Icons.power_settings_new, color: (e['is_active'] ?? true) ? Colors.green : Colors.red),
-                            onPressed: () => _toggleEventActive(e),
-                          ),
+                             icon: Icon(Icons.power_settings_new, color: (e['is_active'] ?? true) ? Colors.green : Colors.grey),
+                             onPressed: () => _toggleEventActive(e),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.delete, color: Colors.red),
+                             onPressed: () => _deleteEvent(e['id']),
+                           ),
                        ],
                      ),
                      onTap: () => _startEditing(e), 

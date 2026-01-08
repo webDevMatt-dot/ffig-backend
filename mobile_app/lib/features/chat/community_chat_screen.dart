@@ -49,11 +49,11 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
            });
         }
       } else {
-        throw Exception("Failed to load chat");
+        throw Exception("Failed to load chat: ${response.statusCode}");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading chat: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
         setState(() => _isLoading = false);
       }
     }
