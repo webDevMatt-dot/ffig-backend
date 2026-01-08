@@ -156,132 +156,161 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Resources")),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left: Form
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_editingId != null ? "Edit Resource" : "Add Resource", style: Theme.of(context).textTheme.titleLarge),
-                            if (_editingId != null)
-                              TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        _buildField(_titleController, "Title", Icons.title),
-                        const SizedBox(height: 16),
-                        _buildField(_descController, "Description", Icons.description, maxLines: 3),
-                        const SizedBox(height: 16),
-                        _buildField(_urlController, "Content URL", Icons.link),
-                        const SizedBox(height: 16),
-                        _buildField(_thumbController, "Thumbnail URL", Icons.image, required: false),
-                        const SizedBox(height: 16),
-                        
-                         DropdownButtonFormField<String>(
-                           value: _selectedCategory,
-                           decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                           items: const [
-                             DropdownMenuItem(value: 'MAG', child: Text("Magazine")),
-                             DropdownMenuItem(value: 'CLASS', child: Text("Masterclass")),
-                             DropdownMenuItem(value: 'NEWS', child: Text("Newsletter")),
-                             DropdownMenuItem(value: 'GEN', child: Text("General")),
-                           ],
-                           onChanged: (v) => setState(() => _selectedCategory = v!),
-                         ),
-                        
-                        const SizedBox(height: 24),
-                         SizedBox(
-                           width: double.infinity,
-                           height: 50,
-                           child: ElevatedButton(
-                             onPressed: _isLoading ? null : _submitForm,
-                             style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-                             child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE" : "PUBLISH"),
-                           ),
-                         ),
-                      ],
-                    ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 800) {
+            // Desktop: Split View
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: _buildForm(context),
                   ),
                 ),
-              ),
-            ),
-          ),
-          
-          // Right: List
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Existing Resources", style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                     decoration: const InputDecoration(
-                       hintText: "Search Resources...",
-                       prefixIcon: Icon(Icons.search),
-                       border: OutlineInputBorder(),
-                       isDense: true,
-                     ),
-                     onChanged: (val) {
-                       setState(() {
-                         _searchQuery = val;
-                         _filterResources();
-                       });
-                     },
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: _buildList(context),
                   ),
-                  const SizedBox(height: 16),
+                ),
+              ],
+            );
+          } else {
+             // Mobile: Vertical Stack
+             return SingleChildScrollView(
+               child: Column(
+                 children: [
+                   Padding(
+                     padding: const EdgeInsets.all(16),
+                     child: _buildForm(context),
+                   ),
+                   const Divider(height: 1, thickness: 8, color: Colors.black12),
+                   Padding(
+                     padding: const EdgeInsets.all(16),
+                     child: _buildList(context),
+                   ),
+                 ],
+               ),
+             );
+          }
+        },
+      ),
+    );
+  }
 
-                  if (_isLoading && _resources.isEmpty)
-                     const Center(child: CircularProgressIndicator())
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _filteredResources.length,
-                        itemBuilder: (context, index) {
-                          final item = _filteredResources[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: item['thumbnail_url'] != null 
-                                  ? Image.network(item['thumbnail_url'], width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.broken_image))
-                                  : const Icon(Icons.article),
-                              title: Text(item['title']),
-                              subtitle: Text(item['category'] ?? ''),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
-                                  IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteResource(item['id'])),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+  Widget _buildForm(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_editingId != null ? "Edit Resource" : "Add Resource", style: Theme.of(context).textTheme.titleLarge),
+                  if (_editingId != null)
+                    TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
                 ],
               ),
-            ),
+              const SizedBox(height: 24),
+              
+              _buildField(_titleController, "Title", Icons.title),
+              const SizedBox(height: 16),
+              _buildField(_descController, "Description", Icons.description, maxLines: 3),
+              const SizedBox(height: 16),
+              _buildField(_urlController, "Content URL", Icons.link),
+              const SizedBox(height: 16),
+              _buildField(_thumbController, "Thumbnail URL", Icons.image, required: false),
+              const SizedBox(height: 16),
+              
+               DropdownButtonFormField<String>(
+                 value: _selectedCategory,
+                 decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                 items: const [
+                   DropdownMenuItem(value: 'MAG', child: Text("Magazine")),
+                   DropdownMenuItem(value: 'CLASS', child: Text("Masterclass")),
+                   DropdownMenuItem(value: 'NEWS', child: Text("Newsletter")),
+                   DropdownMenuItem(value: 'GEN', child: Text("General")),
+                 ],
+                 onChanged: (v) => setState(() => _selectedCategory = v!),
+               ),
+              
+              const SizedBox(height: 24),
+               SizedBox(
+                 width: double.infinity,
+                 height: 50,
+                 child: ElevatedButton(
+                   onPressed: _isLoading ? null : _submitForm,
+                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+                   child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE" : "PUBLISH"),
+                 ),
+               ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Existing Resources", style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        
+        TextField(
+           decoration: const InputDecoration(
+             hintText: "Search Resources...",
+             prefixIcon: Icon(Icons.search),
+             border: OutlineInputBorder(),
+             isDense: true,
+           ),
+           onChanged: (val) {
+             setState(() {
+               _searchQuery = val;
+               _filterResources();
+             });
+           },
+        ),
+        const SizedBox(height: 16),
+
+        if (_isLoading && _resources.isEmpty)
+           const Center(child: CircularProgressIndicator())
+        else
+          ListView.builder(
+            shrinkWrap: true, // Needed for Column layout
+            physics: const NeverScrollableScrollPhysics(), // Scroll handled by parent
+            itemCount: _filteredResources.length,
+            itemBuilder: (context, index) {
+              final item = _filteredResources[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: item['thumbnail_url'] != null 
+                      ? Image.network(item['thumbnail_url'], width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.broken_image))
+                      : const Icon(Icons.article),
+                  title: Text(item['title']),
+                  subtitle: Text(item['category'] ?? ''),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
+                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteResource(item['id'])),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 

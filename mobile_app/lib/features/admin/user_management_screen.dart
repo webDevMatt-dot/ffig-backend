@@ -148,7 +148,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       final token = await storage.read(key: 'access_token');
       // Using the backend endpoint: /api/admin/password-reset/ (Assuming standard path)
       final response = await http.post(
-        Uri.parse('${baseUrl}reset-password/'), 
+        Uri.parse('${baseUrl}admin/reset-password/'), 
         headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId, 'new_password': newPassword}),
       );

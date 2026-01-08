@@ -13,10 +13,10 @@ class HeroCarousel extends StatelessWidget {
 
     return CarouselSlider(
       options: CarouselOptions(
-        height: 180.0, // Reduced further
+        height: 160.0, 
         autoPlay: true,
         enlargeCenterPage: true,
-        aspectRatio: 2.0, // Wider aspect ratio
+        aspectRatio: 2.2,
         autoPlayCurve: Curves.fastOutSlowIn,
         enableInfiniteScroll: true,
         autoPlayAnimationDuration: const Duration(milliseconds: 800),
@@ -29,7 +29,6 @@ class HeroCarousel extends StatelessWidget {
               onTap: () {
                 if (item.actionUrl != null) {
                   // Handle navigation
-                  print("Navigate to ${item.actionUrl}");
                 }
               },
               child: Container(

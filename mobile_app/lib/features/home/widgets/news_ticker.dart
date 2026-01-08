@@ -14,10 +14,10 @@ class NewsTicker extends StatelessWidget {
 
     return Container(
       height: 40,
-      color: Theme.of(context).colorScheme.surfaceVariant, // Adaptive background
+      color: const Color(0xFF723e31), // FfigTheme.primaryBrown hardcoded to avoid import loop or just import it
       child: Marquee(
         text: fullText,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         scrollAxis: Axis.horizontal,
         crossAxisAlignment: CrossAxisAlignment.center,
         blankSpace: 20.0,

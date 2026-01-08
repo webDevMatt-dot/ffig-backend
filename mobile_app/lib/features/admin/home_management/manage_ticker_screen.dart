@@ -88,118 +88,136 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage News Ticker")),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left: Form
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Add Ticker Item", style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 24),
-                        
-                        TextFormField(
-                          controller: _textController,
-                          decoration: const InputDecoration(labelText: 'News Text', border: OutlineInputBorder()),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        TextFormField(
-                          controller: _urlController,
-                          decoration: const InputDecoration(labelText: 'Link URL (Optional)', border: OutlineInputBorder()),
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: FfigTheme.primaryBrown,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("ADD TO TICKER"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          // Right: List
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 2, child: _buildForm()),
+                Expanded(flex: 3, child: _buildList()),
+              ],
+            );
+          } else {
+            return SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Current News", style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  
-                  // Search
-                  TextField(
-                     decoration: const InputDecoration(
-                       hintText: "Search News...",
-                       prefixIcon: Icon(Icons.search),
-                       border: OutlineInputBorder(),
-                       isDense: true,
-                     ),
-                     onChanged: (val) {
-                       setState(() {
-                         _searchQuery = val;
-                         _filterItems();
-                       });
-                     },
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_isLoading && _tickerItems.isEmpty)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _filteredTickerItems.length,
-                        itemBuilder: (context, index) {
-                          final item = _filteredTickerItems[index];
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: ListTile(
-                              leading: const Icon(Icons.abc, size: 40),
-                              title: Text(item['text'] ?? ''),
-                              subtitle: item['url'] != null && item['url'].toString().isNotEmpty 
-                                ? Text(item['url']) 
-                                : null,
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteItem(item['id']),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                  _buildForm(),
+                  const Divider(height: 1),
+                  _buildList(),
                 ],
               ),
+            );
+          }
+        }
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Add Ticker Item", style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 24),
+                
+                TextFormField(
+                  controller: _textController,
+                  decoration: const InputDecoration(labelText: 'News Text', border: OutlineInputBorder()),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  controller: _urlController,
+                  decoration: const InputDecoration(labelText: 'Link URL (Optional)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 24),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: FfigTheme.primaryBrown,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("ADD TO TICKER"),
+                  ),
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Current News", style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          
+          // Search
+          TextField(
+             decoration: const InputDecoration(
+               hintText: "Search News...",
+               prefixIcon: Icon(Icons.search),
+               border: OutlineInputBorder(),
+               isDense: true,
+             ),
+             onChanged: (val) {
+               setState(() {
+                 _searchQuery = val;
+                 _filterItems();
+               });
+             },
+          ),
+          const SizedBox(height: 16),
+
+          if (_isLoading && _tickerItems.isEmpty)
+            const Center(child: CircularProgressIndicator())
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _filteredTickerItems.length,
+              itemBuilder: (context, index) {
+                final item = _filteredTickerItems[index];
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: ListTile(
+                    leading: const Icon(Icons.abc, size: 40),
+                    title: Text(item['text'] ?? ''),
+                    subtitle: item['url'] != null && item['url'].toString().isNotEmpty 
+                      ? Text(item['url']) 
+                      : null,
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteItem(item['id']),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
+
   }
 }

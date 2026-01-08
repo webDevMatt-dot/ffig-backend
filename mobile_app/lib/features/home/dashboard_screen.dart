@@ -354,9 +354,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _onRefresh() async {
+    // Determine if we need to show loading indicators or just refresh silently
+    // For pull-to-refresh, we usually just want to await the results
+    await Future.wait([
+      _fetchFeaturedEvents(),
+      _loadHomepageContent(),
+      _checkPremiumStatus(),
+    ]);
+  }
+
   Widget _buildHomeTab() {
     return RefreshIndicator(
-      onRefresh: _fetchFeaturedEvents,
+      onRefresh: _onRefresh,
       color: FfigTheme.primaryBrown,
       child: SingleChildScrollView(
       child: Column(

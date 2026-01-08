@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../shared_widgets/user_avatar.dart';
+import '../../../../core/theme/ffig_theme.dart';
 import '../models/founder_profile.dart';
 
 class FounderCard extends StatelessWidget {
@@ -10,17 +12,23 @@ class FounderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final goldColor = const Color(0xFFD4AF37);
     
+    // Define colors relative to Theme
+    final cardColor = theme.cardColor;
+    final borderColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
+    final shadowColor = isDark ? Colors.transparent : Colors.black.withOpacity(0.05);
+    final badgeBg = isDark ? FfigTheme.primaryBrown.withOpacity(0.2) : FfigTheme.primaryBrown.withOpacity(0.1);
+    final badgeText = FfigTheme.primaryBrown;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: goldColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -32,31 +40,27 @@ class FounderCard extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Avatar + Name + Business
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                   // Avatar
+               // Header: Avatar + Info
+               Row(
+                 children: [
                    Container(
                      padding: const EdgeInsets.all(2),
                      decoration: BoxDecoration(
                        shape: BoxShape.circle,
-                       border: Border.all(color: goldColor, width: 2),
+                       border: Border.all(color: FfigTheme.primaryBrown, width: 2),
                      ),
-                     child: CircleAvatar(
-                       radius: 30,
-                       backgroundColor: Colors.grey[200],
-                       backgroundImage: NetworkImage(profile.photoUrl),
-                       onBackgroundImageError: (_, __) {},
-                       child: profile.photoUrl.isEmpty ? const Icon(Icons.person, color: Colors.grey) : null,
+                     child: UserAvatar(
+                       radius: 28,
+                       imageUrl: profile.photoUrl,
+                       firstName: profile.name.split(' ').first,
+                       lastName: profile.name.split(' ').length > 1 ? profile.name.split(' ').last : '',
                      ),
                    ),
                    const SizedBox(width: 16),
-                   // Text Info
                    Expanded(
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,73 +69,83 @@ class FounderCard extends StatelessWidget {
                            children: [
                              Flexible(
                                child: Text(
-                                 profile.name,
-                                 style: theme.textTheme.titleLarge?.copyWith(
+                                 profile.name, 
+                                 style: theme.textTheme.titleMedium?.copyWith(
                                    fontWeight: FontWeight.bold,
+                                   fontSize: 18,
                                  ),
                                ),
                              ),
                              if (profile.isPremium) ...[
-                               const SizedBox(width: 6),
-                               Icon(Icons.verified, color: goldColor, size: 18),
+                                const SizedBox(width: 4),
+                                Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
                              ]
                            ],
                          ),
                          const SizedBox(height: 4),
                          Text(
-                           profile.businessName.toUpperCase(),
-                           style: TextStyle(
-                             color: goldColor,
-                             fontWeight: FontWeight.bold,
-                             fontSize: 12,
-                             letterSpacing: 1.0,
+                           profile.businessName,
+                           style: theme.textTheme.bodyMedium?.copyWith(
+                             color: FfigTheme.primaryBrown,
+                             fontWeight: FontWeight.w600,
                            ),
                          ),
                          const SizedBox(height: 4),
                          Row(
                            children: [
-                             Icon(Icons.location_on, size: 12, color: theme.hintColor),
+                             Icon(Icons.location_on_outlined, size: 14, color: theme.hintColor),
                              const SizedBox(width: 4),
                              Text(
                                profile.country, 
                                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
                              ),
                            ],
-                         )
+                         ),
                        ],
                      ),
                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: goldColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: goldColor.withOpacity(0.5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.star, color: goldColor, size: 12),
-                    const SizedBox(width: 6),
-                    Text(
-                      "FOUNDER OF THE WEEK",
-                      style: TextStyle(color: goldColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // BIO
-              Text(
-                profile.bio,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
-              ),
+                 ],
+               ),
+               
+               const SizedBox(height: 16),
+               
+               // Badge
+               Container(
+                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                 decoration: BoxDecoration(
+                   color: badgeBg,
+                   borderRadius: BorderRadius.circular(20),
+                 ),
+                 child: Row(
+                   mainAxisSize: MainAxisSize.min,
+                   children: [
+                     Icon(Icons.star_rounded, color: badgeText, size: 16),
+                     const SizedBox(width: 6),
+                     Text(
+                       "FOUNDER OF THE WEEK",
+                       style: TextStyle(
+                         color: badgeText, 
+                         fontSize: 11, 
+                         fontWeight: FontWeight.bold, 
+                         letterSpacing: 0.5
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+               
+               const SizedBox(height: 12),
+               
+               // Bio
+               Text(
+                 profile.bio,
+                 maxLines: 4,
+                 overflow: TextOverflow.ellipsis,
+                 style: theme.textTheme.bodyMedium?.copyWith(
+                   height: 1.5,
+                   color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
+                 ),
+               ),
             ],
           ),
         ),

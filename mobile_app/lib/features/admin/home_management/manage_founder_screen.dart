@@ -161,182 +161,200 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Founder Spotlight")),
-      body: Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+          
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 2, child: _buildForm()),
+                Expanded(flex: 3, child: _buildList()),
+              ],
+            );
+          } else {
+            return SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildForm(),
+                  const Divider(height: 1),
+                  _buildList(),
+                ],
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_editingId != null ? "Edit Founder Profile" : "Publish Founder Profile", 
+                         style: Theme.of(context).textTheme.titleLarge),
+                    if (_editingId != null)
+                      TextButton.icon(
+                        onPressed: _cancelEditing,
+                        icon: const Icon(Icons.close),
+                        label: const Text("Cancel"),
+                      )
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // Photo
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    height: 150, width: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _selectedImageBytes != null
+                        ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                        : const Icon(Icons.person_add, size: 50, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_editingId != null)
+                   const Text("Tap to change photo (Optional)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 24),
+                
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                
+                 TextFormField(
+                  controller: _businessController,
+                  decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
+                   validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                
+                 TextFormField(
+                  controller: _countryController,
+                  decoration: const InputDecoration(labelText: 'Country', border: OutlineInputBorder()),
+                   validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                
+                 TextFormField(
+                  controller: _bioController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(labelText: 'Bio', border: OutlineInputBorder()),
+                   validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                 const SizedBox(height: 16),
+                 SwitchListTile(
+                   title: const Text("Is Premium Member?"),
+                   value: _isPremium,
+                   onChanged: (v) => setState(() => _isPremium = v),
+                 ),
+                const SizedBox(height: 24),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: FfigTheme.primaryBrown,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white) 
+                        : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Form
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          Text("Past Spotlights", style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          
+          TextField(
+             decoration: const InputDecoration(
+               hintText: "Search Founders...",
+               prefixIcon: Icon(Icons.search),
+               border: OutlineInputBorder(),
+               isDense: true,
+             ),
+             onChanged: (val) {
+               setState(() {
+                 _searchQuery = val;
+                 _filterItems();
+               });
+             },
+          ),
+          const SizedBox(height: 16),
+
+           if (_isLoading && _profiles.isEmpty)
+            const Center(child: CircularProgressIndicator())
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _filteredProfiles.length,
+              itemBuilder: (context, index) {
+                final item = _filteredProfiles[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: ListTile(
+                    leading: item['photo'] != null
+                        ? CircleAvatar(backgroundImage: NetworkImage(item['photo']))
+                        : const CircleAvatar(child: Icon(Icons.person)),
+                    title: Text(item['name'] ?? 'No Name'),
+                    subtitle: Text("${item['business_name']} • ${item['country']}"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_editingId != null ? "Edit Founder Profile" : "Publish Founder Profile", 
-                                 style: Theme.of(context).textTheme.titleLarge),
-                            if (_editingId != null)
-                              TextButton.icon(
-                                onPressed: _cancelEditing,
-                                icon: const Icon(Icons.close),
-                                label: const Text("Cancel"),
-                              )
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _startEditing(item),
                         ),
-                        const SizedBox(height: 24),
-                        
-                        // Photo
-                        GestureDetector(
-                          onTap: _pickImage,
-                          child: Container(
-                            height: 150, width: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: _selectedImageBytes != null
-                                ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
-                                : const Icon(Icons.person_add, size: 50, color: Colors.grey),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_editingId != null)
-                           const Text("Tap to change photo (Optional)", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                        const SizedBox(height: 24),
-                        
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                         TextFormField(
-                          controller: _businessController,
-                          decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
-                           validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                         TextFormField(
-                          controller: _countryController,
-                          decoration: const InputDecoration(labelText: 'Country', border: OutlineInputBorder()),
-                           validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                         TextFormField(
-                          controller: _bioController,
-                          maxLines: 4,
-                          decoration: const InputDecoration(labelText: 'Bio', border: OutlineInputBorder()),
-                           validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                         const SizedBox(height: 16),
-                         SwitchListTile(
-                           title: const Text("Is Premium Member?"),
-                           value: _isPremium,
-                           onChanged: (v) => setState(() => _isPremium = v),
-                         ),
-                        const SizedBox(height: 24),
-                        
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: FfigTheme.primaryBrown,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: _isLoading 
-                                ? const CircularProgressIndicator(color: Colors.white) 
-                                : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteItem(item['id']),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
-          ),
-          
-          // Right: List
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Past Spotlights", style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                     decoration: const InputDecoration(
-                       hintText: "Search Founders...",
-                       prefixIcon: Icon(Icons.search),
-                       border: OutlineInputBorder(),
-                       isDense: true,
-                     ),
-                     onChanged: (val) {
-                       setState(() {
-                         _searchQuery = val;
-                         _filterItems();
-                       });
-                     },
-                  ),
-                  const SizedBox(height: 16),
-
-                   if (_isLoading && _profiles.isEmpty)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _filteredProfiles.length,
-                        itemBuilder: (context, index) {
-                          final item = _filteredProfiles[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: ListTile(
-                              leading: item['photo'] != null
-                                  ? CircleAvatar(backgroundImage: NetworkImage(item['photo']))
-                                  : const CircleAvatar(child: Icon(Icons.person)),
-                              title: Text(item['name'] ?? 'No Name'),
-                              subtitle: Text("${item['business_name']} • ${item['country']}"),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => _startEditing(item),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteItem(item['id']),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
+
   }
 }
