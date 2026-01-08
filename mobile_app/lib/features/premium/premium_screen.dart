@@ -50,21 +50,22 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text("VIP LOUNGE"), 
-        backgroundColor: Colors.black, 
-        foregroundColor: FfigTheme.accentBrown
+        // Use theme defaults automatically
       ),
-      backgroundColor: Colors.black,
       body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: FfigTheme.accentBrown)) 
+        ? Center(child: CircularProgressIndicator(color: FfigTheme.accentBrown)) 
         : SingleChildScrollView(
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  color: Colors.black,
+                  color: isDark ? const Color(0xFF121212) : FfigTheme.primaryBrown.withOpacity(0.05),
                   width: double.infinity,
                   child: Column(
                     children: [
@@ -91,12 +92,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   itemCount: _vipPerks.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      color: const Color(0xFF1E1E1E), // Dark card
+                      // Card theme handles color automatically
                       margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: FfigTheme.accentBrown.withOpacity(0.2))),
                       child: ListTile(
                         leading: const Icon(Icons.star, color: FfigTheme.accentBrown),
-                        title: Text(_vipPerks[index], style: const TextStyle(color: Colors.white)),
+                        title: Text(_vipPerks[index]),
                       ),
                     );
                   },
@@ -115,14 +115,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E), 
+              color: Theme.of(context).cardColor, 
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3))
             ),
             child: Icon(icon, color: FfigTheme.accentBrown, size: 30),
           ),
           const SizedBox(height: 10),
-          Text(label, textAlign: TextAlign.center, style: const TextStyle(color: FfigTheme.accentBrown, fontWeight: FontWeight.w600, fontSize: 12))
+          Text(label, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w600, fontSize: 12))
         ],
       ),
     );

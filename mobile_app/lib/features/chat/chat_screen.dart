@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // For timer
+import '../../core/theme/ffig_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
@@ -134,8 +135,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isMe ? Colors.amber[300] : Colors.grey[200],
+                            color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,

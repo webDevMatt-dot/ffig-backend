@@ -49,7 +49,7 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
            });
         }
       } else {
-        throw Exception("Failed to load chat: ${response.statusCode}");
+        throw Exception("Failed to load chat: ${response.statusCode} | ${response.body}");
       }
     } catch (e) {
       if (mounted) {
