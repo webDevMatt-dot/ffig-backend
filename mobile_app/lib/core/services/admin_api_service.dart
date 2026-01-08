@@ -79,6 +79,39 @@ class AdminApiService {
     await _patchJson('ticker', id, data);
   }
 
+  // --- EVENTS ---
+  static const String _eventsBaseUrl = 'https://ffig-api.onrender.com/api/events';
+
+  Future<List<dynamic>> fetchEvents() async {
+    final token = await _getToken();
+    final response = await http.get(Uri.parse('$_eventsBaseUrl/'), headers: {'Authorization': 'Bearer $token'});
+     if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load events: ${response.statusCode}');
+    }
+  }
+
+  Future<void> createEvent(Map<String, dynamic> data) async {
+    final token = await _getToken();
+     final response = await http.post(
+      Uri.parse('$_eventsBaseUrl/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 201) throw Exception('Failed to create event: ${response.body}');
+  }
+
+  Future<void> updateEvent(int id, Map<String, dynamic> data) async {
+      final token = await _getToken();
+     final response = await http.patch(
+      Uri.parse('$_eventsBaseUrl/$id/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 200) throw Exception('Failed to update event: ${response.body}');
+  }
+
   // Helpers
   Future<void> _postJson(String endpoint, Map<String, dynamic> data) async {
     final token = await _getToken();

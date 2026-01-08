@@ -19,7 +19,9 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
   bool _isLoading = false;
   List<dynamic> _tickerItems = [];
   List<dynamic> _filteredTickerItems = [];
+
   String _searchQuery = "";
+  int? _editingId;
 
   @override
   void initState() {
@@ -52,21 +54,49 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
     }
   }
 
+  void _editItem(Map<String, dynamic> item) {
+    setState(() {
+      _editingId = item['id'];
+      _textController.text = item['text'] ?? '';
+      _urlController.text = item['url'] ?? '';
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _editingId = null;
+      _textController.clear();
+      _urlController.clear();
+    });
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
-      await _apiService.createTickerItem({
-        'text': _textController.text,
-        'url': _urlController.text,
-        'is_active': true,
-        'order': 0,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News Item Added!')));
-      _textController.clear();
-      _urlController.clear();
+      if (_editingId != null) {
+        // UPDATE
+        await _apiService.updateTickerItem(_editingId.toString(), {
+           'text': _textController.text,
+           'url': _urlController.text,
+           'is_active': true,
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News Item Updated!')));
+        _cancelEdit(); // Reset form
+      } else {
+        // CREATE
+        await _apiService.createTickerItem({
+          'text': _textController.text,
+          'url': _urlController.text,
+          'is_active': true,
+          'order': 0,
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News Item Added!')));
+        _textController.clear();
+        _urlController.clear();
+      }
+      
       _fetchItems();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
@@ -127,7 +157,14 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Add Ticker Item", style: Theme.of(context).textTheme.titleLarge),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_editingId != null ? "Edit Ticker Item" : "Add Ticker Item", style: Theme.of(context).textTheme.titleLarge),
+                    if (_editingId != null)
+                      TextButton(onPressed: _cancelEdit, child: const Text("Cancel"))
+                  ],
+                ),
                 const SizedBox(height: 24),
                 
                 TextFormField(
@@ -152,7 +189,7 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                       backgroundColor: FfigTheme.primaryBrown,
                       foregroundColor: Colors.white,
                     ),
-                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("ADD TO TICKER"),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE" : "ADD TO TICKER"),
                   ),
                 ),
               ],
@@ -207,9 +244,18 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                     subtitle: item['url'] != null && item['url'].toString().isNotEmpty 
                       ? Text(item['url']) 
                       : null,
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteItem(item['id']),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _editItem(item),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteItem(item['id']),
+                        ),
+                      ],
                     ),
                   ),
                 );

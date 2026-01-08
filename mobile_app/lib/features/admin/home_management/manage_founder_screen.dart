@@ -221,9 +221,9 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                   child: Container(
                     height: 150, width: 150,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _selectedImageBytes != null

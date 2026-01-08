@@ -188,7 +188,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                      padding: const EdgeInsets.all(16),
                      child: _buildForm(context),
                    ),
-                   const Divider(height: 1, thickness: 8, color: Colors.black12),
+                   Divider(height: 1, thickness: 8, color: Theme.of(context).dividerColor),
                    Padding(
                      padding: const EdgeInsets.all(16),
                      child: _buildList(context),

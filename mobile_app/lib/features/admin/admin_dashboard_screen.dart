@@ -7,6 +7,7 @@ import 'home_management/manage_hero_screen.dart';
 import 'home_management/manage_founder_screen.dart';
 import 'home_management/manage_alerts_screen.dart';
 import 'home_management/manage_ticker_screen.dart';
+import 'events_management/manage_events_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -44,6 +45,13 @@ class AdminDashboardScreen extends StatelessWidget {
           title: "Manage Resources",
           subtitle: "Magazines, Masterclasses, Newsletters",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourceManagementScreen())),
+        ),
+        _buildAdminTile(
+          context,
+          icon: Icons.event,
+          title: "Manage Events",
+          subtitle: "Create, edit, and ticket events",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
         ),
         
         const SizedBox(height: 24),
@@ -108,6 +116,12 @@ class AdminDashboardScreen extends StatelessWidget {
                   "Resources", 
                   Icons.library_books_outlined, 
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourceManagementScreen()))
+                ),
+                 _buildWideTile(
+                  context, 
+                  "Events", 
+                  Icons.event, 
+                  () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen()))
                 ),
                  _buildWideTile(
                   context, 

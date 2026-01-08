@@ -9,6 +9,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../main.dart'; // To access themeController global
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
+import '../tickets/my_tickets_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -283,6 +284,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                  ),
                ],
              ),
+          ),
+          
+          const Divider(),
+
+          // 4. System (Version)
+           ListTile(
+            leading: const Icon(Icons.confirmation_number_outlined),
+            title: const Text("My Tickets"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+               Navigator.push(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
+            },
           ),
           
           const Divider(),

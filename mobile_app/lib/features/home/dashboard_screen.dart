@@ -285,6 +285,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         centerTitle: true,
         actions: [
           // Profile Avatar (Top Right)
+           IconButton(
+            icon: Badge(
+              isLabelVisible: _lastUnreadCount > 0,
+              label: Text('$_lastUnreadCount'),
+              child: const Icon(Icons.email_outlined),
+            ),
+            onPressed: () {
+              // Reset count on tap instantly for better UX
+              setState(() => _lastUnreadCount = 0); 
+              if (_isPremium) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const LockedScreen()));
+              }
+            },
+          ),
+
+          // Profile Avatar (Top Right)
           if (_userProfile != null)
              InkWell(
                onTap: () async {
@@ -308,23 +326,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                  ),
                ),
              ),
-
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _lastUnreadCount > 0,
-              label: Text('$_lastUnreadCount'),
-              child: const Icon(Icons.email_outlined),
-            ),
-            onPressed: () {
-              // Reset count on tap instantly for better UX
-              setState(() => _lastUnreadCount = 0); 
-              if (_isPremium) {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
-              } else {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const LockedScreen()));
-              }
-            },
-          ),
         ],
       ),
       body: _selectedIndex == 0 
