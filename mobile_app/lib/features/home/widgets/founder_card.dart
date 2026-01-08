@@ -78,7 +78,10 @@ class FounderCard extends StatelessWidget {
                              ),
                              if (profile.isPremium) ...[
                                 const SizedBox(width: 4),
-                                Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
+                                const Icon(Icons.verified, color: Colors.amber, size: 16),
+                             ] else ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
                              ]
                            ],
                          ),

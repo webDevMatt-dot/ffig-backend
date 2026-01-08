@@ -129,7 +129,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         if (!isMe)
                           Padding(
                             padding: const EdgeInsets.only(left: 12, bottom: 4),
-                            child: Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                if (msg['sender']['tier'] == 'PREMIUM') ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.verified, color: Colors.amber, size: 14),
+                                ] else if (msg['sender']['tier'] == 'STANDARD') ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 14),
+                                ]
+                              ],
+                            ),
                           ),
                         Container(
                           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),

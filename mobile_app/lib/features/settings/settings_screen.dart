@@ -22,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _email = "Loading...";
   String _appVersion = "";
   bool _isPremium = false;
+  String _tier = "FREE";
   
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             setState(() {
               _email = data['email'] ?? "Unknown";
               _isPremium = data['is_premium'] ?? false;
+              _tier = data['tier'] ?? "FREE";
             });
           }
         }
@@ -269,14 +271,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                  const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
                  Row(
                    children: [
-                     Icon(Icons.verified_outlined, color: _isPremium ? Colors.amber : Colors.grey),
+                      if (_tier == 'PREMIUM')
+                       const Icon(Icons.verified, color: Colors.amber) // Gold
+                     else if (_tier == 'STANDARD')
+                       const Icon(Icons.verified, color: FfigTheme.primaryBrown) // Brown
+                     else
+                       const Icon(Icons.verified_outlined, color: Colors.grey),
+                       
                      const SizedBox(width: 12),
                      Expanded(
                        child: Column(
                          crossAxisAlignment: CrossAxisAlignment.start,
                          children: [
-                            const Text("Subscription", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text(_isPremium ? "Premium Member" : "Free Tier", style: const TextStyle(fontWeight: FontWeight.bold)),
+                           const Text("Subscription", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                           Text(_tier == 'PREMIUM' ? "Premium Member" : (_tier == 'STANDARD' ? "Standard Member" : "Free Tier"), style: const TextStyle(fontWeight: FontWeight.bold)),
                          ],
                        ),
                      )
