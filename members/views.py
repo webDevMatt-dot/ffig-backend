@@ -90,21 +90,38 @@ class AdminAnalyticsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        # MOCKED DATA FOR MVP
-        import random
+        from django.contrib.auth.models import User
+        from members.models import Profile
+        from events.models import Ticket
+        from django.db.models import Sum
+
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        
+        # Calculate Tiers
+        standard = Profile.objects.filter(tier='STANDARD').count()
+        premium = Profile.objects.filter(tier='PREMIUM').count()
+        
+        # Calculate Revenue (Ticket Sales)
+        ticket_revenue = Ticket.objects.aggregate(total=Sum('tier__price'))['total'] or 0
+        
+        # Calculate Rates
+        conv_standard = f"{(standard / total_users * 100):.1f}%" if total_users > 0 else "0%"
+        conv_premium = f"{(premium / total_users * 100):.1f}%" if total_users > 0 else "0%"
+
         return Response({
             "active_users": {
-                "daily": random.randint(120, 150),
-                "monthly": random.randint(3000, 3500)
+                "daily": active_users, # Using active count as proxy for now
+                "monthly": total_users,
             },
             "conversion_rates": {
-                "free_to_standard": "4.2%",
-                "standard_to_premium": "8.5%"
+                "free_to_standard": conv_standard,
+                "standard_to_premium": conv_premium,
             },
             "revenue": {
-                "ads": random.randint(500, 2000),
-                "events": random.randint(1000, 5000),
-                "total": random.randint(2000, 8000)
+                "ads": 0, # Placeholder until Ads module tracks revenue
+                "events": ticket_revenue,
+                "total": ticket_revenue
             }
         })
 

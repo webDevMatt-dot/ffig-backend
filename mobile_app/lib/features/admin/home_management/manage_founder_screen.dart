@@ -145,17 +145,23 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     // Do NOT reset editingId here, handled by cancelEditing/submit
   }
 
-  Future<void> _deleteItem(int id) async {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+  Future<void> _toggleActive(Map<String, dynamic> item) async {
     try {
-      await _apiService.deleteItem('founder', id);
-       _fetchItems();
+      final newState = !(item['is_active'] ?? true);
+      // We only update the 'is_active' field
+      await _apiService.updateFounderProfile(item['id'].toString(), {
+        'is_active': newState.toString(),
+        // We must re-send required fields if the API is strict, but usually PATCH is partial.
+        // If ModelSerializer is used with partial=True (PATCH), this works.
+        // FounderProfile view usually supports partial update.
+      }, null);
+      
+      _fetchItems();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Spotlight Activated" : "Spotlight Deactivated")));
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update Failed: $e')));
     }
   }
-  
-  bool confirm(String message) => true;
 
   @override
   Widget build(BuildContext context) {
@@ -343,8 +349,8 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                           onPressed: () => _startEditing(item),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteItem(item['id']),
+                          icon: Icon(item['is_active'] == true ? Icons.visibility : Icons.visibility_off, color: item['is_active'] == true ? Colors.green : Colors.grey),
+                          onPressed: () => _toggleActive(item),
                         ),
                       ],
                     ),

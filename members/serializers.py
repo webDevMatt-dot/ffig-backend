@@ -49,12 +49,13 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessProfile
         fields = '__all__'
+        read_only_fields = ['user', 'status', 'feedback']
 
 class MarketingRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarketingRequest
         fields = '__all__'
-        read_only_fields = ['status', 'feedback']
+        read_only_fields = ['user', 'status', 'feedback']
 
 class ContentReportSerializer(serializers.ModelSerializer):
     class Meta:

@@ -13,6 +13,8 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _fNameController = TextEditingController();
+  final _lNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -39,6 +41,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         body: jsonEncode({
           'username': _usernameController.text,
           'email': _emailController.text,
+          'first_name': _fNameController.text,
+          'last_name': _lNameController.text,
           'password': _passwordController.text,
           'password2': _confirmController.text,
         }),
@@ -98,7 +102,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             const SizedBox(height: 48),
 
-            _buildTextField("USERNAME", _usernameController, Icons.person_outline),
+            _buildTextField("FIRST NAME", _fNameController, Icons.person),
+            const SizedBox(height: 16),
+            _buildTextField("LAST NAME", _lNameController, Icons.person_outline),
+            const SizedBox(height: 16),
+            _buildTextField("USERNAME", _usernameController, Icons.person_pin),
             const SizedBox(height: 16),
             _buildTextField("EMAIL ADDRESS", _emailController, Icons.mail_outline),
             const SizedBox(height: 16),

@@ -199,9 +199,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _showEditDialog(Map<String, dynamic> user) {
     bool isStaff = user['is_staff'] ?? false;
-    bool isPremium = user['is_premium'] ?? false;
+    bool isPremium = user['is_premium'] ?? false; // Fixed: Use field from profile if needed, or dict
+    if (user['profile'] != null && user['profile'] is Map) {
+       isPremium = user['profile']['is_premium'] ?? isPremium;
+    }
+    
     final userController = TextEditingController(text: user['username']);
     final emailController = TextEditingController(text: user['email']);
+    final fNameController = TextEditingController(text: user['first_name'] ?? '');
+    final lNameController = TextEditingController(text: user['last_name'] ?? '');
 
     showDialog(
       context: context,
@@ -224,6 +230,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                    ),
                    const SizedBox(height: 24),
                    _buildField(userController, "Username", Icons.person),
+                   const SizedBox(height: 16),
+                   _buildField(fNameController, "First Name", Icons.person_outline),
+                   const SizedBox(height: 16),
+                   _buildField(lNameController, "Last Name", Icons.person_outline),
                    const SizedBox(height: 16),
                    _buildField(emailController, "Email", Icons.email),
                    const SizedBox(height: 24),
@@ -252,8 +262,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                      onPressed: () => _updateUser(user['id'], {
                        'username': userController.text,
                        'email': emailController.text,
+                       'first_name': fNameController.text,
+                       'last_name': lNameController.text,
                        'is_staff': isStaff,
-                       'is_premium': isPremium
+                       'profile': {'is_premium': isPremium} 
                      }), 
                      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown, padding: const EdgeInsets.all(16)),
                      child: const Text("SAVE CHANGES"),

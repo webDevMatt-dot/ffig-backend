@@ -13,6 +13,7 @@ import '../events/event_detail_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../premium/locked_screen.dart';
 import '../premium/premium_screen.dart';
+import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
 import '../chat/inbox_screen.dart';
 import 'package:overlay_support/overlay_support.dart';
@@ -340,7 +341,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : _selectedIndex == 2 
                   ? const MemberListScreen() 
                   : _selectedIndex == 3
-                      ? (MembershipService.isPremium ? const PremiumScreen() : const LockedScreen())
+                      ? (MembershipService.isPremium 
+                          ? const PremiumScreen() 
+                          : (MembershipService.isStandard ? const StandardScreen() : const LockedScreen()))
                       : _selectedIndex == 4
                           ? const ProfileScreen()
                           : _buildPlaceholder("Coming Soon"),
