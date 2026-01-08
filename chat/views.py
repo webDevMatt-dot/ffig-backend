@@ -3,13 +3,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from core.permissions import IsPremiumUser
+from core.permissions import IsPremiumUser, IsStandardUser
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
 # 1. List all my conversations
 class ConversationListView(generics.ListAPIView):
-    permission_classes = [IsPremiumUser]
+    permission_classes = [IsStandardUser]
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
@@ -17,7 +17,7 @@ class ConversationListView(generics.ListAPIView):
 
 # 2. Get messages for a specific conversation
 class MessageListView(generics.ListAPIView):
-    permission_classes = [IsPremiumUser]
+    permission_classes = [IsStandardUser]
     serializer_class = MessageSerializer
 
     def get_queryset(self):
@@ -38,7 +38,7 @@ class MessageListView(generics.ListAPIView):
         return messages
 
 class UnreadCountView(APIView):
-    permission_classes = [IsPremiumUser]
+    permission_classes = [IsStandardUser]
 
     def get(self, request):
         # Count messages sent to ME that are NOT read
@@ -51,7 +51,7 @@ class UnreadCountView(APIView):
 
 # 3. Send a message (Auto-creates conversation if needed)
 class SendMessageView(APIView):
-    permission_classes = [IsPremiumUser]
+    permission_classes = [IsStandardUser]
 
     def post(self, request):
         recipient_id = request.data.get('recipient_id')
@@ -89,7 +89,7 @@ class SendMessageView(APIView):
 
 # 4. Get/Create Global Community Chat
 class CommunityChatView(APIView):
-    permission_classes = [IsPremiumUser]
+    permission_classes = [IsStandardUser]
 
     def get(self, request):
         conversation, created = Conversation.objects.get_or_create(is_public=True)
