@@ -163,6 +163,18 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     }
   }
 
+  Future<void> _deleteItem(int id) async {
+    // In a real app this would be a dialog
+    // if (!confirm('Are you sure you want to delete this item?')) return; 
+    
+    try {
+      await _apiService.deleteItem('founder', id);
+       _fetchItems();
+    } catch (e) {
+       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
