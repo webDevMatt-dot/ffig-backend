@@ -29,6 +29,7 @@ TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
 if [ -z "$TOKEN" ]; then
   echo "❌ Failed to login to update version."
+  echo "Server Response: $LOGIN_RESPONSE"
   exit 1
 fi
 
