@@ -47,7 +47,13 @@ class NewsTickerItemViewSet(BaseHomeViewSet):
         return NewsTickerItem.objects.filter(is_active=True)
 
 class AppVersionViewSet(BaseHomeViewSet):
+    """
+    API for App Versions.
+    GET (Public): Check latest version.
+    POST/PATCH (Admin): Update version info (Automated releases).
+    """
     serializer_class = AppVersionSerializer
+    filterset_fields = ['platform']
     
     def get_queryset(self):
         return AppVersion.objects.all()

@@ -1,0 +1,27 @@
+name: Auto Update API Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile_app/pubspec.yaml' # Only run if version likely changed
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get install -y curl
+
+      - name: Run Update Script
+        env:
+          FFIG_ADMIN_USERNAME: ${{ secrets.FFIG_ADMIN_USERNAME }}
+          FFIG_ADMIN_PASSWORD: ${{ secrets.FFIG_ADMIN_PASSWORD }}
+        run: |
+          chmod +x auto_update_version.sh
+          # Pass env vars to script or modify script to use them
+          ./auto_update_version.sh

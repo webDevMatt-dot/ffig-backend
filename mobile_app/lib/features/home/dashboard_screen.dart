@@ -304,7 +304,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
             },
           ),
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout))
         ],
       ),
       body: _selectedIndex == 0 

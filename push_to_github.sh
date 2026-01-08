@@ -33,3 +33,12 @@ echo "⬆️  Pushing root to remote..."
 git push
 
 echo "🎉 SUCCESS: Code pushed to GitHub!"
+
+# --- 3. Auto-Version Update ---
+echo "🔄 Checking for Version Update..."
+if [ -f "auto_update_version.sh" ]; then
+    chmod +x auto_update_version.sh
+    ./auto_update_version.sh
+else
+    echo "⚠️  auto_update_version.sh not found. Skipping backend update."
+fi
