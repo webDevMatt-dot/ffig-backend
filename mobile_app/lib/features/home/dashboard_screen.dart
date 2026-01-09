@@ -26,6 +26,7 @@ import '../../core/services/membership_service.dart';
 import '../../core/services/version_service.dart'; 
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/user_avatar.dart';
+import '../../core/api/constants.dart';
 
 import '../../core/theme/ffig_theme.dart';
 import 'models/hero_item.dart';
@@ -84,13 +85,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _checkUnreadMessages() async {
     final token = await const FlutterSecureStorage().read(key: 'access_token');
     // Adjust URL based on device
-    const String baseUrl = 'https://ffig-api.onrender.com/api/chat/unread-count/';
+    const String endpoint = '${baseUrl}chat/unread-count/';
 
     // 1. Quit early if not premium
     if (!_isPremium) return; 
 
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -117,10 +118,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _checkPremiumStatus() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    const String baseUrl = 'https://ffig-api.onrender.com/api/members/me/';
+    const String endpoint = '${baseUrl}members/me/';
 
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
@@ -150,11 +151,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
-    const String baseUrl = 'https://ffig-api.onrender.com/api/events/featured/';
+    const String endpoint = '${baseUrl}events/featured/';
 
     try {
       final response = await http.get(
-        Uri.parse(baseUrl),
+        Uri.parse(endpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // <--- THE KEY TO THE CASTLE

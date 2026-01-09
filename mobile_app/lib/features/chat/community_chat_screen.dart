@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'chat_screen.dart';
+import '../../core/api/constants.dart';
 
 class CommunityChatScreen extends StatefulWidget {
   const CommunityChatScreen({super.key});
@@ -36,7 +37,7 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
     try {
       final token = await const FlutterSecureStorage().read(key: 'access_token');
       final response = await http.get(
-        Uri.parse('https://ffig-api.onrender.com/api/chat/community/'),
+        Uri.parse('${baseUrl}chat/community/'),
         headers: {'Authorization': 'Bearer $token'}
       );
 

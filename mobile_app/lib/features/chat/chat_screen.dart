@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // For timer
 import '../../core/theme/ffig_theme.dart';
+import '../../core/api/constants.dart';
 
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
@@ -46,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
-    final String url = 'https://ffig-api.onrender.com/api/chat/conversations/$_activeConversationId/messages/';
+    final String url = '${baseUrl}chat/conversations/$_activeConversationId/messages/';
 
     try {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
@@ -71,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Optimistic Update could go here for even faster feel
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
-    final String url = 'https://ffig-api.onrender.com/api/chat/messages/send/';
+    final String url = '${baseUrl}chat/messages/send/';
 
     try {
       final response = await http.post(

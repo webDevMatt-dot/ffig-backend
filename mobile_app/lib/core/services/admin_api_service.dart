@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
+import '../api/constants.dart';
 
 class AdminApiService {
-  static const String _baseUrl = 'https://ffig-api.onrender.com/api/home';
+  static const String _baseUrl = '${baseUrl}home';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> _getToken() async {
@@ -80,7 +81,7 @@ class AdminApiService {
   }
 
   // --- EVENTS ---
-  static const String _eventsBaseUrl = 'https://ffig-api.onrender.com/api/events';
+  static const String _eventsBaseUrl = '${baseUrl}events';
 
   Future<List<dynamic>> fetchEvents() async {
     final token = await _getToken();
@@ -226,7 +227,7 @@ class AdminApiService {
     }
   }
   // --- MEMBER SUBMISSIONS (RBAC) ---
-  static const String _membersBaseUrl = 'https://ffig-api.onrender.com/api/members';
+  static const String _membersBaseUrl = '${baseUrl}members';
 
   Future<void> createBusinessProfile(Map<String, dynamic> data) async {
     final token = await _getToken();

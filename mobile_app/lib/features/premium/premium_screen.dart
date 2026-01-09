@@ -7,6 +7,7 @@ import '../marketing/business_profile_editor_screen.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../marketing/marketing_requests_screen.dart';
 import '../chat/community_chat_screen.dart';
+import '../../core/api/constants.dart';
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
 
@@ -27,10 +28,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Future<void> _fetchPremiumData() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    const String baseUrl = 'https://ffig-api.onrender.com/api/premium/';
+    const String endpoint = '${baseUrl}premium/';
 
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {

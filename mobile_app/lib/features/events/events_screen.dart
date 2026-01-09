@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'event_detail_screen.dart'; // Import the details screen
+import 'event_detail_screen.dart';
+import '../../core/api/constants.dart'; // Import the details screen
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -25,10 +26,10 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<void> _fetchEvents() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    const String baseUrl = 'https://ffig-api.onrender.com/api/events/';
+    const String endpoint = '${baseUrl}events/';
 
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         setState(() => _events = jsonDecode(response.body));
       }

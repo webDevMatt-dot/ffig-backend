@@ -5,7 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
-import '../../core/api/constants.dart'; // Assume constants exist or use raw URL if simpler
+import 'chat_screen.dart'; 
+import '../../core/api/constants.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -33,7 +34,7 @@ class _InboxScreenState extends State<InboxScreen> {
     try {
       final meResponse = await http.get(
         // Use the same URL structure as MemberListScreen
-        Uri.parse('https://ffig-api.onrender.com/api/members/me/'), 
+        Uri.parse('${baseUrl}members/me/'), 
         headers: {'Authorization': 'Bearer $token'},
       );
       
@@ -50,7 +51,7 @@ class _InboxScreenState extends State<InboxScreen> {
     
     try {
       final response = await http.get(
-        Uri.parse('https://ffig-api.onrender.com/api/chat/conversations/'), 
+        Uri.parse('${baseUrl}chat/conversations/'), 
         headers: {'Authorization': 'Bearer $token'}
       );
 
