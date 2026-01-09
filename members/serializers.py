@@ -37,6 +37,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             user.save()
 
         # Update remaining Profile fields normally
+        if 'tier' in validated_data:
+            instance.tier = validated_data['tier']
+        
+        # Backward compatibility for is_premium
+        if 'is_premium' in validated_data:
+            instance.is_premium = validated_data['is_premium']
+            
+        instance.save()
+            
         return super().update(instance, validated_data)
 
     def get_is_online(self, obj):

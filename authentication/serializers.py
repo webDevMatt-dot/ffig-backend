@@ -67,10 +67,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     is_premium = serializers.BooleanField(source='profile.is_premium', required=False)
+    tier = serializers.CharField(source='profile.tier', required=False)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier']
 
     def update(self, instance, validated_data):
         # Handle nested profile update manually because source='profile.is_premium' makes it nested in validated_data
@@ -82,6 +83,10 @@ class UserSerializer(serializers.ModelSerializer):
         # Update Profile fields
         if 'is_premium' in profile_data:
             instance.profile.is_premium = profile_data['is_premium']
-            instance.profile.save()
+        
+        if 'tier' in profile_data:
+            instance.profile.tier = profile_data['tier']
+            
+        instance.profile.save()
             
         return instance
