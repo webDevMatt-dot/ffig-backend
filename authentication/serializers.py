@@ -69,24 +69,31 @@ class UserSerializer(serializers.ModelSerializer):
     is_premium = serializers.BooleanField(source='profile.is_premium', required=False)
     tier = serializers.CharField(source='profile.tier', required=False)
 
+    profile = serializers.DictField(write_only=True, required=False)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier', 'profile']
 
     def update(self, instance, validated_data):
-        # Handle nested profile update manually because source='profile.is_premium' makes it nested in validated_data
+        # Handle nested profile update
         profile_data = validated_data.pop('profile', {})
         
         # Update User fields
         instance = super().update(instance, validated_data)
 
         # Update Profile fields
-        if 'is_premium' in profile_data:
-            instance.profile.is_premium = profile_data['is_premium']
-        
-        if 'tier' in profile_data:
-            instance.profile.tier = profile_data['tier']
+        if profile_data:
+            updated = False
+            if 'is_premium' in profile_data:
+                instance.profile.is_premium = profile_data['is_premium']
+                updated = True
             
-        instance.profile.save()
+            if 'tier' in profile_data:
+                instance.profile.tier = profile_data['tier']
+                updated = True
+                
+            if updated:
+                instance.profile.save()
             
         return instance
