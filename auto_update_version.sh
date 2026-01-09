@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-API_URL="https://ffig-api.onrender.com/api/home/version/"
+API_URL="https://ffig-backend-ti5w.onrender.com/api/home/version/"
 # TOKEN="" # You need an Admin Token here. Ideally fetched via login.
 
 echo "🚀 Auto-Updating Backend Version..."
@@ -21,7 +21,7 @@ if [ "$USERNAME" == "admin" ] && [ "$PASSWORD" == "ChangeMe123!" ]; then
     echo "⚠️  Using default credentials. Ensure FFIG_ADMIN_USERNAME and FFIG_ADMIN_PASSWORD are set in CI."
 fi
 
-LOGIN_RESPONSE=$(curl -s -X POST https://ffig-api.onrender.com/api/auth/login/ \
+LOGIN_RESPONSE=$(curl -s -X POST https://ffig-backend-ti5w.onrender.com/api/auth/login/ \
   -H "Content-Type: application/json" \
   -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
@@ -44,7 +44,7 @@ RESPONSE=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"ANDROID\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://ffig-mobile.onrender.com/app.apk\",
+    \"update_url\": \"https://ffig-mobile-n999.onrender.com/app.apk\",
     \"required\": false
   }")
 
@@ -55,7 +55,7 @@ RESPONSE_IOS=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"IOS\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://ffig-mobile.onrender.com/app.apk\",
+    \"update_url\": \"https://ffig-mobile-n999.onrender.com/app.apk\",
     \"required\": false
   }")
 
