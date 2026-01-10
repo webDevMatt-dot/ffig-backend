@@ -29,7 +29,13 @@ echo "📦 Building Android APK (Release)..."
 flutter build apk --release
 
 echo "📂 Copying APK to Web Source Directory..."
+# Extract Version from pubspec.yaml
+VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+CLEAN_VERSION="${VERSION%+*}"
+echo "   Detected Version: $CLEAN_VERSION"
+
 cp build/app/outputs/flutter-apk/app-release.apk web/app.apk
+cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
 
 echo "📁 Staging mobile_app files..."
 git add .
