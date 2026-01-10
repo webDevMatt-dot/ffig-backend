@@ -379,8 +379,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
-           // Handle Admin Tab (Index 4 if Admin)
-           if (_isAdmin && index == 4) {
+           // Handle Admin Tab (Index 5 if Admin)
+           if (_isAdmin && index == 5) {
                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
                return; // Do not switch tab
            }
@@ -416,6 +416,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.diamond_outlined, color: FfigTheme.primaryBrown), // Always Gold
             selectedIcon: Icon(Icons.diamond, color: FfigTheme.primaryBrown),
             label: 'VVIP'
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_circle_outlined), 
+            selectedIcon: Icon(Icons.account_circle, color: FfigTheme.textGrey),
+            label: 'Profile'
           ),
 
           if (_isAdmin)
