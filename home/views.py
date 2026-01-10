@@ -73,45 +73,21 @@ def download_latest_apk(request):
     Also checks mobile_app/web/app.apk as a valid fallback.
     """
     try:
-        debug_info = []
-        base_dir = settings.BASE_DIR
-        debug_info.append(f"BASE_DIR: {base_dir}")
-        debug_info.append(f"CWD: {os.getcwd()}")
-        
         # Strategy 1: Check mobile_app/web/app.apk (Fixed "Latest" file)
-        primary_path = os.path.join(base_dir, 'mobile_app', 'web', 'app.apk')
-        debug_info.append(f"Checking Primary: {primary_path}")
+        primary_path = os.path.join(settings.BASE_DIR, 'mobile_app', 'web', 'app.apk')
         
         if os.path.exists(primary_path):
              response = FileResponse(open(primary_path, 'rb'), content_type='application/vnd.android.package-archive')
              response['Content-Disposition'] = 'attachment; filename="app-latest.apk"'
              return response
-        else:
-             debug_info.append("Primary NOT FOUND")
-             # trace folder for debug
-             web_dir = os.path.dirname(primary_path)
-             if os.path.exists(web_dir):
-                 debug_info.append(f"Web Dir Contents: {os.listdir(web_dir)}")
-             else:
-                 debug_info.append(f"Web Dir Missing: {web_dir}")
-
 
         # Strategy 2: Look in ffig_backend/static/apk/ for versioned files
-        apk_dir = os.path.join(base_dir, 'ffig_backend', 'static', 'apk')
-        debug_info.append(f"Checking Secondary: {apk_dir}")
+        apk_dir = os.path.join(settings.BASE_DIR, 'ffig_backend', 'static', 'apk')
         
         files = []
         if os.path.exists(apk_dir):
             # Find all .apk files starting with app-v
             files = [f for f in os.listdir(apk_dir) if f.startswith('app-v') and f.endswith('.apk')]
-            debug_info.append(f"Found Files: {files}")
-        else:
-            debug_info.append("Secondary Dir MISSING")
-            # Trace parent
-            static_dir = os.path.dirname(apk_dir)
-            if os.path.exists(static_dir):
-                 debug_info.append(f"Static Dir Contents: {os.listdir(static_dir)}")
-
         
         if files:
             # Sort to find "latest" just in case multiple exist
@@ -124,10 +100,7 @@ def download_latest_apk(request):
             response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
             return response
             
-        # If we got here, we failed. Return Debug Info.
-        debug_html = "<br>".join(debug_info)
-        return HttpResponse(f"<h1>APK Not Found</h1><p>Debug Info:</p><pre>{debug_html}</pre>", status=404)
+        return HttpResponse("APK not found (checked static/apk and web/app.apk)", status=404)
         
     except Exception as e:
-        import traceback
-        return HttpResponse(f"Error serving APK: {str(e)} <br> {traceback.format_exc()}", status=500)
+        return HttpResponse(f"Error serving APK: {str(e)}", status=500)

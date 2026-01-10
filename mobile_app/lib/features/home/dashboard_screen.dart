@@ -343,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                  ElevatedButton(
                    onPressed: () {
                       // Navigate to APK download
-                      launchUrl(Uri.parse('https://ffig-mobile-app.onrender.com/app.apk'), mode: LaunchMode.externalApplication);
+                      launchUrl(Uri.parse('https://femalefoundersinitiativeglobal.onrender.com/app.apk'), mode: LaunchMode.externalApplication);
                    }, 
                    style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
                    child: const Text("Download App")
