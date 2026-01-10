@@ -6,6 +6,14 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo "🚀 STARTING FULL DEPLOYMENT: BUILD & PUSH..."
 
+# --- 0. Bump Version ---
+if [ -f "./bump_version.sh" ]; then
+    chmod +x ./bump_version.sh
+    ./bump_version.sh
+else
+    echo "⚠️  bump_version.sh not found. Skipping version bump."
+fi
+
 # --- 1. Build & Push mobile_app ---
 echo "📂 Entering mobile_app directory..."
 cd mobile_app
