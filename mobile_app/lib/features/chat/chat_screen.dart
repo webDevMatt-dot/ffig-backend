@@ -113,9 +113,16 @@ class _ChatScreenState extends State<ChatScreen> {
               ? const Center(child: CircularProgressIndicator()) 
               : ListView.builder(
               padding: const EdgeInsets.all(16),
+              reverse: true, // Start from bottom
               itemCount: _messages.length,
               itemBuilder: (context, index) {
-                final msg = _messages[index];
+                // If backend returns Oldest -> Newest (ASC),
+                // we want Newest at bottom.
+                // With reverse: true, index 0 is Bottom.
+                // So index 0 should be Newest.
+                // So we need to reverse the list access OR reverse the list itself.
+                // Let's reverse the list access: index 0 (bottom) gets Last Item.
+                final msg = _messages[_messages.length - 1 - index];
                   final isMe = msg['is_me'];
                   final isRead = msg['is_read'] ?? false;
                   final username = msg['sender']['username'] ?? 'Unknown';

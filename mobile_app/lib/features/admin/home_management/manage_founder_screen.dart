@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -213,6 +214,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                   _buildForm(),
                   const Divider(height: 1),
                   _buildList(),
+                  const SizedBox(height: 100), // Safe scroll space
                 ],
               ),
             );
@@ -283,10 +285,29 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                 TextFormField(
-                  controller: _countryController,
-                  decoration: const InputDecoration(labelText: 'Country', border: OutlineInputBorder()),
-                   validator: (v) => v!.isEmpty ? 'Required' : null,
+                GestureDetector(
+                  onTap: () {
+                    showCountryPicker(
+                      context: context,
+                      showPhoneCode: false,
+                      onSelect: (Country country) {
+                        setState(() {
+                          _countryController.text = country.name;
+                        });
+                      },
+                    );
+                  },
+                  child: AbsorbPointer(
+                    child: TextFormField(
+                      controller: _countryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Country', 
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.arrow_drop_down),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 

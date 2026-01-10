@@ -195,6 +195,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                   _buildForm(),
                   const Divider(height: 1),
                   _buildList(),
+                  const SizedBox(height: 100), // Safe scroll space
                 ],
               ),
             );

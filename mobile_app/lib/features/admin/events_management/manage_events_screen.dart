@@ -153,6 +153,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                   Padding(padding: const EdgeInsets.all(16), child: _buildForm(context)),
                   Divider(height: 1, thickness: 8, color: Theme.of(context).dividerColor),
                   Padding(padding: const EdgeInsets.all(16), child: _buildList(context)),
+                  const SizedBox(height: 100), // Safe scroll space
                 ],
               ),
             );
