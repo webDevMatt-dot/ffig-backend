@@ -91,6 +91,10 @@ urlpatterns = [
     path('api/members/', MemberListView.as_view(), name='member-list'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
+    path('api/resources/', ResourceListView.as_view(), name='resource-list'),
+    
+    # Explicit override to ensuring routing works
+    path('api/home/download-apk/', download_latest_apk, name='direct-download-apk'),
     path('api/home/', include('home.urls')),
     
     # Admin Resource Management

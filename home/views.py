@@ -166,7 +166,7 @@ def download_latest_apk(request):
         except Exception as e:
             debug_info += f"\\nList Error: {e}"
 
-        return HttpResponse(f"APK NOT FOUND (DEBUG MODE 200 OK).\\n\\n{debug_info}", status=200, content_type="text/plain")
+        return HttpResponse(f"APK NOT FOUND. Debug Info:\\n\\n{debug_info}", status=404, content_type="text/plain")
         
     except Exception as e:
         return HttpResponse(f"Error serving APK: {str(e)}", status=500)
