@@ -100,7 +100,18 @@ DATABASES = {
         default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
         conn_max_age=600
     )
+    'default': dj_database_url.config(
+        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
+        conn_max_age=600
+    )
 }
+
+# Debug: Print DB Engine to logs (Safe for ephemeral logs)
+print(f"🚀 Database Engine Configured: {DATABASES['default']['ENGINE']}")
+if 'sqlite' in DATABASES['default']['ENGINE']:
+    print("⚠️  WARNING: Using SQLite. Data will be lost on ephemeral environments like Render!")
+    if os.environ.get('RENDER'):
+        print("❌ CRITICAL: Render detected but DATABASE_URL not found!")
 
 
 # Password validation

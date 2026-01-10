@@ -13,6 +13,17 @@ CLEAN_VERSION="${VERSION%+*}"
 
 echo "Detected Version: $CLEAN_VERSION"
 
+# 1.5 Ensure Admin User Exists (Critical for Ephemeral/Fresh DBS)
+# Note: We can only run this if we have shell access, which we don't from here easily unless we ssh or run it as a build step.
+# Ideally, this should be part of the Render 'Build Command' or 'Start Command'.
+# However, if we are just hitting the API, we assume the server is up and might be fresh.
+# If fresh, we can't login!
+# OPTION: We can't really fix a fresh DB from *here* (client side script).
+# The BACKEND itself needs to create the user on startup/migrate.
+
+# But for now, we will proceed.
+
+
 # 2. Get Admin Token (One-off login for script)
 USERNAME="${FFIG_ADMIN_USERNAME:-admin}"
 PASSWORD="${FFIG_ADMIN_PASSWORD:-ChangeMe123!}"
