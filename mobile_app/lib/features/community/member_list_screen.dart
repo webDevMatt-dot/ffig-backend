@@ -28,6 +28,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
   String _sortBy = "name"; // Options: name, industry
   bool _premiumOnly = false;
   bool _amIAdmin = false; // Admin Checking
+  String? _myUsername;
   Timer? _debounce; // To stop API calls on every keystroke
 
   final List<DropdownMenuItem<String>> _industryOptions = [
@@ -64,6 +65,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
         if (mounted) {
            setState(() {
              _amIAdmin = data['is_staff'] ?? false;
+             _myUsername = data['username'];
            });
         }
       }
@@ -100,6 +102,11 @@ class _MemberListScreenState extends State<MemberListScreen> {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body) as List;
+
+        // Filter out myself
+        if (_myUsername != null) {
+          data = data.where((m) => m['username'] != _myUsername).toList();
+        }
 
         // CLIENT-SIDE FILTERING (For instant "Premium Only" toggle)
         if (_premiumOnly) {
@@ -296,7 +303,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                             ),
                             const SizedBox(width: 6),
                             // Verified Badge Logic
-                            if (isPremium)
+                            if (isPremium || member['tier'] == 'PREMIUM')
                                const Icon(Icons.verified, color: Colors.amber, size: 16)
                             else if (member['tier'] == 'STANDARD') // Assuming backend sends 'tier' now, or fallback to !isPremium but not "Free"
                                const Icon(Icons.verified, color: Colors.blue, size: 16)

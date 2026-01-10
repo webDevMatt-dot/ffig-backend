@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared_widgets/upgrade_modal.dart';
 import '../community/member_list_screen.dart';
 import '../events/events_screen.dart';
+import '../chat/inbox_screen.dart';
 
 class StandardScreen extends StatelessWidget {
   const StandardScreen({super.key});
@@ -36,7 +37,7 @@ class StandardScreen extends StatelessWidget {
                    Row(
                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                      children: [
-                       _buildAction(context, "Directory", Icons.people, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const MemberListScreen()))),
+                       _buildAction(context, "Community Chat", Icons.chat_bubble_outline, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()))),
                        _buildAction(context, "Events", Icons.calendar_today, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const EventsScreen()))),
                      ],
                    )

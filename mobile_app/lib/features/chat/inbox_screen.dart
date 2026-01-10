@@ -113,8 +113,14 @@ class _InboxScreenState extends State<InboxScreen> {
                   final chat = _conversations[index];
                   final participants = chat['participants'] as List;
                   
+                  // Filter ME out
+                  final others = participants.where((p) => p['username'] != _myUsername).toList();
+                  
+                  // Skip Self-Chats (Drafts)
+                  if (others.isEmpty) return const SizedBox.shrink(); // Hide completely
+
                   // Clean Name
-                  final String title = _getOtherParticipantName(participants);
+                  final String title = others.map((p) => p['username']).join(", ");
                   
                   final lastMsg = chat['last_message'] != null 
                       ? chat['last_message']['text'] 

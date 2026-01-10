@@ -66,7 +66,7 @@ RESPONSE=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"ANDROID\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://ffig-mobile-n999.onrender.com/app.apk\",
+    \"update_url\": \"https://femalefoundersinitiativeglobal.onrender.com/app.apk\",
     \"required\": false
   }")
 
@@ -77,7 +77,7 @@ RESPONSE_IOS=$(curl -s -X POST $API_URL \
   -d "{
     \"platform\": \"IOS\",
     \"latest_version\": \"$CLEAN_VERSION\",
-    \"update_url\": \"https://ffig-mobile-n999.onrender.com/app.apk\",
+    \"update_url\": \"https://femalefoundersinitiativeglobal.onrender.com/app.apk\",
     \"required\": false
   }")
 

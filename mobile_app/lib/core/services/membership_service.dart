@@ -35,7 +35,7 @@ class MembershipService {
   // Directory: Standard sees "limited info", Premium sees all.
   // We'll treat "View Full Directory" as the ability to see contact info or interact.
   static bool get canViewFullDirectory => isPremium; // Premium only
-  static bool get canViewLimitedDirectory => !isFree; // Standard & Premium
+  static bool get canViewLimitedDirectory => isPremium; // Premium only
 
   // Helper to show dialog
   static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {
