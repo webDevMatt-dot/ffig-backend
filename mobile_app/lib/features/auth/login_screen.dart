@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../home/dashboard_screen.dart';
 import 'signup_screen.dart';
 import '../../core/api/constants.dart';
@@ -20,11 +21,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String _version = "";
 
   @override
   void initState() {
     super.initState();
+    _loadVersion();
     _checkForUpdates();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) setState(() => _version = info.version);
   }
 
   Future<void> _checkForUpdates() async {
@@ -50,7 +58,11 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!required)
             TextButton(child: const Text("Later"), onPressed: () => Navigator.pop(context)),
           ElevatedButton(
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            onPressed: () {
+               // Cache Busting: Add timestamp to force fresh download
+               final uri = Uri.parse("$url?t=${DateTime.now().millisecondsSinceEpoch}");
+               launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
             child: const Text("Update"),
           )
         ],
@@ -223,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                     const SizedBox(width: 8),
-                    const Text("v3.0 - Modern UI", style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500)),
+                    Text("v$_version", style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ],

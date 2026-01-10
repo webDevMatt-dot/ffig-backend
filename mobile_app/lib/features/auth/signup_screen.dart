@@ -102,17 +102,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             const SizedBox(height: 48),
 
-            _buildTextField("FIRST NAME", _fNameController, Icons.person),
+            _buildTextField("FIRST NAME", _fNameController, Icons.person, action: TextInputAction.next),
             const SizedBox(height: 16),
-            _buildTextField("LAST NAME", _lNameController, Icons.person_outline),
+            _buildTextField("LAST NAME", _lNameController, Icons.person_outline, action: TextInputAction.next),
             const SizedBox(height: 16),
-            _buildTextField("USERNAME", _usernameController, Icons.person_pin),
+            _buildTextField("USERNAME", _usernameController, Icons.person_pin, action: TextInputAction.next),
             const SizedBox(height: 16),
-            _buildTextField("EMAIL ADDRESS", _emailController, Icons.mail_outline),
+            _buildTextField("EMAIL ADDRESS", _emailController, Icons.mail_outline, type: TextInputType.emailAddress, action: TextInputAction.next),
             const SizedBox(height: 16),
-            _buildTextField("PASSWORD", _passwordController, Icons.lock_outline, isObscure: true),
+            _buildTextField("PASSWORD", _passwordController, Icons.lock_outline, isObscure: true, action: TextInputAction.next),
             const SizedBox(height: 16),
-            _buildTextField("CONFIRM PASSWORD", _confirmController, Icons.lock_outline, isObscure: true),
+            _buildTextField("CONFIRM PASSWORD", _confirmController, Icons.lock_outline, isObscure: true, action: TextInputAction.done),
 
             const SizedBox(height: 48),
             
@@ -128,10 +128,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isObscure = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isObscure = false, TextInputAction? action, TextInputType? type}) {
     return TextField(
       controller: controller,
       obscureText: isObscure,
+      textInputAction: action ?? TextInputAction.next,
+      keyboardType: type,
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
         labelText: label,
