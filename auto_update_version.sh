@@ -2,6 +2,7 @@
 
 # Configuration
 API_URL="https://ffig-backend-ti5w.onrender.com/api/home/version/"
+API_URL_LOGIN="https://ffig-backend-ti5w.onrender.com/api/auth/login/"
 # TOKEN="" # You need an Admin Token here. Ideally fetched via login.
 
 echo "🚀 Auto-Updating Backend Version..."
@@ -32,16 +33,26 @@ if [ "$USERNAME" == "admin" ] && [ "$PASSWORD" == "ChangeMe123!" ]; then
     echo "⚠️  Using default credentials. Ensure FFIG_ADMIN_USERNAME and FFIG_ADMIN_PASSWORD are set in CI."
 fi
 
-LOGIN_RESPONSE=$(curl -s -X POST https://ffig-backend-ti5w.onrender.com/api/auth/login/ \
+# Capture HTTP Status and Body
+LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $API_URL_LOGIN \
   -H "Content-Type: application/json" \
   -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
-TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"access":"[^"]*' | cut -d'"' -f4)
+HTTP_BODY=$(echo "$LOGIN_RESPONSE" | head -n -1)
+HTTP_STATUS=$(echo "$LOGIN_RESPONSE" | tail -n 1)
+
+if [ "$HTTP_STATUS" != "200" ]; then
+  echo "⚠️  Backend returned HTTP $HTTP_STATUS during login."
+  echo "    This is expected if the backend is currently redeploying or broken."
+  echo "    skipping backend version update."
+  exit 0 # Exit 0 to allow deploy.sh to continue
+fi
+
+TOKEN=$(echo $HTTP_BODY | grep -o '"access":"[^"]*' | cut -d'"' -f4)
 
 if [ -z "$TOKEN" ]; then
-  echo "❌ Failed to login to update version."
-  echo "Server Response: $LOGIN_RESPONSE"
-  exit 1
+  echo "❌ Failed to parse token."
+  exit 0
 fi
 
 echo "✅ Authenticated."
