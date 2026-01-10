@@ -21,6 +21,10 @@ from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.conf.urls.static import static
+import os
+
+# APK Directory
+APK_ROOT = os.path.join(settings.BASE_DIR, 'mobile_app', 'web')
 
 # --- THE MAGIC VIEW ---
 def force_admin_create(request):
@@ -120,4 +124,7 @@ urlpatterns = [
     
     # Explicitly serve media files (Required for Render/Production if not using S3)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    
+    # Explicitly serve APK files (Bypass Static)
+    re_path(r'^(?P<path>app-v.*\.apk)$', serve, {'document_root': APK_ROOT}),
 ]
