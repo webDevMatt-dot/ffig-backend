@@ -252,8 +252,7 @@ class AdminApiService {
     final token = await _getToken();
     final response = await http.get(
       Uri.parse('$_baseUrl/../admin/analytics/'), // _baseUrl is api/home so ../admin/analytics => api/admin/analytics
-      // Wait, _baseUrl is 'https://ffig-api.onrender.com/api/home'. 
-      // We need 'https://ffig-api.onrender.com/api/admin/analytics/'.
+      // Endpoint: admin/analytics/
       // Correct logic:
       headers: {'Authorization': 'Bearer $token'}
     );

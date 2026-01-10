@@ -6,6 +6,8 @@ import '../home/dashboard_screen.dart';
 import 'signup_screen.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
+import '../../core/services/version_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +20,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateData = await VersionService().checkUpdate();
+    if (updateData != null && mounted && updateData['updateAvailable'] == true) {
+      _showUpdateDialog(updateData);
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> data) {
+    if (!mounted) return;
+    final bool required = data['required'] ?? false;
+    final String url = data['url'];
+    final String version = data['latestVersion'];
+
+    showDialog(
+      context: context,
+      barrierDismissible: !required,
+      builder: (context) => AlertDialog(
+        title: const Text("Update Available"),
+        content: Text("Version $version is available."),
+        actions: [
+          if (!required)
+            TextButton(child: const Text("Later"), onPressed: () => Navigator.pop(context)),
+          ElevatedButton(
+            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            child: const Text("Update"),
+          )
+        ],
+      ),
+    );
+  }
 
   Future<void> _login() async {
     setState(() => _isLoading = true);

@@ -47,7 +47,7 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     // 2. Fetch Conversations
-    // const String baseUrl = 'https://ffig-api.onrender.com/api/chat/conversations/';
+    // const String baseUrl = '...';
     
     try {
       final response = await http.get(

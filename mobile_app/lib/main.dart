@@ -9,6 +9,8 @@ import 'core/theme/ffig_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/notification_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'core/services/version_service.dart';
 // import 'firebase_options.dart'; // Uncomment if you have generated firebase_options.dart using FlutterFire CLI
 
 // Global access to theme controller (Simple dependency injection)
@@ -74,27 +76,64 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkSession() async {
-    // Artificial Delay for Branding
-    await Future.delayed(const Duration(seconds: 3));
+    // Run Version Check and Min Delay in parallel
+    final results = await Future.wait([
+      Future.delayed(const Duration(seconds: 3)),
+      VersionService().checkUpdate(),
+    ]);
 
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final updateData = results[1] as Map<String, dynamic>?;
 
     if (mounted) {
-      if (token != null) {
-        // Token exists, go to Dashboard
-         Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => const DashboardScreen())
-        );
+      if (updateData != null && updateData['updateAvailable'] == true) {
+        _showUpdateDialog(updateData);
       } else {
-        // No token, go to Login
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => const LoginScreen())
-        );
+        _navigateBasedOnToken();
       }
     }
+  }
+
+  Future<void> _navigateBasedOnToken() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    
+    if (!mounted) return;
+
+    if (token != null) {
+       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+    } else {
+       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> data) {
+    final bool required = data['required'];
+    final String url = data['url'];
+    final String version = data['latestVersion'];
+
+    showDialog(
+      context: context,
+      barrierDismissible: !required,
+      builder: (context) => AlertDialog(
+        title: const Text("Update Available"),
+        content: Text("A new version ($version) is available.\nPlease update for the best experience."),
+        actions: [
+          if (!required)
+            TextButton(
+              child: const Text("Later"),
+              onPressed: () {
+                Navigator.pop(context);
+                _navigateBasedOnToken();
+              },
+            ),
+          ElevatedButton(
+            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+            child: const Text("Update Now"),
+          )
+        ],
+      ),
+    );
   }
 
   @override

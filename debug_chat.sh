@@ -1,5 +1,5 @@
 #!/bin/bash
-API_URL="https://ffig-api.onrender.com/api"
+API_URL="https://ffig-backend-ti5w.onrender.com/api"
 USERNAME="${FFIG_ADMIN_USERNAME:-admin}"
 PASSWORD="${FFIG_ADMIN_PASSWORD:-ChangeMe123!}"
 
