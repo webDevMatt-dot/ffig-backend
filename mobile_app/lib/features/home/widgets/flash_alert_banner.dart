@@ -16,7 +16,12 @@ class FlashAlertBanner extends StatelessWidget {
       child: InkWell(
         onTap: () {
           if (alert.actionUrl != null) {
-            launchUrl(Uri.parse(alert.actionUrl!));
+            String url = alert.actionUrl!;
+            // Fix legacy domain if present
+            if (url.contains('ffig-mobile-app.onrender.com')) {
+               url = url.replaceAll('ffig-mobile-app.onrender.com', 'femalefoundersinitiativeglobal.onrender.com');
+            }
+            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           }
         },
         child: Padding(

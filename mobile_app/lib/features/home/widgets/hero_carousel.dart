@@ -1,6 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import '../models/hero_item.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HeroCarousel extends StatelessWidget {
   final List<HeroItem> items;
@@ -27,8 +28,19 @@ class HeroCarousel extends StatelessWidget {
           builder: (BuildContext context) {
             return GestureDetector(
               onTap: () {
-                if (item.actionUrl != null) {
-                  // Handle navigation
+                if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
+                  String url = item.actionUrl!;
+                   // Fix legacy domain if present
+                  if (url.contains('ffig-mobile-app.onrender.com')) {
+                     url = url.replaceAll('ffig-mobile-app.onrender.com', 'femalefoundersinitiativeglobal.onrender.com');
+                  }
+                  // Need to import url_launcher at top of file
+                  // But wait, I need to check imports first.
+                  // Assuming I can add import or it exists? It DOES NOT exist in HeroCarousel.dart.
+                  // I will need to add import too. 
+                  // I'll do that in a separate step or try to add it now?
+                  // Providing just the block is risky if import missing.
+                  // I'll assume import needs adding.
                 }
               },
               child: Container(

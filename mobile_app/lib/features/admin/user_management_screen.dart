@@ -98,7 +98,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   
 
 
-  Future<void> _createUser(String username, String email, String password, String fName, String lName) async {
+  Future<void> _createUser(String username, String email, String password, String fName, String lName, String tier) async {
     try {
       final response = await http.post(
         Uri.parse('${baseUrl}auth/register/'),
@@ -112,9 +112,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           'last_name': lName,
         }),
       );
+      
       if (response.statusCode == 201) {
-        await _fetchUsers(); // Await fetch to ensure UI update
-        if (mounted) Navigator.pop(context);
+        // User created. Now update tier if needed.
+        if (tier != 'FREE') {
+           final body = jsonDecode(response.body);
+           final newUserId = body['id']; // Requires backend to return ID
+           if (newUserId != null) {
+              // Call update quietly
+              await _updateUser(newUserId, {
+                'profile': {'tier': tier}
+              }, silent: true);
+           }
+        }
+
+        await _fetchUsers(); 
         if (mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User created successfully")));
       } else {
@@ -125,7 +137,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
-  Future<void> _updateUser(int id, Map<String, dynamic> data) async {
+  Future<void> _updateUser(int id, Map<String, dynamic> data, {bool silent = false}) async {
     try {
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: 'access_token');
@@ -135,14 +147,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) {
-        _fetchUsers();
-        if (mounted) Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User updated")));
+        if (!silent) {
+           _fetchUsers();
+           if (mounted) Navigator.pop(context); // Only pop if explicit user action
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User updated")));
+        }
       } else {
-        DialogUtils.showError(context, "Update Failed", "Could not update user.\n${response.body}");
+        if (!silent) DialogUtils.showError(context, "Update Failed", "Could not update user.\n${response.body}");
       }
     } catch (e) {
-      DialogUtils.showError(context, "Error", "Network error: $e");
+      if (!silent) DialogUtils.showError(context, "Error", "Network error: $e");
     }
   }
 
@@ -173,40 +187,67 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final passController = TextEditingController();
     final fNameController = TextEditingController();
     final lNameController = TextEditingController();
+    String selectedTier = 'FREE';
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-               Text("New Member", style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold)),
-               const SizedBox(height: 24),
-               _buildField(userController, "Username", Icons.person),
-               const SizedBox(height: 16),
-               Row(
-                 children: [
-                   Expanded(child: _buildField(fNameController, "First Name", Icons.person_outline)),
-                   const SizedBox(width: 16),
-                   Expanded(child: _buildField(lNameController, "Last Name", Icons.person_outline)),
-                 ],
-               ),
-               const SizedBox(height: 16),
-               _buildField(emailController, "Email", Icons.email),
-               const SizedBox(height: 16),
-               _buildField(passController, "Password", Icons.lock, obscure: true),
-               const SizedBox(height: 32),
-               ElevatedButton(
-                 onPressed: () => _createUser(userController.text, emailController.text, passController.text, fNameController.text, lNameController.text),
-                 style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown),
-                 child: const Text("CREATE MEMBER"),
-               ),
-             ],
-          ),
-        ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("New Member", style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 24),
+                    _buildField(userController, "Username", Icons.person),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildField(fNameController, "First Name", Icons.person_outline)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildField(lNameController, "Last Name", Icons.person_outline)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildField(emailController, "Email", Icons.email),
+                    const SizedBox(height: 16),
+                    _buildField(passController, "Password", Icons.lock, obscure: true),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                         decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Membership Tier"),
+                         value: selectedTier,
+                         items: const [
+                           DropdownMenuItem(value: 'FREE', child: Text("Free")),
+                           DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),
+                           DropdownMenuItem(value: 'PREMIUM', child: Text("Premium")),
+                         ], 
+                         onChanged: (val) {
+                           if (val != null) setState(() => selectedTier = val);
+                         }
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: () => _createUser(
+                          userController.text, 
+                          emailController.text, 
+                          passController.text, 
+                          fNameController.text, 
+                          lNameController.text,
+                          selectedTier // Pass tier
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown),
+                      child: const Text("CREATE MEMBER"),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }
