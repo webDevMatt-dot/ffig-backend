@@ -44,7 +44,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   List<dynamic> _events = [];
   bool _isLoading = true;
@@ -64,6 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchFeaturedEvents();
     _checkMobileWeb(); // Check for mobile web
     _checkPremiumStatus();
@@ -79,7 +80,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _notificationTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkForUpdates();
+    }
   }
 
   Future<void> _checkUnreadMessages() async {

@@ -32,7 +32,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _fetchMyProfile() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    if (token == null) return; 
+    if (token == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    } 
 
     try {
       final response = await http.get(
@@ -46,6 +49,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _profileData = jsonDecode(response.body);
             _isLoading = false;
           });
+        }
+      } else {
+        // Handle error (e.g. 401)
+        if (mounted) setState(() => _isLoading = false);
+        if (response.statusCode == 401) {
+            // Token expired or invalid
+            const storage = FlutterSecureStorage();
+            await storage.deleteAll();
+            // Optional: Redirect to login or show error
         }
       }
     } catch (e) {
