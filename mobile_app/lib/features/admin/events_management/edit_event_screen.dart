@@ -197,7 +197,29 @@ class _EditEventScreenState extends State<EditEventScreen> {
               _buildSection("Details", [
                  TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: "Title"), validator: (v) => v!.isEmpty ? "Required" : null),
                  const SizedBox(height: 12),
-                 TextFormField(controller: _dateController, decoration: const InputDecoration(labelText: "Date (YYYY-MM-DD)")),
+                 TextFormField(
+                   controller: _dateController,
+                   decoration: const InputDecoration(
+                     labelText: "Date", 
+                     suffixIcon: Icon(Icons.calendar_today)
+                   ),
+                   readOnly: true,
+                   onTap: () async {
+                     DateTime? picked = await showDatePicker(
+                       context: context,
+                       initialDate: DateTime.now(),
+                       firstDate: DateTime(2000),
+                       lastDate: DateTime(2100),
+                     );
+                     if (picked != null) {
+                       // Format: YYYY-MM-DD
+                       setState(() {
+                         _dateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                       });
+                     }
+                   },
+                   validator: (v) => v!.isEmpty ? "Required" : null,
+                 ),
                  const SizedBox(height: 12),
                  TextFormField(controller: _locationController, decoration: const InputDecoration(labelText: "Location")),
                  const SizedBox(height: 12),

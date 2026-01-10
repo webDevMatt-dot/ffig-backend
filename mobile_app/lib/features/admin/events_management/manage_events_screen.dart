@@ -201,7 +201,29 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
               const SizedBox(height: 16),
               _buildField(_locController, "Location", Icons.location_on),
               const SizedBox(height: 16),
-              _buildField(_dateController, "Date (YYYY-MM-DD)", Icons.calendar_today),
+              TextFormField(
+                controller: _dateController,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: "Date",
+                  prefixIcon: Icon(Icons.calendar_today),
+                  border: OutlineInputBorder(),
+                ),
+                onTap: () async {
+                   DateTime? picked = await showDatePicker(
+                     context: context,
+                     initialDate: DateTime.now(),
+                     firstDate: DateTime(2000),
+                     lastDate: DateTime(2100),
+                   );
+                   if (picked != null) {
+                     setState(() {
+                       _dateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                     });
+                   }
+                },
+                validator: (v) => v!.isEmpty ? "Required" : null,
+              ),
               const SizedBox(height: 16),
               _buildField(_imgController, "Image URL", Icons.image, required: false),
               const SizedBox(height: 24),
