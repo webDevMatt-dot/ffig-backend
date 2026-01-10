@@ -28,8 +28,11 @@ class _EventsScreenState extends State<EventsScreen> {
     final token = await storage.read(key: 'access_token');
     const String endpoint = '${baseUrl}events/';
 
+    final headers = <String, String>{};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
     try {
-      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse(endpoint), headers: headers);
       if (response.statusCode == 200) {
         setState(() => _events = jsonDecode(response.body));
       }

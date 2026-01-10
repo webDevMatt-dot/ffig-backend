@@ -6,8 +6,8 @@ from .models import Event, Ticket, TicketTier, EventSpeaker, AgendaItem, EventFA
 from .serializers import EventSerializer, TicketSerializer, TicketTierSerializer, EventSpeakerSerializer, AgendaItemSerializer, EventFAQSerializer
 
 class FeaturedEventView(generics.ListAPIView):
-    # Only authenticated members can see this!
-    permission_classes = [permissions.IsAuthenticated]
+    # Public access allowed
+    permission_classes = [permissions.AllowAny]
     serializer_class = EventSerializer
 
     def get_queryset(self):
@@ -15,19 +15,20 @@ class FeaturedEventView(generics.ListAPIView):
 
 # 1. List ALL Events (ordered by date)
 class EventListView(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     serializer_class = EventSerializer
     queryset = Event.objects.all().order_by('date')
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff: 
+        # Check if authenticated AND staff to see hidden events
+        if user.is_authenticated and user.is_staff: 
             return Event.objects.all().order_by('date')
         return Event.objects.filter(is_active=True).order_by('date')
 
 # 2. Get Single Event Details
 class EventDetailView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     serializer_class = EventSerializer
     queryset = Event.objects.all()
 

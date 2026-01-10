@@ -17,9 +17,12 @@ class AdminApiService {
   // Generic GET
   Future<List<dynamic>> fetchItems(String endpoint) async {
     final token = await _getToken();
+    final headers = <String, String>{};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
     final response = await http.get(
       Uri.parse('$_baseUrl/$endpoint/'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: headers,
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -85,7 +88,10 @@ class AdminApiService {
 
   Future<List<dynamic>> fetchEvents() async {
     final token = await _getToken();
-    final response = await http.get(Uri.parse('$_eventsBaseUrl/'), headers: {'Authorization': 'Bearer $token'});
+    final headers = <String, String>{};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+    
+    final response = await http.get(Uri.parse('$_eventsBaseUrl/'), headers: headers);
      if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {

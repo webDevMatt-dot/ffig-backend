@@ -127,6 +127,21 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   Future<void> _checkPremiumStatus() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
+    
+    // Guest Mode
+    if (token == null) {
+      if (mounted) {
+        setState(() {
+          _isPremium = false;
+          _isAdmin = false;
+          _userProfile = null;
+          MembershipService.setTier("free"); // Default to free/guest
+          MembershipService.isAdmin = false;
+        });
+      }
+      return;
+    }
+
     const String endpoint = '${baseUrl}members/me/';
 
     try {
@@ -162,13 +177,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
     const String endpoint = '${baseUrl}events/featured/';
 
+    final headers = {'Content-Type': 'application/json'};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
     try {
       final response = await http.get(
         Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // <--- THE KEY TO THE CASTLE
-        },
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -277,6 +292,27 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     }
   }
 
+  void _showLoginDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text("Please login or sign up to access this feature."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LoginScreen()));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+            child: const Text("Login"),
+          )
+        ],
+      ),
+    );
+  }
+
   // Logout Function
   Future<void> _logout() async {
     // 1. Delete the token
@@ -346,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             },
           ),
 
-          // Profile Avatar (Top Right)
+          // Profile Avatar or Login Button (Top Right)
           if (_userProfile != null)
              InkWell(
                onTap: () async {
@@ -368,6 +404,14 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                    lastName: _userProfile!['last_name'] ?? '',
                    username: _userProfile!['username'] ?? 'M',
                  ),
+               ),
+             )
+          else
+             Padding(
+               padding: const EdgeInsets.only(right: 8),
+               child: TextButton(
+                 onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LoginScreen())),
+                 child: const Text("Login", style: TextStyle(fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
                ),
              ),
         ],
@@ -393,8 +437,20 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
            }
            
            // RBAC: Network/Members Tab (Index 2)
-           if (index == 2 && !MembershipService.canViewLimitedDirectory) {
-               MembershipService.showUpgradeDialog(context, "Member Directory");
+           if (index == 2) {
+              if (_userProfile == null) {
+                  _showLoginDialog();
+                  return;
+              }
+              if (!MembershipService.canViewLimitedDirectory) {
+                  MembershipService.showUpgradeDialog(context, "Member Directory");
+                  return;
+              }
+           }
+           
+           // RBAC: VVIP (Index 3)
+           if (index == 3 && _userProfile == null) {
+               _showLoginDialog();
                return;
            }
 
@@ -517,10 +573,14 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
                 _buildQuickAction(Icons.people_outline, "Members", () {
+                   if (_userProfile == null) {
+                       _showLoginDialog();
+                       return;
+                   }
                    if (MembershipService.canViewLimitedDirectory) {
-                      setState(() => _selectedIndex = 2);
+                       setState(() => _selectedIndex = 2);
                    } else {
-                      MembershipService.showUpgradeDialog(context, "Member Directory");
+                       MembershipService.showUpgradeDialog(context, "Member Directory");
                    }
                 }),
                 const SizedBox(width: 16),
@@ -530,6 +590,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                 // Custom implementation for Badge support in Quick Action
                 GestureDetector(
                   onTap: () {
+                    if (_userProfile == null) {
+                        _showLoginDialog();
+                        return;
+                    }
                     setState(() => _lastUnreadCount = 0);
                     Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()));
                   },
