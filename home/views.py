@@ -115,7 +115,6 @@ def download_latest_apk(request):
             return response
 
         # Strategy 4: Check STATIC_ROOT (where collectstatic moves files)
-        # mobile_app/web is in STATICFILES_DIRS, so it should be in STATIC_ROOT/
         static_root = settings.STATIC_ROOT
         if os.path.exists(static_root):
              static_files = [f for f in os.listdir(static_root) if f.startswith('app-v') and f.endswith('.apk')]
@@ -128,21 +127,30 @@ def download_latest_apk(request):
                  response['Content-Disposition'] = f'attachment; filename="{latest_static_file}"'
                  return response
 
+        # Debug Info with Recursive Search
+        debug_info = f"Checked paths:\\n"
+        debug_info += f"1. Web Dir: {web_dir} (Exists: {os.path.exists(web_dir)})\\n"
+        debug_info += f"2. Primary: {primary_path} (Exists: {os.path.exists(primary_path)})\\n"
+        debug_info += f"3. Static Apk: {apk_dir} (Exists: {os.path.exists(apk_dir)})\\n" 
+        debug_info += f"4. Static Root: {static_root} (Exists: {os.path.exists(static_root)})\\n"
 
-        # Debug Info
-        debug_info = f"Checked:\\n1. Web Dir: {web_dir} (Exists: {os.path.exists(web_dir)})\\n"
-        if os.path.exists(web_dir):
-            debug_info += f"   Files: {os.listdir(web_dir)}\\n"
-        
-        debug_info += f"2. Primary Path: {primary_path} (Exists: {os.path.exists(primary_path)})\\n"
-        
-        debug_info += f"3. Static APK Dir: {apk_dir} (Exists: {os.path.exists(apk_dir)})\\n"
-        if os.path.exists(apk_dir):
-            debug_info += f"   Files: {os.listdir(apk_dir)}\\n"
-            
-        debug_info += f"4. STATIC_ROOT: {static_root} (Exists: {os.path.exists(static_root)})\\n"
-        if os.path.exists(static_root):
-            debug_info += f"   Files: {os.listdir(static_root)}\\n"
+        # Recursive Search for ANY APK
+        debug_info += "\\n--- Recursive Search for *.apk in BASE_DIR ---\\n"
+        apk_matches = []
+        try:
+            for root, dirs, files in os.walk(settings.BASE_DIR):
+                for file in files:
+                    if file.endswith(".apk"):
+                        full_path = os.path.join(root, file)
+                        apk_matches.append(full_path)
+                        # Don't recurse too deep if unnecessary, but full walk is safer for debug
+        except Exception as walk_e:
+            debug_info += f"Walk Error: {walk_e}\\n"
+
+        if apk_matches:
+            debug_info += "Found APKs:\\n" + "\\n".join(apk_matches)
+        else:
+            debug_info += "NO APK FILES FOUND IN PROJECT DIRECTORY."
 
         return HttpResponse(f"APK not found. Debug Info:\\n{debug_info}", status=404)
         
