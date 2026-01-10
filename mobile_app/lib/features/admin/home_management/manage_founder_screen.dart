@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class ManageFounderScreen extends StatefulWidget {
   const ManageFounderScreen({super.key});
@@ -62,7 +63,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
         _filterItems();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      DialogUtils.showError(context, "Load Failed", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -143,7 +144,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
          _fetchItems();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Failed: $e')));
+      DialogUtils.showError(context, "Upload Failed", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -165,17 +166,15 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     try {
       final newState = !(item['is_active'] ?? true);
       // We only update the 'is_active' field
+      // NOTE: We pass null for image to avoid re-uploading or clearing it
       await _apiService.updateFounderProfile(item['id'].toString(), {
         'is_active': newState.toString(),
-        // We must re-send required fields if the API is strict, but usually PATCH is partial.
-        // If ModelSerializer is used with partial=True (PATCH), this works.
-        // FounderProfile view usually supports partial update.
       }, null);
       
       _fetchItems();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Spotlight Activated" : "Spotlight Deactivated")));
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update Failed: $e')));
+       DialogUtils.showError(context, "Update Failed", e.toString());
     }
   }
 
@@ -187,7 +186,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       await _apiService.deleteItem('founder', id);
        _fetchItems();
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+       DialogUtils.showError(context, "Delete Failed", e.toString());
     }
   }
 
@@ -419,7 +418,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                           onPressed: () => _startEditing(item),
                         ),
                         IconButton(
-                          icon: Icon(item['is_active'] == true ? Icons.visibility : Icons.visibility_off, color: item['is_active'] == true ? Colors.green : Colors.grey),
+                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
                           onPressed: () => _toggleActive(item),
                         ),
                         IconButton(

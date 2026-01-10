@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
+import '../../core/utils/dialog_utils.dart';
 
 class ResourceManagementScreen extends StatefulWidget {
   const ResourceManagementScreen({super.key});
@@ -133,10 +134,10 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         _cancelEditing();
         _fetchResources();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: \${response.body}')));
+        DialogUtils.showError(context, "Action Failed", response.body);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: \$e')));
+      DialogUtils.showError(context, "Error", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -149,7 +150,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
       await http.delete(Uri.parse('${baseUrl}admin/resources/$id/'), headers: {'Authorization': 'Bearer $token'});
       _fetchResources();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      DialogUtils.showError(context, "Delete Failed", e.toString());
     }
   }
 
@@ -172,7 +173,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
          throw Exception(response.body);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error toggling: $e')));
+      DialogUtils.showError(context, "Toggle Failed", e.toString());
     }
   }
 

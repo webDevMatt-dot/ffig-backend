@@ -73,7 +73,21 @@ def download_latest_apk(request):
     Also checks mobile_app/web/app.apk as a valid fallback.
     """
     try:
-        # Strategy 1: Check mobile_app/web/app.apk (Fixed "Latest" file)
+        # Strategy 1: Check mobile_app/web/ for versioned files (e.g. app-v1.0.53.apk)
+        # We prioritize this to give the user the correct filename with version
+        web_dir = os.path.join(settings.BASE_DIR, 'mobile_app', 'web')
+        if os.path.exists(web_dir):
+             web_files = [f for f in os.listdir(web_dir) if f.startswith('app-v') and f.endswith('.apk')]
+             if web_files:
+                 web_files.sort(reverse=True)
+                 latest_web_file = web_files[0]
+                 web_path = os.path.join(web_dir, latest_web_file)
+                 
+                 response = FileResponse(open(web_path, 'rb'), content_type='application/vnd.android.package-archive')
+                 response['Content-Disposition'] = f'attachment; filename="{latest_web_file}"'
+                 return response
+
+        # Strategy 2: Check mobile_app/web/app.apk (Generic fallback)
         primary_path = os.path.join(settings.BASE_DIR, 'mobile_app', 'web', 'app.apk')
         
         if os.path.exists(primary_path):
@@ -81,7 +95,7 @@ def download_latest_apk(request):
              response['Content-Disposition'] = 'attachment; filename="app-latest.apk"'
              return response
 
-        # Strategy 2: Look in ffig_backend/static/apk/ for versioned files
+        # Strategy 3: Look in ffig_backend/static/apk/ for versioned files
         apk_dir = os.path.join(settings.BASE_DIR, 'ffig_backend', 'static', 'apk')
         
         files = []
@@ -100,7 +114,7 @@ def download_latest_apk(request):
             response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
             return response
             
-        return HttpResponse("APK not found (checked static/apk and web/app.apk)", status=404)
+        return HttpResponse("APK not found (checked web/, web/app.apk, and static/apk)", status=404)
         
     except Exception as e:
         return HttpResponse(f"Error serving APK: {str(e)}", status=500)

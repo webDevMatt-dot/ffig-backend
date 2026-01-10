@@ -14,7 +14,7 @@ class FeaturedEventView(generics.ListAPIView):
         return Event.objects.filter(is_featured=True, is_active=True)
 
 # 1. List ALL Events (ordered by date)
-class EventListView(generics.ListAPIView):
+class EventListView(generics.ListCreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = EventSerializer
     queryset = Event.objects.all().order_by('date')

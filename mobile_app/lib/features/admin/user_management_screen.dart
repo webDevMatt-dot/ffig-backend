@@ -216,7 +216,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     // Determine current Tier
     String currentTier = 'FREE';
-    if (user['profile'] != null && user['profile'] is Map) {
+    // UserSerializer returns 'tier' at top level
+    if (user['tier'] != null) {
+       currentTier = user['tier'];
+    } else if (user['profile'] != null && user['profile'] is Map) {
        currentTier = user['profile']['tier'] ?? 'FREE';
     } else {
        // Fallback for older API/Structure

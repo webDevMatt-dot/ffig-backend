@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class ManageTickerScreen extends StatefulWidget {
   const ManageTickerScreen({super.key});
@@ -38,7 +39,7 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
         _filterItems();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      DialogUtils.showError(context, "Error", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -99,9 +100,21 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
       
       _fetchItems();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      DialogUtils.showError(context, "Error", e.toString());
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> item) async {
+    try {
+      final newState = !(item['is_active'] ?? true);
+      await _apiService.updateTickerItem(item['id'].toString(), {
+         'is_active': newState,
+      });
+      _fetchItems();
+    } catch (e) {
+      DialogUtils.showError(context, "Failed", e.toString());
     }
   }
 
@@ -110,7 +123,7 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
       await _apiService.deleteItem('ticker', id);
        _fetchItems();
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+       DialogUtils.showError(context, "Delete Failed", e.toString());
     }
   }
 
@@ -250,6 +263,10 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () => _editItem(item),
+                        ),
+                         IconButton(
+                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
+                          onPressed: () => _toggleActive(item),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),

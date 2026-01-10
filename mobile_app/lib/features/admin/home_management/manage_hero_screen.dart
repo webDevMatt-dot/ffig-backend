@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class ManageHeroScreen extends StatefulWidget {
   const ManageHeroScreen({super.key});
@@ -63,8 +64,9 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
         _heroItems = items;
         _filterItems();
       });
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      DialogUtils.showError(context, "Load Failed", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -150,7 +152,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       
       _fetchItems(); // Refresh list
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Operation Failed: $e')));
+      DialogUtils.showError(context, "Action Failed", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -164,7 +166,39 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       await _apiService.deleteItem('hero', id);
        _fetchItems();
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+       DialogUtils.showError(context, "Delete Failed", e.toString());
+    }
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> item) async {
+    final id = item['id'];
+    // Default to true if missing, so we toggle to false
+    final isActive = item['is_active'] ?? true; 
+    final newState = !isActive;
+
+    try {
+      // We use patch to update just is_active
+      // NOTE: AdminApiService needs to support patch or we use updateHeroItem with all fields
+      // Assuming updateHeroItem calls PATCH or PUT. If PUT, we need all fields.
+      // Usually update is PATCH in DRF if partial=True. 
+      // Let's assume _apiService.updateHeroItem handles it or we use raw http.
+      // For safety/speed, I'll use raw http here or update apiservice. 
+      // Actually, I'll use the _apiService.updateHeroItem wrapper but pass current values + new is_active.
+      
+      final Map<String, String> fields = {
+         'title': (item['title'] ?? '').toString(),
+         'action_url': (item['action_url'] ?? '').toString(),
+         'type': (item['type'] ?? 'Announcement').toString(),
+         'is_active': newState.toString(),
+      };
+      
+      // We don't change the image, pass null
+      await _apiService.updateHeroItem(id.toString(), fields, null);
+      
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Item Activated" : "Item Deactivated")));
+      _fetchItems();
+    } catch (e) {
+      DialogUtils.showError(context, "Toggle Failed", e.toString());
     }
   }
   
@@ -373,6 +407,10 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () => _startEditing(item),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
+                          onPressed: () => _toggleActive(item),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),

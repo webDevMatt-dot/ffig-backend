@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class ManageAlertsScreen extends StatefulWidget {
   const ManageAlertsScreen({super.key});
@@ -63,7 +64,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
         _filterItems();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      DialogUtils.showError(context, "Error", e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -155,9 +156,24 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
       }
       _fetchItems();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      DialogUtils.showError(context, "Failed", e.toString());
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> item) async {
+    final id = item['id'];
+    final isActive = item['is_active'] ?? true;
+    final newState = !isActive;
+    
+    try {
+      // Use API Service update
+      await _apiService.updateFlashAlert(id.toString(), {'is_active': newState});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Alert Activated" : "Alert Deactivated")));
+      _fetchItems();
+    } catch (e) {
+      DialogUtils.showError(context, "Failed", e.toString());
     }
   }
 
@@ -166,7 +182,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
       await _apiService.deleteItem('alerts', id);
        _fetchItems();
     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete Failed: $e')));
+       DialogUtils.showError(context, "Delete Failed", e.toString());
     }
   }
 
@@ -343,6 +359,10 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () => _startEditing(item),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
+                          onPressed: () => _toggleActive(item),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
