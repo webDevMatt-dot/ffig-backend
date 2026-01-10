@@ -122,6 +122,12 @@ urlpatterns = [
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/community/', CommunityChatView.as_view(), name='community-chat'),
     
+from home.views import download_latest_apk
+
+urlpatterns = [
+    # ... existing paths ...
+    path('app.apk', download_latest_apk), # Root level redirect/serve
+    
     # Explicitly serve media files (Required for Render/Production if not using S3)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
