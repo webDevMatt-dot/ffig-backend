@@ -153,6 +153,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'mobile_app', 'web'),
+]
+
 # FIX: Define this ALWAYS, not just in production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
