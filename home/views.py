@@ -150,9 +150,23 @@ def download_latest_apk(request):
         if apk_matches:
             debug_info += "Found APKs:\\n" + "\\n".join(apk_matches)
         else:
-            debug_info += "NO APK FILES FOUND IN PROJECT DIRECTORY."
+            debug_info += "NO APK FILES FOUND IN PROJECT DIRECTORY (Recursive Search Results)."
 
-        return HttpResponse(f"APK not found. Debug Info:\\n{debug_info}", status=404)
+        # Force valid response so browser shows text
+        debug_info += f"\\n\\nCURRENT WORKING DIR: {os.getcwd()}"
+        debug_info += f"\\nBASE_DIR: {settings.BASE_DIR}"
+        try:
+             debug_info += f"\\nBASE_DIR LIST: {os.listdir(settings.BASE_DIR)}"
+             mobile_path = os.path.join(settings.BASE_DIR, 'mobile_app')
+             if os.path.exists(mobile_path):
+                 debug_info += f"\\nMOBILE_APP LIST: {os.listdir(mobile_path)}"
+                 web_path = os.path.join(mobile_path, 'web')
+                 if os.path.exists(web_path):
+                     debug_info += f"\\nWEB LIST: {os.listdir(web_path)}"
+        except Exception as e:
+            debug_info += f"\\nList Error: {e}"
+
+        return HttpResponse(f"APK NOT FOUND (DEBUG MODE 200 OK).\\n\\n{debug_info}", status=200, content_type="text/plain")
         
     except Exception as e:
         return HttpResponse(f"Error serving APK: {str(e)}", status=500)
