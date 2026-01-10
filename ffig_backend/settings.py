@@ -102,6 +102,10 @@ DATABASES = {
     )
 }
 
+# Strict Check: Do not allow SQLite on Render
+if os.environ.get('RENDER') and 'sqlite' in DATABASES['default']['ENGINE']:
+    raise RuntimeError("❌ FATAL: Render detected but DATABASE_URL is missing! You must configure the Postgres URL in Environment Variables.")
+
 # Debug: Print DB Engine to logs (Safe for ephemeral logs)
 print(f"🚀 Database Engine Configured: {DATABASES['default']['ENGINE']}")
 if 'sqlite' in DATABASES['default']['ENGINE']:
