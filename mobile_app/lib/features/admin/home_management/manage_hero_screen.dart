@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'dart:io'; 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/admin_api_service.dart';
@@ -20,6 +22,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   final _urlController = TextEditingController();
   String _selectedType = 'Announcement';
   Uint8List? _selectedImageBytes;
+  File? _selectedImageFile;
   
   String? _editingId; // If null, we are creating. If set, we are updating.
   
@@ -75,6 +78,9 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
         _selectedImageBytes = bytes;
+        if (!kIsWeb) {
+            _selectedImageFile = File(pickedFile.path); 
+        }
       });
     }
   }
@@ -95,6 +101,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       _titleController.clear();
       _urlController.clear();
       _selectedImageBytes = null;
+      _selectedImageFile = null;
       _selectedType = _types.first;
     });
   }
@@ -118,18 +125,27 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
         'is_active': 'true',
       };
 
+      // Prepare Image Object (File or Bytes)
+      dynamic imageToUpload;
+      if (_selectedImageBytes != null) {
+          imageToUpload = kIsWeb ? _selectedImageBytes : _selectedImageFile;
+      }
+
       if (_editingId != null) {
          // UPDATE
-         await _apiService.updateHeroItem(_editingId!, fields, _selectedImageBytes);
+         await _apiService.updateHeroItem(_editingId!, fields, imageToUpload);
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Updated!')));
          _cancelEditing();
       } else {
          // CREATE
-         await _apiService.createHeroItem(fields, _selectedImageBytes); // Sending bytes for Web
+         await _apiService.createHeroItem(fields, imageToUpload); 
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Added!')));
          _titleController.clear();
          _urlController.clear();
-         setState(() => _selectedImageBytes = null);
+         setState(() { 
+             _selectedImageBytes = null;
+             _selectedImageFile = null;
+         });
       }
       
       _fetchItems(); // Refresh list
