@@ -37,6 +37,10 @@ echo "   Detected Version: $CLEAN_VERSION"
 cp build/app/outputs/flutter-apk/app-release.apk web/app.apk
 cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
 
+echo "📂 Copying APK to Backend Static Directory (for Root Push)..."
+mkdir -p ../ffig_backend/static/apk
+cp build/app/outputs/flutter-apk/app-release.apk "../ffig_backend/static/apk/app-v$CLEAN_VERSION.apk"
+
 echo "📁 Staging mobile_app files..."
 git add .
 

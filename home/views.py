@@ -72,9 +72,10 @@ def download_latest_apk(request):
     Scans mobile_app/web for the latest app-vX.X.X.apk and serves it.
     """
     try:
-        apk_dir = os.path.join(settings.BASE_DIR, 'mobile_app', 'web')
+        # Look in ffig_backend/static/apk/
+        apk_dir = os.path.join(settings.BASE_DIR, 'ffig_backend', 'static', 'apk')
         if not os.path.exists(apk_dir):
-             return HttpResponse("APK Directory not found", status=404)
+             return HttpResponse(f"APK Directory not found at {apk_dir}", status=404)
         
         # Find all .apk files starting with app-v
         files = [f for f in os.listdir(apk_dir) if f.startswith('app-v') and f.endswith('.apk')]
