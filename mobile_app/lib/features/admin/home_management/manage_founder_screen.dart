@@ -221,6 +221,28 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
           }
         },
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _submitForm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: FfigTheme.primaryBrown,
+                foregroundColor: Colors.white,
+              ),
+              child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white) 
+                  : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -325,20 +347,20 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                  ),
                 const SizedBox(height: 24),
                 
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: FfigTheme.primaryBrown,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white) 
-                        : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
-                  ),
-                ),
+                // SizedBox(
+                //   width: double.infinity,
+                //   height: 50,
+                //   child: ElevatedButton(
+                //     onPressed: _isLoading ? null : _submitForm,
+                //     style: ElevatedButton.styleFrom(
+                //       backgroundColor: FfigTheme.primaryBrown,
+                //       foregroundColor: Colors.white,
+                //     ),
+                //     child: _isLoading 
+                //         ? const CircularProgressIndicator(color: Colors.white) 
+                //         : Text(_editingId != null ? "UPDATE PROFILE" : "PUBLISH PROFILE"),
+                //   ),
+                // ),
               ],
             ),
           ),

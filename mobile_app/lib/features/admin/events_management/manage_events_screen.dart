@@ -160,6 +160,23 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
           }
         },
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
+        ),
+        child: SafeArea(
+           child: SizedBox(
+             height: 50,
+             child: ElevatedButton(
+               onPressed: _isLoading ? null : _submitForm,
+               style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+               child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "SAVE CHANGES" : "CREATE EVENT"),
+             ),
+           ),
+        ),
+      ),
     );
   }
   
@@ -204,15 +221,15 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                    ),
                  ),
 
-              SizedBox(
-                 width: double.infinity,
-                 height: 50,
-                 child: ElevatedButton(
-                   onPressed: _isLoading ? null : _submitForm,
-                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-                   child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "SAVE CHANGES" : "CREATE EVENT"),
-                 ),
-              )
+              // SizedBox(
+              //    width: double.infinity,
+              //    height: 50,
+              //    child: ElevatedButton(
+              //      onPressed: _isLoading ? null : _submitForm,
+              //      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+              //      child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "SAVE CHANGES" : "CREATE EVENT"),
+              //    ),
+              // )
             ],
           ),
         ),

@@ -58,7 +58,13 @@ class _InboxScreenState extends State<InboxScreen> {
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
-            _conversations = jsonDecode(response.body);
+            final allConversations = jsonDecode(response.body) as List;
+            // Filter out Self-Chats immediately
+            _conversations = allConversations.where((c) {
+                final participants = c['participants'] as List;
+                final others = participants.where((p) => p['username'] != _myUsername).toList();
+                return others.isNotEmpty;
+            }).toList();
             _isLoading = false;
           });
         }
@@ -113,24 +119,14 @@ class _InboxScreenState extends State<InboxScreen> {
                   final chat = _conversations[index];
                   final participants = chat['participants'] as List;
                   
-                  // Filter ME out
+                  // Filter ME out to get Title
                   final others = participants.where((p) => p['username'] != _myUsername).toList();
-                  
-                  // Skip Self-Chats (Drafts)
-                  if (others.isEmpty) return const SizedBox.shrink(); // Hide completely
-
-                  // Clean Name
                   final String title = others.map((p) => p['username']).join(", ");
                   
                   final lastMsg = chat['last_message'] != null 
                       ? chat['last_message']['text'] 
                       : "Start chatting...";
                   
-                  // Live Count Logic
-                  // Assuming API structure. If not present, we default to 0.
-                  // Or we confirm unread logic.
-                  // For now, let's look for 'unread_count' from the backend.
-                  // If not explicitly sent, we can check basic `is_read` of last message if NOT me.
                   final int unreadCount = chat['unread_count'] ?? 0; 
 
                   return ListTile(

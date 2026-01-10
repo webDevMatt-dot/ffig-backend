@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
+import '../../../../core/theme/ffig_theme.dart';
 
 class EditEventScreen extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -218,13 +219,34 @@ class _EditEventScreenState extends State<EditEventScreen> {
               ] else 
                 const Padding(padding: EdgeInsets.all(16), child: Text("Save event to add sub-items.", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic), textAlign: TextAlign.center)),
 
-               const SizedBox(height: 32),
-               ElevatedButton(
-                 onPressed: _isLoading ? null : _save,
-                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
-                 child: Text(_isLoading ? "Saving..." : "SAVE EVENT"),
-               )
+               const SizedBox(height: 100),
+               // ElevatedButton(
+               //   onPressed: _isLoading ? null : _save,
+               //   style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
+               //   child: Text(_isLoading ? "Saving..." : "SAVE EVENT"),
+               // )
             ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _save,
+              style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(16),
+                  backgroundColor: FfigTheme.primaryBrown,
+                  foregroundColor: Colors.white,
+              ),
+              child: Text(_isLoading ? "Saving..." : "SAVE EVENT"),
+            ),
           ),
         ),
       ),
