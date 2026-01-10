@@ -124,7 +124,4 @@ urlpatterns = [
     
     # Explicitly serve media files (Required for Render/Production if not using S3)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-    
-    # Explicitly serve APK files (Bypass Static)
-    re_path(r'^(?P<path>app-v.*\.apk)$', serve, {'document_root': APK_ROOT}),
 ]
