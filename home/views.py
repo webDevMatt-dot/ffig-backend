@@ -114,7 +114,18 @@ def download_latest_apk(request):
             response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
             return response
             
-        return HttpResponse("APK not found (checked web/, web/app.apk, and static/apk)", status=404)
+        # Debug Info
+        debug_info = f"Checked:\\n1. Web Dir: {web_dir} (Exists: {os.path.exists(web_dir)})\\n"
+        if os.path.exists(web_dir):
+            debug_info += f"   Files: {os.listdir(web_dir)}\\n"
+        
+        debug_info += f"2. Primary Path: {primary_path} (Exists: {os.path.exists(primary_path)})\\n"
+        
+        debug_info += f"3. Static APK Dir: {apk_dir} (Exists: {os.path.exists(apk_dir)})\\n"
+        if os.path.exists(apk_dir):
+            debug_info += f"   Files: {os.listdir(apk_dir)}\\n"
+
+        return HttpResponse(f"APK not found. Debug Info:\\n{debug_info}", status=404)
         
     except Exception as e:
         return HttpResponse(f"Error serving APK: {str(e)}", status=500)

@@ -57,14 +57,6 @@ class AdminDashboardScreen extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
         ),
         
-        _buildAdminTile(
-          context,
-          icon: Icons.event,
-          title: "Manage Events",
-          subtitle: "Create, edit, and ticket events",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
-        ),
-        
         const SizedBox(height: 24),
         _buildSectionHeader(context, "Approvals & Analytics"),
 
