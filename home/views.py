@@ -70,29 +70,37 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 def download_latest_apk(request):
     """
     Scans mobile_app/web for the latest app-vX.X.X.apk and serves it.
+    Also checks mobile_app/web/app.apk as a valid fallback.
     """
     try:
-        # Look in ffig_backend/static/apk/
+        # Strategy 1: Check mobile_app/web/app.apk (Fixed "Latest" file)
+        # This is often more reliable as deploy.sh ensures it is created
+        primary_path = os.path.join(settings.BASE_DIR, 'mobile_app', 'web', 'app.apk')
+        
+        if os.path.exists(primary_path):
+             response = FileResponse(open(primary_path, 'rb'), content_type='application/vnd.android.package-archive')
+             response['Content-Disposition'] = 'attachment; filename="app-latest.apk"'
+             return response
+
+        # Strategy 2: Look in ffig_backend/static/apk/ for versioned files
         apk_dir = os.path.join(settings.BASE_DIR, 'ffig_backend', 'static', 'apk')
-        if not os.path.exists(apk_dir):
-             return HttpResponse(f"APK Directory not found at {apk_dir}", status=404)
+        files = []
+        if os.path.exists(apk_dir):
+            # Find all .apk files starting with app-v
+            files = [f for f in os.listdir(apk_dir) if f.startswith('app-v') and f.endswith('.apk')]
         
-        # Find all .apk files starting with app-v
-        files = [f for f in os.listdir(apk_dir) if f.startswith('app-v') and f.endswith('.apk')]
-        if not files:
-             return HttpResponse("No APK found", status=404)
-        
-        # Sort to find "latest" just in case multiple exist (though we clean usually)
-        # Assuming filename sort works roughly if version padding is correct, or just pick first one
-        files.sort(reverse=True) 
-        latest_file = files[0]
-        
-        file_path = os.path.join(apk_dir, latest_file)
-        
-        # Serve as attachment
-        response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.android.package-archive')
-        response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
-        return response
+        if files:
+            # Sort to find "latest" just in case multiple exist
+            files.sort(reverse=True) 
+            latest_file = files[0]
+            file_path = os.path.join(apk_dir, latest_file)
+            
+            # Serve as attachment
+            response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.android.package-archive')
+            response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
+            return response
+            
+        return HttpResponse(f"APK not found. Checked: {primary_path} and {apk_dir}", status=404)
         
     except Exception as e:
         return HttpResponse(f"Error serving APK: {str(e)}", status=500)
