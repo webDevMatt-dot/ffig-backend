@@ -113,7 +113,22 @@ def download_latest_apk(request):
             response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.android.package-archive')
             response['Content-Disposition'] = f'attachment; filename="{latest_file}"'
             return response
-            
+
+        # Strategy 4: Check STATIC_ROOT (where collectstatic moves files)
+        # mobile_app/web is in STATICFILES_DIRS, so it should be in STATIC_ROOT/
+        static_root = settings.STATIC_ROOT
+        if os.path.exists(static_root):
+             static_files = [f for f in os.listdir(static_root) if f.startswith('app-v') and f.endswith('.apk')]
+             if static_files:
+                 static_files.sort(reverse=True)
+                 latest_static_file = static_files[0]
+                 static_path = os.path.join(static_root, latest_static_file)
+                 
+                 response = FileResponse(open(static_path, 'rb'), content_type='application/vnd.android.package-archive')
+                 response['Content-Disposition'] = f'attachment; filename="{latest_static_file}"'
+                 return response
+
+
         # Debug Info
         debug_info = f"Checked:\\n1. Web Dir: {web_dir} (Exists: {os.path.exists(web_dir)})\\n"
         if os.path.exists(web_dir):
@@ -124,6 +139,10 @@ def download_latest_apk(request):
         debug_info += f"3. Static APK Dir: {apk_dir} (Exists: {os.path.exists(apk_dir)})\\n"
         if os.path.exists(apk_dir):
             debug_info += f"   Files: {os.listdir(apk_dir)}\\n"
+            
+        debug_info += f"4. STATIC_ROOT: {static_root} (Exists: {os.path.exists(static_root)})\\n"
+        if os.path.exists(static_root):
+            debug_info += f"   Files: {os.listdir(static_root)}\\n"
 
         return HttpResponse(f"APK not found. Debug Info:\\n{debug_info}", status=404)
         
