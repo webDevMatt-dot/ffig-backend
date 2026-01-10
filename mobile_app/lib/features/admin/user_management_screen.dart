@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/ffig_theme.dart';
 import 'dart:math';
+import '../../core/utils/dialog_utils.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -117,10 +118,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         if (mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User created successfully")));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: ${response.body}")));
+        DialogUtils.showError(context, "Creation Failed", "Could not create user.\nBackend says: ${response.body}");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      DialogUtils.showError(context, "Error", "An unexpected error occurred.\n$e");
     }
   }
 
@@ -138,10 +139,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         if (mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User updated")));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed update: ${response.body}")));
+        DialogUtils.showError(context, "Update Failed", "Could not update user.\n${response.body}");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      DialogUtils.showError(context, "Error", "Network error: $e");
     }
   }
 

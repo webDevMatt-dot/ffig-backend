@@ -38,7 +38,7 @@ LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $API_URL_LOGIN \
   -H "Content-Type: application/json" \
   -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
-HTTP_BODY=$(echo "$LOGIN_RESPONSE" | head -n -1)
+HTTP_BODY=$(echo "$LOGIN_RESPONSE" | sed '$d')
 HTTP_STATUS=$(echo "$LOGIN_RESPONSE" | tail -n 1)
 
 if [ "$HTTP_STATUS" != "200" ]; then
