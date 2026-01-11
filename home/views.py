@@ -28,7 +28,8 @@ class FounderProfileViewSet(BaseHomeViewSet):
     def get_queryset(self):
         if self.request.user and self.request.user.is_staff:
             return FounderProfile.objects.all()
-        return FounderProfile.objects.filter(is_active=True)
+        # Public: Active + Not Expired
+        return FounderProfile.objects.filter(is_active=True, expires_at__gt=timezone.now())
 
 class FlashAlertViewSet(BaseHomeViewSet):
     serializer_class = FlashAlertSerializer

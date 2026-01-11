@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async'; // Required for Timer
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
 import 'chat_screen.dart'; 
@@ -20,35 +21,45 @@ class _InboxScreenState extends State<InboxScreen> {
   bool _isLoading = true;
   String? _myUsername;
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserAndConversations();
+    // Refresh every 5 seconds for "Live" counts
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchCurrentUserAndConversations(silent: true));
   }
 
-  Future<void> _fetchCurrentUserAndConversations() async {
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchCurrentUserAndConversations({bool silent = false}) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
     
-    // 1. Fetch "Me" to know who I am
-    try {
-      final meResponse = await http.get(
-        // Use the same URL structure as MemberListScreen
-        Uri.parse('${baseUrl}members/me/'), 
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      
-      if (meResponse.statusCode == 200) {
-        final meData = jsonDecode(meResponse.body);
-        _myUsername = meData['username'];
-      }
-    } catch (e) {
-      if (kDebugMode) print("Error fetching me: $e");
+    // 1. Fetch "Me" (Only once needed really, but kept for simplicity)
+    if (_myUsername == null) {
+        try {
+        final meResponse = await http.get(
+            // Use the same URL structure as MemberListScreen
+            Uri.parse('${baseUrl}members/me/'), 
+            headers: {'Authorization': 'Bearer $token'},
+        );
+        
+        if (meResponse.statusCode == 200) {
+            final meData = jsonDecode(meResponse.body);
+            _myUsername = meData['username'];
+        }
+        } catch (e) {
+        if (kDebugMode) print("Error fetching me: $e");
+        }
     }
 
     // 2. Fetch Conversations
-    // const String baseUrl = '...';
-    
     try {
       final response = await http.get(
         Uri.parse('${baseUrl}chat/conversations/'), 
@@ -71,7 +82,7 @@ class _InboxScreenState extends State<InboxScreen> {
       }
     } catch (e) {
       if (kDebugMode) print(e);
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && !silent) setState(() => _isLoading = false);
     }
   }
 
@@ -84,7 +95,7 @@ class _InboxScreenState extends State<InboxScreen> {
     
     // Filter ME out
     final others = participants.where((p) => p['username'] != _myUsername).toList();
-    if (others.isEmpty) return "Me (Draft)"; // Should typically not happen in normal chats
+    if (others.isEmpty) return "Me (Draft)"; 
     
     return others.map((p) => p['username']).join(", ");
   }
@@ -179,7 +190,7 @@ class _InboxScreenState extends State<InboxScreen> {
                             recipientName: title,
                           ),
                         ),
-                      ).then((_) => _fetchCurrentUserAndConversations()); // Refresh on return
+                      ).then((_) => _fetchCurrentUserAndConversations(silent: true)); // Refresh on return
                     },
                   );
                 },

@@ -23,15 +23,57 @@ class HeroItem(models.Model):
     def __str__(self):
         return self.title
 
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth.models import User
+
 class FounderProfile(models.Model):
-    name = models.CharField(max_length=200)
-    photo = models.ImageField(upload_to='founder_photos/')
-    bio = models.TextField()
-    country = models.CharField(max_length=100)
-    business_name = models.CharField(max_length=200)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, help_text="Select an existing user to auto-fill details")
+    name = models.CharField(max_length=200, blank=True)
+    photo = models.ImageField(upload_to='founder_photos/', blank=True, null=True)
+    bio = models.TextField(blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    business_name = models.CharField(max_length=200, blank=True)
     is_premium = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="Defaults to 7 days from now")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # 1. Auto-set Expiry if new or not set
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+        
+        # 2. Auto-populate from User Profile if user is selected
+        if self.user:
+            try:
+                # Assuming the related name is 'profile' or reverse lookup is accessible
+                # Based on members/models.py: Profile.user = OneToOneField(User)
+                user_profile = self.user.profile 
+                
+                if not self.name:
+                    self.name = f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+                
+                if not self.business_name:
+                    self.business_name = user_profile.business_name
+                
+                if not self.country:
+                    self.country = user_profile.location
+                
+                if not self.bio:
+                    self.bio = user_profile.bio
+                
+                # Check tier for premium status logic (if applicable)
+                if user_profile.tier == 'PREMIUM':
+                    self.is_premium = True
+                
+                # Note: Handling ImageField copying is tricky without duplicating files.
+                # For now, we'll leave photo manual or rely on frontend to fallback to user photo URL if this is empty.
+                
+            except Exception as e:
+                print(f"Error populating FounderProfile from User: {e}")
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

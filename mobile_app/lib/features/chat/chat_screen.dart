@@ -208,7 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              msg['text'],
+                              isMe ? "You: ${msg['text']}" : "$username: ${msg['text']}",
                               style: const TextStyle(fontSize: 16),
                             ),
                             const SizedBox(height: 4),
@@ -247,10 +247,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText: "Type a message...",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                   ),
                 ),

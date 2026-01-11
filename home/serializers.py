@@ -12,9 +12,25 @@ class HeroItemSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class FounderProfileSerializer(serializers.ModelSerializer):
+    photo = serializers.SerializerMethodField()
+    
     class Meta:
         model = FounderProfile
         fields = '__all__'
+
+    def get_photo(self, obj):
+        # 1. Use uploaded photo if available
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+            
+        # 2. Fallback to User Profile photo_url if Linked
+        if obj.user and hasattr(obj.user, 'profile'):
+            return obj.user.profile.photo_url
+            
+        return None
 
 class FlashAlertSerializer(serializers.ModelSerializer):
     class Meta:

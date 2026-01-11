@@ -14,9 +14,20 @@ class HeroItemAdmin(admin.ModelAdmin):
 
 @admin.register(FounderProfile)
 class FounderProfileAdmin(admin.ModelAdmin):
-    list_display = ('name', 'business_name', 'country', 'is_active', 'is_premium')
-    list_editable = ('is_active', 'is_premium')
+    list_display = ('name', 'user', 'business_name', 'country', 'is_active', 'expires_at')
+    list_editable = ('is_active',)
     search_fields = ('name', 'business_name', 'country')
+    autocomplete_fields = ['user'] # Requires UserAdmin to have search_fields
+    
+    fieldsets = (
+        ('Spotlight Selection', {
+            'fields': ('user', 'expires_at', 'is_active')
+        }),
+        ('Auto-Filled Details (Editable)', {
+            'fields': ('name', 'business_name', 'country', 'bio', 'photo', 'is_premium'),
+            'description': "These fields are auto-filled from the selected user's profile upon save, but you can override them."
+        }),
+    )
 
 @admin.register(FlashAlert)
 class FlashAlertAdmin(admin.ModelAdmin):
