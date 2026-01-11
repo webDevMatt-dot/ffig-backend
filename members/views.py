@@ -2,6 +2,7 @@ from rest_framework import generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from .models import Profile
 from .serializers import ProfileSerializer
 from core.permissions import IsPremiumUser
@@ -60,6 +61,24 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         # Magic: Always return the profile of the logged-in user
         return self.request.user.profile
+
+class ToggleFavoriteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        from django.contrib.auth.models import User # Import here to avoid circular imports if any
+        
+        target_user = get_object_or_404(User, id=user_id)
+        profile = request.user.profile
+        
+        if target_user in profile.favorites.all():
+            profile.favorites.remove(target_user)
+            is_favorite = False
+        else:
+            profile.favorites.add(target_user)
+            is_favorite = True
+            
+        return Response({'status': 'success', 'is_favorite': is_favorite})
 
 # --- USER SUBMISSION VIEWS ---
 

@@ -29,7 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int? _activeConversationId;
   Timer? _timer;
   bool _isLoading = true; // Add loading state
-  dynamic _replyMessage; // Swipe to reply state
+  Map<String, dynamic>? _replyMessage; // Swipe to reply state (Use Map instead of dynamic for type safety)
   final ItemScrollController _itemScrollController = ItemScrollController();
   int? _highlightedMessageId; // For highlighting searched message
 
@@ -149,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'text': text,
           'recipient_id': widget.recipientId, // Used for the FIRST message
           'conversation_id': _activeConversationId, // Used for replies
-          if (_replyMessage != null) 'reply_to_id': _replyMessage['id']
+          if (_replyMessage != null) 'reply_to_id': _replyMessage!['id']
         }),
       );
 
@@ -238,6 +238,48 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Future<void> _toggleFavorite() async {
+      int? targetId = widget.recipientId;
+      
+      // Fallback: Try to find from messages if null (e.g. came from push notification or simple ID link)
+      if (targetId == null && _messages.isNotEmpty) {
+          final firstMsg = _messages.first;
+          if (firstMsg['sender']['id'] != null) { 
+             // Logic check: ensure it's not ME
+             targetId = firstMsg['sender']['id'];
+          }
+      }
+
+      if (targetId == null) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cannot favorite this user (ID missing).")));
+           return;
+      }
+
+      try {
+          const storage = FlutterSecureStorage();
+          final token = await storage.read(key: 'access_token');
+          final response = await http.post(
+              Uri.parse('${baseUrl}members/favorites/toggle/$targetId/'),
+              headers: {'Authorization': 'Bearer $token'}
+          );
+          
+          if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              final isFav = data['is_favorite'];
+              if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(isFav ? "User added to favourites" : "User removed from favourites"),
+                      backgroundColor: FfigTheme.primaryBrown,
+                  ));
+              }
+          } else {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update favourites.")));
+          }
+      } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Network error updating favourites.")));
+      }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isCommunity = widget.recipientName == "Community Chat";
@@ -253,6 +295,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     if (value == 'mute') _muteChat();
                     if (value == 'block') _blockUser();
                     if (value == 'report') _reportUser(widget.recipientName);
+                    if (value == 'favorite') _toggleFavorite();
                     if (value == 'search') {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Search feature coming soon.")));
                     }
@@ -267,6 +310,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     } else {
                         return [
                             const PopupMenuItem(value: 'search', child: Text("Search")),
+                            const PopupMenuItem(value: 'favorite', child: Text("Favourite User")),
                             const PopupMenuItem(value: 'mute', child: Text("Mute Chat")),
                             const PopupMenuItem(value: 'clear', child: Text("Clear Chat")),
                             const PopupMenuItem(value: 'block', child: Text("Block User")),
@@ -312,6 +356,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = item;
                 final isMe = msg['is_me'];
                 final isRead = msg['is_read'] ?? false;
+                final isHighlighted = msg['id'] == _highlightedMessageId;
                 final username = msg['sender']['username'] ?? 'Unknown';
                 final createdAt = DateTime.parse(msg['created_at']).toLocal();
                 final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
@@ -332,8 +377,24 @@ class _ChatScreenState extends State<ChatScreen> {
                          } catch (e) { /* ignore */ }
                     }
                 }
-
-                final isHighlighted = msg['id'] == _highlightedMessageId;
+                
+                // Username Visibility Logic
+                bool showUsername = false;
+                if (isCommunity && !isMe) {
+                    // List is REVERSED. Index 0 is bottom. Index MAX is top.
+                    // Previous message (visually above) is at `index + 1`.
+                    if (index == _groupedMessages.length - 1) {
+                        // Topmost message always shows name (if it's a message)
+                         showUsername = true; 
+                    } else {
+                        final nextMsg = _groupedMessages[index + 1]; // Visually above
+                        // If it's a header or different sender, show name
+                        if (nextMsg['is_header'] == true || 
+                            nextMsg['sender']['id'] != msg['sender']['id']) {
+                            showUsername = true;
+                        }
+                    }
+                }
 
                 return Dismissible(
                   key: Key(msg['id'].toString()),
@@ -353,39 +414,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: Align(
                   alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Row(
-                    mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.end, // Align avatar to bottom of bubble
-                    children: [
-                      if (!isMe) ...[
-                        GestureDetector(
-                          onTap: () {
-                             // Navigate to Public Profile
-                             Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
-                                userId: msg['sender']['id'],
-                                username: username,
-                                initialData: msg['sender'], // Pass data we already have
-                             )));
-                          },
-                          behavior: HitTestBehavior.opaque, // Ensure clicks are caught
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
-                            child: UserAvatar(
-                                radius: 16, // Small avatar
-                                imageUrl: msg['sender']['photo'] ?? msg['sender']['photo_url'],
-                                username: username,
-                            ),
-                          ),
-                        ),
-                      ],
-                      Flexible( // Use Flexible to allow shrinking
-                          child: Column(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    child: Column(
                             crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                             children: [
                               // Name label only if group or just design choice. Let's keep name above bubble if not me
-                              if (!isMe)
+                              if (showUsername)
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                                  padding: const EdgeInsets.only(left: 4, bottom: 2, top: 4),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -402,9 +439,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                      if (!isMe) _reportUser(username);
                                 },
                                 child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.55), // Limit width
-                                  margin: const EdgeInsets.symmetric(vertical: 2),
-                                  padding: const EdgeInsets.all(12),
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
                                   decoration: BoxDecoration(
                                     color: isHighlighted 
                                         ? Colors.amber.withOpacity(0.4) 
@@ -487,9 +522,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             ],
                           ),
                       ),
-                    ],
                   ),
-                ));
+                );
               },
             ),
           ),
@@ -507,11 +541,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Replying to ${_replyMessage['sender']['username']}",
+                          "Replying to ${_replyMessage!['sender']['username']}",
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                         Text(
-                          _replyMessage['text'],
+                          _replyMessage!['text'],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -559,4 +593,3 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-

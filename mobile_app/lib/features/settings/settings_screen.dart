@@ -23,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = "";
   bool _isPremium = false;
   String _tier = "FREE";
+  bool _readReceiptsEnabled = true; // Default true
   
   @override
   void initState() {
@@ -48,6 +49,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _email = data['email'] ?? "Unknown";
               _isPremium = data['is_premium'] ?? false;
               _tier = data['tier'] ?? "FREE";
+              final profile = data['profile'] ?? {}; // Ensure profile data is included in backend or separate call
+              // Note: Members/me/ endpoint needs to return profile data including `read_receipts_enabled`
+              // Since we just added the field to model, we rely on Serializer update.
+              // Assuming ProfileSerializer is nested or we create a separate one.
+              if (data['profile'] != null) {
+                 _readReceiptsEnabled = data['profile']['read_receipts_enabled'] ?? true;
+              }
             });
           }
         }
@@ -140,6 +148,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
           }
       }
+  }
+
+  Future<void> _updatePrivacy(bool enabled) async {
+       try {
+           const storage = FlutterSecureStorage();
+           final token = await storage.read(key: 'access_token');
+           await http.patch(
+               Uri.parse('${baseUrl}members/me/'), // Ensure this endpoint handles profile update
+               headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+               body: jsonEncode({'profile': {'read_receipts_enabled': enabled}})
+           );
+       } catch (e) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update privacy settings.")));
+       }
   }
 
   void _showPasswordChangeDialog() {
@@ -241,6 +263,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
+          // 3. Privacy
+          _buildSectionHeader("Privacy"),
+          SwitchListTile(
+            title: const Text("Read Receipts"),
+            subtitle: const Text("Let others know when you've read their messages."),
+            value: _readReceiptsEnabled,
+            onChanged: (val) {
+                setState(() => _readReceiptsEnabled = val);
+                _updatePrivacy(val);
+            },
+          ),
+          
+          const Divider(),
+
           // 3. Account & Subscription
           _buildSectionHeader("Account & Subscription"),
           Container(
@@ -273,9 +309,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                    children: [
                       if (_tier == 'PREMIUM')
                        const Icon(Icons.verified, color: Colors.amber) // Gold
-                     else if (_tier == 'STANDARD')
+                      else if (_tier == 'STANDARD')
                        const Icon(Icons.verified, color: FfigTheme.primaryBrown) // Brown
-                     else
+                      else
                        const Icon(Icons.verified_outlined, color: Colors.grey),
                        
                      const SizedBox(width: 12),

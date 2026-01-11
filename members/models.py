@@ -33,6 +33,12 @@ class Profile(models.Model):
     
     # Deprecated (Map to Tier later)
     is_premium = models.BooleanField(default=False) 
+    
+    # Privacy Settings
+    read_receipts_enabled = models.BooleanField(default=True)
+    
+    # Favorites
+    favorites = models.ManyToManyField(User, related_name='favorited_by', blank=True)
 
     # We'll stick to a placeholder image for now to save setup time
     photo_url = models.URLField(blank=True, default="https://ui-avatars.com/api/?background=D4AF37&color=fff&name=Founder")

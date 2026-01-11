@@ -1,9 +1,11 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q, Count
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from core.permissions import IsPremiumUser, IsStandardUser
+from django.db.models import Q
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
@@ -17,6 +19,31 @@ class ConversationListView(generics.ListAPIView):
         recipient_id = self.request.query_params.get('recipient_id')
         if recipient_id:
             queryset = queryset.filter(participants__id=recipient_id)
+
+        # Search Filter
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(participants__username__icontains=search) | 
+                Q(messages__text__icontains=search)
+            ).distinct()
+            
+        # Filter Logic
+        filter_param = self.request.query_params.get('filter')
+        if filter_param == 'unread':
+            # Filter conversations with unread messages from OTHERS
+            queryset = queryset.annotate(
+                unread_c=Count('messages', filter=Q(messages__is_read=False) & ~Q(messages__sender=self.request.user))
+            ).filter(unread_c__gt=0)
+        elif filter_param == 'favorites':
+            # Filter conversations where other participant is favorited
+            # Note: favorites is on 'profile'
+            # We want conversations where ANY participant IS IN my favorites list
+            # Since I am a participant, and I can't favorite myself, this works naturally to find the other person.
+            if hasattr(self.request.user, 'profile'):
+                favorites = self.request.user.profile.favorites.all()
+                queryset = queryset.filter(participants__in=favorites).distinct()
+            
         return queryset
 
 # 2. Get messages for a specific conversation

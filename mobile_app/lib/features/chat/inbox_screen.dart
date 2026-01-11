@@ -7,8 +7,9 @@ import 'dart:async'; // Required for Timer
 import 'package:intl/intl.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
-import 'chat_screen.dart'; 
 import '../../core/api/constants.dart';
+import '../../core/theme/ffig_theme.dart';
+import '../community/public_profile_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -17,28 +18,93 @@ class InboxScreen extends StatefulWidget {
   State<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _InboxScreenState extends State<InboxScreen> {
-  List<dynamic> _conversations = [];
-  bool _isLoading = true;
-  String? _myUsername;
+class MiniProfileCard extends StatelessWidget {
+  final String username;
+  final String? bio;
+  final String? photoUrl;
+  final String? tier;
+  final VoidCallback onViewProfile;
 
+  const MiniProfileCard({
+      super.key, 
+      required this.username, 
+      this.bio, 
+      this.photoUrl, 
+      this.tier,
+      required this.onViewProfile
+  });
+
+  @override
+  Widget build(BuildContext context) {
+      return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                      UserAvatar(radius: 40, imageUrl: photoUrl, username: username),
+                      const SizedBox(height: 12),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          if (tier == 'PREMIUM') ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.verified, color: Colors.amber, size: 20),
+                          ]
+                      ]),
+                      if (bio != null && bio!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(bio!, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Colors.grey[600]))
+                      ],
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                          onPressed: onViewProfile,
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: FfigTheme.primaryBrown,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
+                          ),
+                          child: const Text("View Full Profile")
+                      )
+                  ],
+              ),
+          ),
+      );
+  }
+}
+
+class _InboxScreenState extends State<InboxScreen> {
+  bool _isLoading = true;
+  List<dynamic> _conversations = [];
+  String? _myUsername;
   Timer? _timer;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  String _selectedFilter = 'all'; // 'all', 'unread', 'favorites'
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserAndConversations();
     // Refresh every 5 seconds for "Live" counts
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchCurrentUserAndConversations(silent: true));
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        // Only refresh if NOT searching (to avoid overwriting search results with full list)
+        if (_searchController.text.isEmpty) {
+            _fetchCurrentUserAndConversations(silent: true);
+        }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _debounce?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchCurrentUserAndConversations({bool silent = false}) async {
+  Future<void> _fetchCurrentUserAndConversations({bool silent = false, String? search}) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
     
@@ -62,8 +128,13 @@ class _InboxScreenState extends State<InboxScreen> {
 
     // 2. Fetch Conversations
     try {
+      String url = '${baseUrl}chat/conversations/?filter=$_selectedFilter';
+      if (search != null && search.isNotEmpty) {
+          url += '&search=$search';
+      }
+
       final response = await http.get(
-        Uri.parse('${baseUrl}chat/conversations/'), 
+        Uri.parse(url), 
         headers: {'Authorization': 'Bearer $token'}
       );
 
@@ -98,20 +169,6 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
-  String _getOtherParticipantName(List<dynamic> participants) {
-    if (_myUsername == null) {
-        // Fallback if we failed to fetch "me"
-        // Return everybody joined
-        return participants.map((p) => p['username']).join(", ");
-    }
-    
-    // Filter ME out
-    final others = participants.where((p) => p['username'] != _myUsername).toList();
-    if (others.isEmpty) return "Me (Draft)"; 
-    
-    return others.map((p) => p['username']).join(", ");
-  }
-
   String _formatTimestamp(String? isoString) {
       if (isoString == null) return "";
       try {
@@ -135,22 +192,54 @@ class _InboxScreenState extends State<InboxScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("MESSAGES")),
-      body: _isLoading 
+      body: Column(
+        children: [
+           // Search Bar
+           Padding(
+             padding: const EdgeInsets.all(12.0),
+             child: TextField(
+               controller: _searchController,
+               decoration: InputDecoration(
+                   hintText: "Search messages...",
+                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                   filled: true,
+                   fillColor: Colors.grey[200],
+                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0)
+               ),
+               onChanged: (val) {
+                   if (_debounce?.isActive ?? false) _debounce!.cancel();
+                   _debounce = Timer(const Duration(milliseconds: 500), () {
+                       _fetchCurrentUserAndConversations(search: val);
+                   });
+               },
+             ),
+           ),
+           // Filter Chips
+           SingleChildScrollView(
+             scrollDirection: Axis.horizontal,
+             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+             child: Row(
+               children: [
+                  _buildFilterChip('All', 'all'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Unread', 'unread'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Favourites', 'favorites'),
+               ],
+             ),
+           ),
+           Expanded(
+             child: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : _conversations.isEmpty
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                    Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[300]),
                     const SizedBox(height: 16),
-                    const Text("No messages yet."),
-                    TextButton(
-                      onPressed: () {
-                         // Navigation logic if needed
-                      }, 
-                      child: const Text("Find a founder to chat with!")
-                    )
+                    Text("No messages found.", style: TextStyle(color: Colors.grey[600])),
                   ],
                 ),
               )
@@ -173,9 +262,33 @@ class _InboxScreenState extends State<InboxScreen> {
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: UserAvatar(
-                      radius: 24, 
-                      username: title,
+                    leading: InkWell(
+                        onTap: () {
+                             // Show Mini Profile
+                             final targetUser = others.isNotEmpty ? others.first : null;
+                             if (targetUser != null) {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) => MiniProfileCard(
+                                          username: targetUser['username'],
+                                          photoUrl: targetUser['photo'] ?? targetUser['photo_url'], 
+                                          tier: targetUser['tier'],
+                                          bio: targetUser['bio'], // Backend might need to send this in ConversationSerializer if missing
+                                          onViewProfile: () {
+                                              Navigator.pop(context); // Close dialog
+                                              Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
+                                                  userId: targetUser['id'],
+                                                  username: targetUser['username'],
+                                              )));
+                                          }
+                                      )
+                                  );
+                             }
+                        },
+                        child: UserAvatar(
+                          radius: 24, 
+                          username: title,
+                        ),
                     ),
                     title: Text(
                       title, 
@@ -224,6 +337,7 @@ class _InboxScreenState extends State<InboxScreen> {
                         MaterialPageRoute(
                           builder: (context) => ChatScreen(
                             conversationId: chat['id'],
+                            recipientId: others.isNotEmpty ? others.first['id'] : null,
                             recipientName: title,
                           ),
                         ),
@@ -232,6 +346,35 @@ class _InboxScreenState extends State<InboxScreen> {
                   );
                 },
               ),
+           ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+      final isSelected = _selectedFilter == value;
+      return FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (bool selected) {
+            setState(() {
+                _selectedFilter = value;
+                _isLoading = true;
+            });
+            _fetchCurrentUserAndConversations();
+        },
+        backgroundColor: Colors.grey[200],
+        selectedColor: FfigTheme.primaryBrown.withOpacity(0.2),
+        labelStyle: TextStyle(
+            color: isSelected ? FfigTheme.primaryBrown : Colors.black,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+        ),
+        showCheckmark: false,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: isSelected ? const BorderSide(color: FfigTheme.primaryBrown) : BorderSide.none
+        ),
+      );
   }
 }
