@@ -372,7 +372,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                      if (!isMe) _reportUser(username);
                                 },
                                 child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.60), // Limit width
                                   margin: const EdgeInsets.symmetric(vertical: 2),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
