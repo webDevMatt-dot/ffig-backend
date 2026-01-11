@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async'; // For Timer exception
 import '../marketing/business_profile_editor_screen.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../marketing/marketing_requests_screen.dart';
@@ -18,11 +19,21 @@ class PremiumScreen extends StatefulWidget {
 class _PremiumScreenState extends State<PremiumScreen> {
   List<dynamic> _vipPerks = [];
   bool _isLoading = true;
+  int _communityUnreadCount = 0;
+  Timer? _chatTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchPremiumData();
+    _fetchCommunityUnread();
+    _chatTimer = Timer.periodic(const Duration(seconds: 10), (timer) => _fetchCommunityUnread());
+  }
+
+  @override
+  void dispose() {
+    _chatTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchPremiumData() async {
@@ -46,6 +57,27 @@ class _PremiumScreenState extends State<PremiumScreen> {
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
       print(e);
+    }
+  }
+
+  Future<void> _fetchCommunityUnread() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}chat/community/'), 
+        headers: {'Authorization': 'Bearer $token'}
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+           setState(() {
+             _communityUnreadCount = data['unread_count'] ?? 0;
+           });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error fetching community badge: $e");
     }
   }
 
@@ -78,7 +110,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeaderAction(context, "Community\nChat", Icons.forum, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const CommunityChatScreen()))),
+                          _buildHeaderAction(context, "Community\nChat", Icons.forum, 
+                             () => Navigator.push(context, MaterialPageRoute(builder: (c) => const CommunityChatScreen())),
+                             badgeCount: _communityUnreadCount
+                          ),
                           _buildHeaderAction(context, "Manage\nBusiness", Icons.business, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const BusinessProfileEditorScreen()))),
                           _buildHeaderAction(context, "Marketing\nCenter", Icons.campaign, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const MarketingRequestsScreen()))),
                         ],
@@ -108,19 +143,41 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
   }
 
-  Widget _buildHeaderAction(BuildContext context, String label, IconData icon, VoidCallback onTap) {
+  Widget _buildHeaderAction(BuildContext context, String label, IconData icon, VoidCallback onTap, {int badgeCount = 0}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor, 
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3))
-            ),
-            child: Icon(icon, color: FfigTheme.accentBrown, size: 30),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+                Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor, 
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3))
+                    ),
+                    child: Icon(icon, color: FfigTheme.accentBrown, size: 30),
+                ),
+                if (badgeCount > 0)
+                    Positioned(
+                        right: -5,
+                        top: -5,
+                        child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Text(
+                                badgeCount.toString(),
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                        ),
+                    ),
+            ],
           ),
           const SizedBox(height: 10),
           Text(label, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w600, fontSize: 12))

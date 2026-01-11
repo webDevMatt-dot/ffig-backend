@@ -25,7 +25,7 @@ class FounderProfileAdmin(admin.ModelAdmin):
         }),
         ('Auto-Filled Details (Editable)', {
             'fields': ('name', 'business_name', 'country', 'bio', 'photo', 'is_premium'),
-            'description': "These fields are auto-filled from the selected user's profile upon save, but you can override them."
+            'description': "<strong>LEAVE THESE BLANK</strong> to auto-fill from the selected User's profile. You can fill them manually to override specific details."
         }),
     )
 

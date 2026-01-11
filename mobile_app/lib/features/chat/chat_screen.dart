@@ -7,6 +7,8 @@ import 'dart:async'; // For timer
 import 'package:intl/intl.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
+import '../../shared_widgets/user_avatar.dart';
+import '../community/public_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
@@ -26,6 +28,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int? _activeConversationId;
   Timer? _timer;
   bool _isLoading = true; // Add loading state
+  dynamic _replyMessage; // Swipe to reply state
 
   @override
   void initState() {
@@ -112,7 +115,8 @@ class _ChatScreenState extends State<ChatScreen> {
         body: jsonEncode({
           'text': text,
           'recipient_id': widget.recipientId, // Used for the FIRST message
-          'conversation_id': _activeConversationId // Used for replies
+          'conversation_id': _activeConversationId, // Used for replies
+          if (_replyMessage != null) 'reply_to_id': _replyMessage['id']
         }),
       );
 
@@ -122,6 +126,9 @@ class _ChatScreenState extends State<ChatScreen> {
         if (_activeConversationId == null) {
           setState(() => _activeConversationId = data['conversation_id']);
         }
+        setState(() {
+            _replyMessage = null;
+        });
         _fetchMessages(silent: true); // Refresh immediately
       }
     } catch (e) {
@@ -129,12 +136,79 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _clearChat() {
+    setState(() {
+      _messages.clear();
+      _groupedMessages.clear();
+    });
+  }
+
+  void _muteChat() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chat muted.")));
+  }
+
+  void _blockUser() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User blocked.")));
+  }
+
+  void _reportUser(String? username) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Report ${username ?? 'User'}?"),
+        content: const Text("Would you like to report this user for inappropriate behavior?"),
+        actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            TextButton(
+                onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User reported. Thank you.")));
+                }, 
+                child: const Text("Report", style: TextStyle(color: Colors.red))
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isCommunity = widget.recipientName == "Community Chat";
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.recipientName),
         elevation: 1,
+        actions: [
+            PopupMenuButton<String>(
+                onSelected: (value) {
+                    if (value == 'clear') _clearChat();
+                    if (value == 'mute') _muteChat();
+                    if (value == 'block') _blockUser();
+                    if (value == 'report') _reportUser(widget.recipientName);
+                    if (value == 'search') {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Search feature coming soon.")));
+                    }
+                },
+                itemBuilder: (BuildContext context) {
+                    if (isCommunity) {
+                        return [
+                            const PopupMenuItem(value: 'search', child: Text("Search")),
+                            const PopupMenuItem(value: 'mute', child: Text("Mute Notifications")),
+                            const PopupMenuItem(value: 'clear', child: Text("Clear Chat")),
+                        ];
+                    } else {
+                        return [
+                            const PopupMenuItem(value: 'search', child: Text("Search")),
+                            const PopupMenuItem(value: 'mute', child: Text("Mute Chat")),
+                            const PopupMenuItem(value: 'clear', child: Text("Clear Chat")),
+                            const PopupMenuItem(value: 'block', child: Text("Block User")),
+                            const PopupMenuItem(value: 'report', child: Text("Report User")),
+                        ];
+                    }
+                },
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -174,70 +248,158 @@ class _ChatScreenState extends State<ChatScreen> {
                 final createdAt = DateTime.parse(msg['created_at']).toLocal();
                 final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
 
-                return Align(
+                return Dismissible(
+                  key: Key(msg['id'].toString()),
+                  direction: DismissDirection.startToEnd,
+                  confirmDismiss: (direction) async {
+                    setState(() {
+                      _replyMessage = msg;
+                    });
+                    // Vibrate or sound could go here
+                    return false; // Don't actually dismiss
+                  },
+                  background: Container(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 20),
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.reply, color: FfigTheme.primaryBrown),
+                  ),
+                  child: Align(
                   alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end, // Align avatar to bottom of bubble
                     children: [
-                      if (!isMe)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 12, bottom: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                              if (msg['sender']['tier'] == 'PREMIUM') ...[
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified, color: Colors.amber, size: 14),
-                              ] else if (msg['sender']['tier'] == 'STANDARD') ...[
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 14),
-                              ]
-                            ],
+                      if (!isMe) ...[
+                        GestureDetector(
+                          onTap: () {
+                             // Navigate to Public Profile
+                             Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
+                                userId: msg['sender']['id'],
+                                username: username,
+                                initialData: msg['sender'], // Pass data we already have
+                             )));
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
+                            child: UserAvatar(
+                                radius: 16, // Small avatar
+                                imageUrl: msg['sender']['photo'] ?? msg['sender']['photo_url'],
+                                username: username,
+                            ),
                           ),
                         ),
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              isMe ? "You: ${msg['text']}" : "$username: ${msg['text']}",
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  timeString,
-                                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                ),
-                                if (isMe) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    isRead ? Icons.done_all : Icons.check, 
-                                    size: 14,
-                                    color: isRead ? Colors.blueAccent : Colors.black54, 
+                      ],
+                      Flexible( // Use Flexible to allow shrinking
+                          child: Column(
+                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            children: [
+                              // Name label only if group or just design choice. Let's keep name above bubble if not me
+                              if (!isMe)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(username, style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                      if (msg['sender']['tier'] == 'PREMIUM') ...[
+                                        const SizedBox(width: 2),
+                                        const Icon(Icons.verified, color: Colors.amber, size: 10),
+                                      ]
+                                    ],
                                   ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
+                                ),
+                              GestureDetector(
+                                onLongPress: () {
+                                     if (!isMe) _reportUser(username);
+                                },
+                                child: Container(
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width
+                                  margin: const EdgeInsets.symmetric(vertical: 2),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
+                                    borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(16),
+                                        topRight: const Radius.circular(16),
+                                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                                        bottomRight: isMe ? Radius.zero : const Radius.circular(16)
+                                    ),
+                                    border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                        // ... content ...
+                                      Text(
+                                        msg['text'],
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            timeString,
+                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                          ),
+                                          if (isMe) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              isRead ? Icons.done_all : Icons.check, 
+                                              size: 14,
+                                              color: isRead ? Colors.blueAccent : Colors.black54, 
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                       ),
                     ],
                   ),
-                );
+                ));
               },
             ),
           ),
+          // Reply Preview
+          if (_replyMessage != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey[100],
+              child: Row(
+                children: [
+                  const Icon(Icons.reply, color: FfigTheme.primaryBrown),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Replying to ${_replyMessage['sender']['username']}",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        Text(
+                          _replyMessage['text'],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => setState(() => _replyMessage = null),
+                  )
+                ],
+              ),
+            ),
+          
           // Input Bar
           Container(
             padding: const EdgeInsets.all(8),
