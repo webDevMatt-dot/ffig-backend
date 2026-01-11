@@ -3,9 +3,57 @@ import '../../shared_widgets/upgrade_modal.dart';
 import '../community/member_list_screen.dart';
 import '../events/events_screen.dart';
 import '../chat/community_chat_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:async';
+import '../../core/api/constants.dart';
+import 'package:flutter/foundation.dart';
 
-class StandardScreen extends StatelessWidget {
+class StandardScreen extends StatefulWidget {
   const StandardScreen({super.key});
+
+  @override
+  State<StandardScreen> createState() => _StandardScreenState();
+}
+
+class _StandardScreenState extends State<StandardScreen> {
+  int _communityUnreadCount = 0;
+  Timer? _chatTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCommunityUnread();
+    _chatTimer = Timer.periodic(const Duration(seconds: 10), (timer) => _fetchCommunityUnread());
+  }
+
+  @override
+  void dispose() {
+    _chatTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchCommunityUnread() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}chat/community/'), 
+        headers: {'Authorization': 'Bearer $token'}
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+           setState(() {
+             _communityUnreadCount = data['unread_count'] ?? 0;
+           });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error fetching community badge: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +84,12 @@ class StandardScreen extends StatelessWidget {
                    const SizedBox(height: 24),
                    Row(
                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                     crossAxisAlignment: CrossAxisAlignment.start,
                      children: [
-                       _buildAction(context, "Community Chat", Icons.chat_bubble_outline, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const CommunityChatScreen()))),
+                       _buildAction(context, "Community\nChat", Icons.chat_bubble_outline, 
+                           () => Navigator.push(context, MaterialPageRoute(builder: (c) => const CommunityChatScreen())),
+                           badgeCount: _communityUnreadCount
+                       ),
                        _buildAction(context, "Events", Icons.calendar_today, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const EventsScreen()))),
                      ],
                    )
@@ -85,18 +137,40 @@ class StandardScreen extends StatelessWidget {
     );
   }
   
-  Widget _buildAction(BuildContext context, String label, IconData icon, VoidCallback onTap) {
+  Widget _buildAction(BuildContext context, String label, IconData icon, VoidCallback onTap, {int badgeCount = 0}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.blueGrey.shade700, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: Colors.white),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.blueGrey.shade700, borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: Colors.white),
+              ),
+              if (badgeCount > 0)
+                  Positioned(
+                      right: -5,
+                      top: -5,
+                      child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: Text(
+                              badgeCount.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                      ),
+                  ),
+            ],
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.white))
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))
         ],
       ),
     );

@@ -248,6 +248,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 final createdAt = DateTime.parse(msg['created_at']).toLocal();
                 final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
 
+                // Resolve Reply
+                final replyId = msg['reply_to_id'] ?? (msg['reply_to'] is int ? msg['reply_to'] : (msg['reply_to'] != null ? msg['reply_to']['id'] : null));
+                Map<String, dynamic>? replyContext;
+                
+                // Try to find replied message locally if not fully populated
+                if (replyId != null) {
+                    if (msg['reply_to'] is Map) {
+                        replyContext = msg['reply_to'];
+                    } else {
+                        // Find locally
+                         try {
+                             final found = _messages.firstWhere((m) => m['id'] == replyId, orElse: () => null);
+                             if (found != null) replyContext = found;
+                         } catch (e) { /* ignore */ }
+                    }
+                }
+
                 return Dismissible(
                   key: Key(msg['id'].toString()),
                   direction: DismissDirection.startToEnd,
@@ -280,6 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 initialData: msg['sender'], // Pass data we already have
                              )));
                           },
+                          behavior: HitTestBehavior.opaque, // Ensure clicks are caught
                           child: Padding(
                             padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
                             child: UserAvatar(
@@ -328,30 +346,59 @@ class _ChatScreenState extends State<ChatScreen> {
                                     border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.start, // Align text start inside bubble
                                     children: [
-                                        // ... content ...
+                                      // SHOW REPLY CONTEXT
+                                      if (replyContext != null)
+                                          Container(
+                                              margin: const EdgeInsets.only(bottom: 8),
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                  color: Colors.black.withOpacity(0.05),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
+                                              ),
+                                              child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                      Text(
+                                                          replyContext['sender']['username'] ?? 'User', 
+                                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
+                                                      ),
+                                                      Text(
+                                                          replyContext['text'] ?? '', 
+                                                          maxLines: 1, 
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: const TextStyle(fontSize: 10, color: Colors.black54)
+                                                      ),
+                                                  ],
+                                              ),
+                                          ),
+                                      
                                       Text(
                                         msg['text'],
                                         style: const TextStyle(fontSize: 16),
                                       ),
                                       const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            timeString,
-                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                          ),
-                                          if (isMe) ...[
-                                            const SizedBox(width: 4),
-                                            Icon(
-                                              isRead ? Icons.done_all : Icons.check, 
-                                              size: 14,
-                                              color: isRead ? Colors.blueAccent : Colors.black54, 
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              timeString,
+                                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                                             ),
+                                            if (isMe) ...[
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                isRead ? Icons.done_all : Icons.check, 
+                                                size: 14,
+                                                color: isRead ? Colors.blueAccent : Colors.black54, 
+                                              ),
+                                            ],
                                           ],
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),

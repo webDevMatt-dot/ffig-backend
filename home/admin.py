@@ -17,7 +17,7 @@ class FounderProfileAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'business_name', 'country', 'is_active', 'expires_at')
     list_editable = ('is_active',)
     search_fields = ('name', 'business_name', 'country')
-    autocomplete_fields = ['user'] # Requires UserAdmin to have search_fields
+    # autocomplete_fields = ['user'] # Disabled to allow standard dropdown selection
     
     fieldsets = (
         ('Spotlight Selection', {

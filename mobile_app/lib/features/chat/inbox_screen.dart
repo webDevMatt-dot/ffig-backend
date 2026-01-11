@@ -70,6 +70,17 @@ class _InboxScreenState extends State<InboxScreen> {
         if (mounted) {
           setState(() {
             final allConversations = jsonDecode(response.body) as List;
+            
+            // Sort by Last Message Timestamp (Descending)
+            allConversations.sort((a, b) {
+                final aTimeStr = a['last_message']?['created_at'];
+                final bTimeStr = b['last_message']?['created_at'];
+                if (aTimeStr == null && bTimeStr == null) return 0;
+                if (aTimeStr == null) return 1; // Put nulls at bottom
+                if (bTimeStr == null) return -1;
+                return DateTime.parse(bTimeStr).compareTo(DateTime.parse(aTimeStr));
+            });
+
             // Filter out Self-Chats immediately
             _conversations = allConversations.where((c) {
                 final participants = c['participants'] as List;

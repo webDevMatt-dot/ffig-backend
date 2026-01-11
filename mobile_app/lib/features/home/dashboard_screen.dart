@@ -60,6 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   FlashAlert? _flashAlert;
   List<String> _newsTickerItems = [];
   Map<String, dynamic>? _userProfile;
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
@@ -416,25 +417,26 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
              ),
         ],
       ),
-      body: _selectedIndex == 0 
-          ? _buildHomeTab() 
-          : _selectedIndex == 1 // 1 is Events
-              ? const EventsScreen()
-              : _selectedIndex == 2 
-                  ? const MemberListScreen() 
-                  : _selectedIndex == 3
-                      ? (MembershipService.isPremium 
-                          ? const PremiumScreen() 
-                          : (MembershipService.isStandard ? const StandardScreen() : const LockedScreen()))
-                      : _buildPlaceholder("Coming Soon"),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        children: [
+          _buildHomeTab(),
+          const EventsScreen(),
+          const MemberListScreen(),
+          MembershipService.isPremium 
+              ? const PremiumScreen() 
+              : (MembershipService.isStandard ? const StandardScreen() : const LockedScreen()),
+          if (_isAdmin) const AdminDashboardScreen(), // Allow swiping to Admin if Admin
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
-           // Handle Admin Tab (Index 5 if Admin)
-           if (_isAdmin && index == 4) {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
-               return; // Do not switch tab
-           }
+           // Handle Admin Tab Logic or Restrictions first
+           if (!_isAdmin && index == 4) return; // Should not happen given logic but safe check
            
            // RBAC: Network/Members Tab (Index 2)
            if (index == 2) {
@@ -454,7 +456,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                return;
            }
 
-           setState(() => _selectedIndex = index);
+           // Animate to page
+           _pageController.animateToPage(
+             index, 
+             duration: const Duration(milliseconds: 300), 
+             curve: Curves.easeInOut
+           );
+           // Set state updated via onPageChanged
         },
         backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
@@ -480,7 +488,6 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             selectedIcon: Icon(Icons.diamond, color: FfigTheme.primaryBrown),
             label: 'VVIP'
           ),
-
 
           if (_isAdmin)
           const NavigationDestination(
