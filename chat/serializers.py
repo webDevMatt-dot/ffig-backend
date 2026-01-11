@@ -13,10 +13,23 @@ class ChatUserSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sender = ChatUserSerializer(read_only=True)
     is_me = serializers.SerializerMethodField()
+    reply_to = serializers.SerializerMethodField()
+    reply_to_id = serializers.PrimaryKeyRelatedField(
+        queryset=Message.objects.all(), source='reply_to', write_only=True, required=False, allow_null=True
+    )
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'created_at', 'is_me']
+        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id']
+
+    def get_reply_to(self, obj):
+        if obj.reply_to:
+            return {
+                'id': obj.reply_to.id,
+                'text': obj.reply_to.text,
+                'sender': ChatUserSerializer(obj.reply_to.sender).data
+            }
+        return None
 
     def get_is_me(self, obj):
         # Tell Flutter if this message is from "me" (blue bubble) or "them" (grey bubble)
