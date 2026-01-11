@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // For timer
+import 'package:intl/intl.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 
@@ -21,6 +22,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   List<dynamic> _messages = [];
+  List<dynamic> _groupedMessages = [];
   int? _activeConversationId;
   Timer? _timer;
   bool _isLoading = true; // Add loading state
@@ -40,6 +42,34 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  void _groupMessages() {
+    final List<dynamic> grouped = [];
+    DateTime? lastDate;
+
+    // Assumes _messages is sorted Oldest -> Newest
+    for (var msg in _messages) {
+      final createdAt = DateTime.parse(msg['created_at']).toLocal();
+      final date = DateTime(createdAt.year, createdAt.month, createdAt.day); // Strip time
+
+      if (lastDate == null || date != lastDate) {
+        grouped.add({'is_header': true, 'date': date});
+        lastDate = date;
+      }
+      grouped.add(msg);
+    }
+    _groupedMessages = grouped;
+  }
+
+  String _getDateLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (date == today) return "Today";
+    if (date == yesterday) return "Yesterday";
+    return DateFormat('MMMM d, yyyy').format(date);
+  }
+
   Future<void> _fetchMessages({bool silent = false}) async {
     if (_activeConversationId == null) {
         if (mounted) setState(() => _isLoading = false);
@@ -55,6 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (mounted) {
            setState(() {
              _messages = jsonDecode(response.body);
+             _groupMessages();
              _isLoading = false;
            });
         }
@@ -114,82 +145,96 @@ class _ChatScreenState extends State<ChatScreen> {
               : ListView.builder(
               padding: const EdgeInsets.all(16),
               reverse: true, // Start from bottom
-              itemCount: _messages.length,
+              itemCount: _groupedMessages.length,
               itemBuilder: (context, index) {
-                // If backend returns Oldest -> Newest (ASC),
-                // we want Newest at bottom.
-                // With reverse: true, index 0 is Bottom.
-                // So index 0 should be Newest.
-                // So we need to reverse the list access OR reverse the list itself.
-                // Let's reverse the list access: index 0 (bottom) gets Last Item.
-                final msg = _messages[_messages.length - 1 - index];
-                  final isMe = msg['is_me'];
-                  final isRead = msg['is_read'] ?? false;
-                  final username = msg['sender']['username'] ?? 'Unknown';
-                  final createdAt = DateTime.parse(msg['created_at']).toLocal();
-                  final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
-
-                  return Align(
-                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, bottom: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                                if (msg['sender']['tier'] == 'PREMIUM') ...[
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.verified, color: Colors.amber, size: 14),
-                                ] else if (msg['sender']['tier'] == 'STANDARD') ...[
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 14),
-                                ]
-                              ],
+                // With reverse: true, index 0 is Bottom (Last Item in List).
+                final item = _groupedMessages[_groupedMessages.length - 1 - index];
+                
+                if (item['is_header'] == true) {
+                    return Center(
+                        child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                            child: Text(
+                                _getDateLabel(item['date']),
+                                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.bold),
+                            ),
+                        ),
+                    );
+                }
+
+                final msg = item;
+                final isMe = msg['is_me'];
+                final isRead = msg['is_read'] ?? false;
+                final username = msg['sender']['username'] ?? 'Unknown';
+                final createdAt = DateTime.parse(msg['created_at']).toLocal();
+                final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
+
+                return Align(
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      if (!isMe)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12, bottom: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                msg['text'],
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    timeString,
-                                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                  ),
-                                  if (isMe) ...[
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      isRead ? Icons.done_all : Icons.check, 
-                                      size: 14,
-                                      color: isRead ? Colors.blueAccent : Colors.black54, 
-                                    ),
-                                  ],
-                                ],
-                              ),
+                              Text(username, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              if (msg['sender']['tier'] == 'PREMIUM') ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: Colors.amber, size: 14),
+                              ] else if (msg['sender']['tier'] == 'STANDARD') ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 14),
+                              ]
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  );
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              msg['text'],
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  timeString,
+                                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                ),
+                                if (isMe) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    isRead ? Icons.done_all : Icons.check, 
+                                    size: 14,
+                                    color: isRead ? Colors.blueAccent : Colors.black54, 
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
@@ -222,3 +267,4 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
