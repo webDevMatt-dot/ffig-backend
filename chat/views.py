@@ -80,7 +80,8 @@ class SendMessageView(APIView):
             return Response({"error": "Missing recipient_id or conversation_id"}, status=400)
 
         # Create the message
-        Message.objects.create(conversation=conversation, sender=sender, text=text)
+        reply_id = request.data.get('reply_to_id')
+        Message.objects.create(conversation=conversation, sender=sender, text=text, reply_to_id=reply_id)
 
         # Update timestamp
         conversation.save() 
