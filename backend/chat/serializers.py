@@ -40,9 +40,17 @@ class ConversationSerializer(serializers.ModelSerializer):
     participants = ChatUserSerializer(many=True, read_only=True)
     last_message = serializers.SerializerMethodField()
 
+    unread_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Conversation
-        fields = ['id', 'participants', 'updated_at', 'last_message']
+        fields = ['id', 'participants', 'updated_at', 'last_message', 'unread_count']
+
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if request and request.user:
+            return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
+        return 0
 
     def get_last_message(self, obj):
         last_msg = obj.messages.order_by('-created_at').first()

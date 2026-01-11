@@ -13,7 +13,11 @@ class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
-        return self.request.user.conversations.all().order_by('-updated_at')
+        queryset = self.request.user.conversations.all().order_by('-updated_at')
+        recipient_id = self.request.query_params.get('recipient_id')
+        if recipient_id:
+            queryset = queryset.filter(participants__id=recipient_id)
+        return queryset
 
 # 2. Get messages for a specific conversation
 class MessageListView(generics.ListAPIView):

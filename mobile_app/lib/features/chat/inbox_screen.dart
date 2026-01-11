@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // Required for Timer
+import 'package:intl/intl.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
 import 'chat_screen.dart'; 
@@ -111,6 +112,25 @@ class _InboxScreenState extends State<InboxScreen> {
     return others.map((p) => p['username']).join(", ");
   }
 
+  String _formatTimestamp(String? isoString) {
+      if (isoString == null) return "";
+      try {
+        final date = DateTime.parse(isoString).toLocal();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        
+        if (date.isAfter(today)) {
+            return DateFormat('HH:mm').format(date);
+        }
+        if (date.isAfter(today.subtract(const Duration(days: 1)))) {
+            return "Yesterday";
+        }
+        return DateFormat('MMM d').format(date);
+      } catch (e) {
+          return "";
+      }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,7 +195,13 @@ class _InboxScreenState extends State<InboxScreen> {
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        Text(
+                          _formatTimestamp(chat['last_message']?['created_at']),
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 4),
                         if (unreadCount > 0)
                           Container(
                             padding: const EdgeInsets.all(6),
@@ -185,11 +211,11 @@ class _InboxScreenState extends State<InboxScreen> {
                             ),
                             child: Text(
                               unreadCount.toString(),
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
                           )
                         else
-                           const Icon(Icons.chevron_right, color: Colors.grey),
+                           const Icon(Icons.chevron_right, color: Colors.grey, size: 16),
                       ],
                     ),
                     onTap: () {

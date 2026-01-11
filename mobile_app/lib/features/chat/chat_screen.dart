@@ -77,6 +77,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _fetchMessages({bool silent = false}) async {
+    // 1. Resolve ID if missing
+    if (_activeConversationId == null && widget.recipientId != null) {
+        final id = await _fetchConversationIdByRecipient(widget.recipientId!);
+        if (id != null) {
+             setState(() => _activeConversationId = id);
+        } else {
+             // No chat yet
+             if (mounted) setState(() => _isLoading = false);
+             return; 
+        }
+    }
+
     if (_activeConversationId == null) {
         if (mounted) setState(() => _isLoading = false);
         return;
@@ -89,17 +101,35 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         if (mounted) {
-           setState(() {
-             _messages = jsonDecode(response.body);
-             _groupMessages();
-             _isLoading = false;
-           });
+           setState(() => _messages = jsonDecode(response.body));
+           _groupMessages(); // Only group after verify
+           setState(() => _isLoading = false);
         }
       }
     } catch (e) {
       if (kDebugMode) print(e);
       if (mounted && !silent) setState(() => _isLoading = false);
     }
+  }
+
+  Future<int?> _fetchConversationIdByRecipient(int recipientId) async {
+      try {
+          final token = await const FlutterSecureStorage().read(key: 'access_token');
+          final response = await http.get(
+              Uri.parse('${baseUrl}chat/conversations/?recipient_id=$recipientId'),
+              headers: {'Authorization': 'Bearer $token'}
+          );
+          
+          if (response.statusCode == 200) {
+              final List data = jsonDecode(response.body);
+              if (data.isNotEmpty) {
+                  return data[0]['id'];
+              }
+          }
+      } catch (e) {
+          if (kDebugMode) print("Error resolving chat: $e");
+      }
+      return null;
   }
 
   Future<void> _sendMessage() async {
