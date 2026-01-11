@@ -1,0 +1,211 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async'; // Required for Timer
+import '../../shared_widgets/user_avatar.dart';
+import 'chat_screen.dart'; 
+import 'chat_screen.dart'; 
+import '../../core/api/constants.dart';
+
+class InboxScreen extends StatefulWidget {
+  const InboxScreen({super.key});
+
+  @override
+  State<InboxScreen> createState() => _InboxScreenState();
+}
+
+class _InboxScreenState extends State<InboxScreen> {
+  List<dynamic> _conversations = [];
+  bool _isLoading = true;
+  String? _myUsername;
+
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentUserAndConversations();
+    // Refresh every 5 seconds for "Live" counts
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchCurrentUserAndConversations(silent: true));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchCurrentUserAndConversations({bool silent = false}) async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    
+    // 1. Fetch "Me" (Only once needed really, but kept for simplicity)
+    if (_myUsername == null) {
+        try {
+        final meResponse = await http.get(
+            // Use the same URL structure as MemberListScreen
+            Uri.parse('${baseUrl}members/me/'), 
+            headers: {'Authorization': 'Bearer $token'},
+        );
+        
+        if (meResponse.statusCode == 200) {
+            final meData = jsonDecode(meResponse.body);
+            _myUsername = meData['username'];
+        }
+        } catch (e) {
+        if (kDebugMode) print("Error fetching me: $e");
+        }
+    }
+
+    // 2. Fetch Conversations
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}chat/conversations/'), 
+        headers: {'Authorization': 'Bearer $token'}
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            final allConversations = jsonDecode(response.body) as List;
+            
+            // Sort by Last Message Timestamp (Descending)
+            allConversations.sort((a, b) {
+                final aTimeStr = a['last_message']?['created_at'];
+                final bTimeStr = b['last_message']?['created_at'];
+                if (aTimeStr == null && bTimeStr == null) return 0;
+                if (aTimeStr == null) return 1; // Put nulls at bottom
+                if (bTimeStr == null) return -1;
+                return DateTime.parse(bTimeStr).compareTo(DateTime.parse(aTimeStr));
+            });
+
+            // Filter out Self-Chats immediately
+            _conversations = allConversations.where((c) {
+                final participants = c['participants'] as List;
+                final others = participants.where((p) => p['username'] != _myUsername).toList();
+                return others.isNotEmpty;
+            }).toList();
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print(e);
+      if (mounted && !silent) setState(() => _isLoading = false);
+    }
+  }
+
+  String _getOtherParticipantName(List<dynamic> participants) {
+    if (_myUsername == null) {
+        // Fallback if we failed to fetch "me"
+        // Return everybody joined
+        return participants.map((p) => p['username']).join(", ");
+    }
+    
+    // Filter ME out
+    final others = participants.where((p) => p['username'] != _myUsername).toList();
+    if (others.isEmpty) return "Me (Draft)"; 
+    
+    return others.map((p) => p['username']).join(", ");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("MESSAGES")),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : _conversations.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    const Text("No messages yet."),
+                    TextButton(
+                      onPressed: () {
+                         // Navigation logic if needed
+                      }, 
+                      child: const Text("Find a founder to chat with!")
+                    )
+                  ],
+                ),
+              )
+            : ListView.separated(
+                itemCount: _conversations.length,
+                separatorBuilder: (c, i) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final chat = _conversations[index];
+                  final participants = chat['participants'] as List;
+                  
+                  // Filter ME out to get Title
+                  final others = participants.where((p) => p['username'] != _myUsername).toList();
+                  final String title = others.map((p) => p['username']).join(", ");
+                  
+                  final lastMsg = chat['last_message'] != null 
+                      ? chat['last_message']['text'] 
+                      : "Start chatting...";
+                  
+                  final int unreadCount = chat['unread_count'] ?? 0; 
+
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: UserAvatar(
+                      radius: 24, 
+                      username: title,
+                    ),
+                    title: Text(
+                      title, 
+                      style: TextStyle(
+                        fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      lastMsg, 
+                      maxLines: 1, 
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: unreadCount > 0 ? Colors.black87 : Colors.grey,
+                        fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (unreadCount > 0)
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary, // Using Theme Color
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              unreadCount.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else
+                           const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            conversationId: chat['id'],
+                            recipientName: title,
+                          ),
+                        ),
+                      ).then((_) => _fetchCurrentUserAndConversations(silent: true)); // Refresh on return
+                    },
+                  );
+                },
+              ),
+    );
+  }
+}
