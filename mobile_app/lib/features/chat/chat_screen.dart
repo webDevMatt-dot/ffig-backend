@@ -31,6 +31,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true; // Add loading state
   dynamic _replyMessage; // Swipe to reply state
   final ItemScrollController _itemScrollController = ItemScrollController();
+  int? _highlightedMessageId; // For highlighting searched message
 
   @override
   void initState() {
@@ -158,7 +159,14 @@ class _ChatScreenState extends State<ChatScreen> {
                    duration: const Duration(milliseconds: 500),
                    curve: Curves.easeInOut,
                );
-               // Optional: Highlight effect could go here
+               
+               // Highlight for 3 seconds
+               setState(() => _highlightedMessageId = replyId);
+               Timer(const Duration(seconds: 3), () {
+                   if (mounted) {
+                       setState(() => _highlightedMessageId = null);
+                   }
+               });
           }
       } else {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message not found (it might be too old).")));
@@ -295,6 +303,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                 }
 
+                final isHighlighted = msg['id'] == _highlightedMessageId;
+
                 return Dismissible(
                   key: Key(msg['id'].toString()),
                   direction: DismissDirection.startToEnd,
@@ -366,7 +376,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                   margin: const EdgeInsets.symmetric(vertical: 2),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor,
+                                    color: isHighlighted 
+                                        ? Colors.amber.withOpacity(0.4) 
+                                        : (isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor),
                                     borderRadius: BorderRadius.only(
                                         topLeft: const Radius.circular(16),
                                         topRight: const Radius.circular(16),

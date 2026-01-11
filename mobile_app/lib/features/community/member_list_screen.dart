@@ -10,6 +10,7 @@ import '../../core/api/admin_service.dart'; // Admin Service
 import '../../core/theme/ffig_theme.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../../core/services/membership_service.dart';
+import 'public_profile_screen.dart';
 
 class MemberListScreen extends StatefulWidget {
   const MemberListScreen({super.key});
@@ -157,7 +158,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text("THE NETWORK", style: Theme.of(context).textTheme.displaySmall?.copyWith(letterSpacing: 3.0)),
+        title: Text("COMMUNITY", style: Theme.of(context).textTheme.displaySmall?.copyWith(letterSpacing: 3.0)),
         backgroundColor: Colors.transparent,
         centerTitle: true,
         automaticallyImplyLeading: false, // Clean look
@@ -317,21 +318,17 @@ class _MemberListScreenState extends State<MemberListScreen> {
                           ),
                         ),
                         trailing: const Icon(Icons.arrow_forward, size: 16),
-                        onTap: () async {
-                            // RBAC: Direct Messaging is for Premium Only (Inbox)
-                            if (MembershipService.canInbox) {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
-                                        recipientId: member['user_id'], 
-                                        recipientName: member['username'],
+                        onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => PublicProfileScreen(
+                                        userId: member['user_id'],
+                                        username: member['username'],
+                                        initialData: member,
                                     ),
-                                    ),
-                                );
-                            } else {
-                                MembershipService.showUpgradeDialog(context, "Direct Messaging");
-                            }
+                                ),
+                            );
                         },
                         // ADMIN: Long Press to Reset Password
                         onLongPress: () {
