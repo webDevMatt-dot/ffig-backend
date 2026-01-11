@@ -372,7 +372,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                      if (!isMe) _reportUser(username);
                                 },
                                 child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.60), // Limit width
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.55), // Limit width
                                   margin: const EdgeInsets.symmetric(vertical: 2),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -387,52 +387,52 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                                     border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start, // Align text start inside bubble
-                                    children: [
-                                      // SHOW REPLY CONTEXT
-                                      if (replyContext != null)
-                                          GestureDetector(
-                                              onTap: () {
-                                                  // Scroll to original message
-                                                  if (replyContext != null) {
-                                                       _scrollToMessage(replyContext['id']);
-                                                  }
-                                              },
-                                              child: Container(
-                                                  margin: const EdgeInsets.only(bottom: 8),
-                                                  padding: const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                      color: Colors.black.withOpacity(0.05),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
-                                                  ),
-                                                  child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                          Text(
-                                                              replyContext['sender']['username'] ?? 'User', 
-                                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
-                                                          ),
-                                                          Text(
-                                                              replyContext['text'] ?? '', 
-                                                              maxLines: 1, 
-                                                              overflow: TextOverflow.ellipsis,
-                                                              style: const TextStyle(fontSize: 10, color: Colors.black54)
-                                                          ),
-                                                      ],
-                                                  ),
-                                              ),
-                                          ),
-                                      
-                                      Text(
-                                        msg['text'],
-                                        style: const TextStyle(fontSize: 16),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Row(
+                                  child: IntrinsicWidth(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch, // Adaptive width
+                                      children: [
+                                        // SHOW REPLY CONTEXT
+                                        if (replyContext != null)
+                                            GestureDetector(
+                                                onTap: () {
+                                                    // Scroll to original message
+                                                    if (replyContext != null) {
+                                                         _scrollToMessage(replyContext['id']);
+                                                    }
+                                                },
+                                                child: Container(
+                                                    margin: const EdgeInsets.only(bottom: 8),
+                                                    padding: const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.black.withOpacity(0.05),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
+                                                    ),
+                                                    child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                            Text(
+                                                                replyContext['sender']['username'] ?? 'User', 
+                                                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
+                                                            ),
+                                                            Text(
+                                                                replyContext['text'] ?? '', 
+                                                                maxLines: 1, 
+                                                                overflow: TextOverflow.ellipsis,
+                                                                style: const TextStyle(fontSize: 10, color: Colors.black54)
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            ),
+                                        
+                                        Text(
+                                          msg['text'],
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.end, // Align time right
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
@@ -449,8 +449,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                             ],
                                           ],
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
