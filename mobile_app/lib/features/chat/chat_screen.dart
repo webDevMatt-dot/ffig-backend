@@ -452,70 +452,68 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                                     border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
-                                  child: IntrinsicWidth(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch, // Adaptive width
-                                      children: [
-                                        // SHOW REPLY CONTEXT
-                                        if (replyContext != null)
-                                            GestureDetector(
-                                                onTap: () {
-                                                    // Scroll to original message
-                                                    if (replyContext != null) {
-                                                         _scrollToMessage(replyContext['id']);
-                                                    }
-                                                },
-                                                child: Container(
-                                                    margin: const EdgeInsets.only(bottom: 8),
-                                                    padding: const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                        color: Colors.black.withOpacity(0.05),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
-                                                    ),
-                                                    child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                            Text(
-                                                                replyContext['sender']['username'] ?? 'User', 
-                                                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
-                                                            ),
-                                                            Text(
-                                                                replyContext['text'] ?? '', 
-                                                                maxLines: 1, 
-                                                                overflow: TextOverflow.ellipsis,
-                                                                style: const TextStyle(fontSize: 10, color: Colors.black54)
-                                                            ),
-                                                        ],
-                                                    ),
-                                                ),
-                                            ),
-                                        
-                                        Text(
-                                          msg['text'],
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.end, // Align time right
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              timeString,
-                                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                            ),
-                                            if (isMe) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                isRead ? Icons.done_all : Icons.check, 
-                                                size: 14,
-                                                color: isRead ? Colors.blueAccent : Colors.black54, 
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start, 
+                                    children: [
+                                      // SHOW REPLY CONTEXT
+                                      if (replyContext != null)
+                                          GestureDetector(
+                                              onTap: () {
+                                                  // Scroll to original message
+                                                  if (replyContext != null) {
+                                                       _scrollToMessage(replyContext['id']);
+                                                  }
+                                              },
+                                              child: Container(
+                                                  margin: const EdgeInsets.only(bottom: 8),
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.black.withOpacity(0.05),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
+                                                  ),
+                                                  child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                          Text(
+                                                              replyContext['sender']['username'] ?? 'User', 
+                                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
+                                                          ),
+                                                          Text(
+                                                              replyContext['text'] ?? '', 
+                                                              maxLines: 1, 
+                                                              overflow: TextOverflow.ellipsis,
+                                                              style: const TextStyle(fontSize: 10, color: Colors.black54)
+                                                          ),
+                                                      ],
+                                                  ),
                                               ),
-                                            ],
+                                          ),
+                                      
+                                      Text(
+                                        msg['text'],
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end, // Align time right
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            timeString,
+                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                          ),
+                                          if (isMe) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              isRead ? Icons.done_all : Icons.check, 
+                                              size: 14,
+                                              color: isRead ? Colors.blueAccent : Colors.black54, 
+                                            ),
                                           ],
-                                        ),
-                                      ],
-                                    ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

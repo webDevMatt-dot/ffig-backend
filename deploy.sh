@@ -57,6 +57,7 @@ echo "📂 Returning to root directory..."
 cd ..
 
 echo "📁 Staging root files..."
+git add backend/ ffig_backend/ manage.py requirements.txt
 git add .
 
 echo "💾 Committing root..."
