@@ -28,8 +28,14 @@ class MessageListView(generics.ListAPIView):
         if not conversation.is_public and self.request.user not in conversation.participants.all():
              return Message.objects.none()
 
-        # 1. Get messages
-        messages = Message.objects.filter(conversation__id=conversation_id).order_by('created_at')
+        # 1. Get messages with eager loading (N+1 fix)
+        messages = Message.objects.filter(conversation__id=conversation_id).select_related(
+            'sender', 
+            'sender__profile', 
+            'reply_to', 
+            'reply_to__sender', 
+            'reply_to__sender__profile'
+        ).order_by('created_at')
 
         # 2. MARK AS READ (Magic!)
         # Only mark messages sent by the *other* person as read

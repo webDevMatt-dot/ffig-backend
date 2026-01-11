@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // For timer
 import 'package:intl/intl.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
@@ -29,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _timer;
   bool _isLoading = true; // Add loading state
   dynamic _replyMessage; // Swipe to reply state
+  final ItemScrollController _itemScrollController = ItemScrollController();
 
   @override
   void initState() {
@@ -136,6 +138,33 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+
+  void _scrollToMessage(int replyId) {
+      // Find the message in our list
+      final indexInData = _groupedMessages.indexWhere((m) => m['id'] == replyId);
+      
+      if (indexInData != -1) {
+          // Calculate Widget Index (Reverse Mapping)
+          // List is rendered with reverse: true
+          // Widget Index 0 = Data Last Item
+          // Widget Index W = Data[Length - 1 - W]
+          // So W = Length - 1 - DataIndex
+          
+          final widgetIndex = _groupedMessages.length - 1 - indexInData;
+          
+          if (_itemScrollController.isAttached) {
+               _itemScrollController.scrollTo(
+                   index: widgetIndex, 
+                   duration: const Duration(milliseconds: 500),
+                   curve: Curves.easeInOut,
+               );
+               // Optional: Highlight effect could go here
+          }
+      } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message not found (it might be too old).")));
+      }
+  }
+
   void _clearChat() {
     setState(() {
       _messages.clear();
@@ -216,7 +245,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator()) 
-              : ListView.builder(
+              : ScrollablePositionedList.builder(
+              itemScrollController: _itemScrollController,
               padding: const EdgeInsets.all(16),
               reverse: true, // Start from bottom
               itemCount: _groupedMessages.length,
@@ -350,28 +380,36 @@ class _ChatScreenState extends State<ChatScreen> {
                                     children: [
                                       // SHOW REPLY CONTEXT
                                       if (replyContext != null)
-                                          Container(
-                                              margin: const EdgeInsets.only(bottom: 8),
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.05),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
-                                              ),
-                                              child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                      Text(
-                                                          replyContext['sender']['username'] ?? 'User', 
-                                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
-                                                      ),
-                                                      Text(
-                                                          replyContext['text'] ?? '', 
-                                                          maxLines: 1, 
-                                                          overflow: TextOverflow.ellipsis,
-                                                          style: const TextStyle(fontSize: 10, color: Colors.black54)
-                                                      ),
-                                                  ],
+                                          GestureDetector(
+                                              onTap: () {
+                                                  // Scroll to original message
+                                                  if (replyContext != null) {
+                                                       _scrollToMessage(replyContext['id']);
+                                                  }
+                                              },
+                                              child: Container(
+                                                  margin: const EdgeInsets.only(bottom: 8),
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.black.withOpacity(0.05),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
+                                                  ),
+                                                  child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                          Text(
+                                                              replyContext['sender']['username'] ?? 'User', 
+                                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
+                                                          ),
+                                                          Text(
+                                                              replyContext['text'] ?? '', 
+                                                              maxLines: 1, 
+                                                              overflow: TextOverflow.ellipsis,
+                                                              style: const TextStyle(fontSize: 10, color: Colors.black54)
+                                                          ),
+                                                      ],
+                                                  ),
                                               ),
                                           ),
                                       
