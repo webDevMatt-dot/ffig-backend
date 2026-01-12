@@ -63,7 +63,7 @@ from members.views import (
     ToggleFavoriteView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
-from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView
+from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView
 from home.views import download_latest_apk
 
 urlpatterns = [
@@ -129,6 +129,7 @@ urlpatterns = [
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/community/', CommunityChatView.as_view(), name='community-chat'),
+    path('api/chat/search/', ChatSearchView.as_view(), name='chat-search'),
 
     # Redirect /app.apk to the download endpoint
     path('app.apk', download_latest_apk),

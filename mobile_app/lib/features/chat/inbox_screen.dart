@@ -128,13 +128,15 @@ class _InboxScreenState extends State<InboxScreen> {
 
     // 2. Fetch Conversations
     try {
-      String url = '${baseUrl}chat/conversations/?filter=$_selectedFilter';
-      if (search != null && search.isNotEmpty) {
-          url += '&search=$search';
-      }
+      final uri = Uri.parse('${baseUrl}chat/conversations/').replace(
+          queryParameters: {
+              'filter': _selectedFilter,
+              if (search != null && search.isNotEmpty) 'search': search,
+          }
+      );
 
       final response = await http.get(
-        Uri.parse(url), 
+        uri, 
         headers: {'Authorization': 'Bearer $token'}
       );
 
@@ -212,12 +214,16 @@ class _InboxScreenState extends State<InboxScreen> {
                onChanged: (val) {
                    if (_debounce?.isActive ?? false) _debounce!.cancel();
                    _debounce = Timer(const Duration(milliseconds: 500), () {
-                       _fetchCurrentUserAndConversations(search: val);
+                       _performSearch(val);
                    });
+                   // Force rebuild to switch view
+                   setState(() {});
                },
              ),
            ),
-           // Filter Chips
+           
+           // Filter Chips (Only show if NOT searching)
+           if (_searchController.text.isEmpty)
            SingleChildScrollView(
              scrollDirection: Axis.horizontal,
              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -231,10 +237,13 @@ class _InboxScreenState extends State<InboxScreen> {
                ],
              ),
            ),
+           
            Expanded(
              child: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
-        : _conversations.isEmpty
+        : _searchController.text.isNotEmpty
+            ? _buildSearchResults()
+            : _conversations.isEmpty
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -275,7 +284,6 @@ class _InboxScreenState extends State<InboxScreen> {
                                           username: targetUser['username'],
                                           photoUrl: targetUser['photo'] ?? targetUser['photo_url'], 
                                           tier: targetUser['tier'],
-                                          bio: targetUser['bio'], // Backend might need to send this in ConversationSerializer if missing
                                           onViewProfile: () {
                                               Navigator.pop(context); // Close dialog
                                               Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
@@ -346,13 +354,113 @@ class _InboxScreenState extends State<InboxScreen> {
                   );
                 },
               ),
-           ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
+  // --- NEW SEARCH UI ---
+  Widget _buildSearchResults() {
+      final users = _searchResults['users'] as List;
+      final messages = _searchResults['messages'] as List;
+
+      return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+              if (users.isNotEmpty) ...[
+                  const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text("Users", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  ),
+                  ...users.map((u) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
+                      title: Text(u['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: const Icon(Icons.chat_bubble_outline, color: FfigTheme.primaryBrown),
+                      onTap: () {
+                           Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
+                               recipientId: u['id'],
+                               recipientName: u['username'],
+                           )));
+                      },
+                  )),
+                  const Divider(height: 32),
+              ],
+              
+              if (messages.isNotEmpty) ...[
+                  const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text("Messages", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  ),
+                  ...messages.map((m) {
+                       final isMe = m['is_me'] == true;
+                       final senderName = m['sender']['username'];
+                       return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: UserAvatar(radius: 20, username: senderName), // Show Sender pic
+                          title: Text(m['chat_title'] ?? "Chat", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: RichText(
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                  style: const TextStyle(color: Colors.black87),
+                                  children: [
+                                      TextSpan(text: "$senderName: ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                      TextSpan(text: m['text']),
+                                  ]
+                              ),
+                          ),
+                          onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
+                                   conversationId: m['conversation_id'],
+                                   recipientName: m['chat_title'] ?? "Chat",
+                                   // Note: We can't easily jump to message yet without implementing scroll-to-index in ID
+                                   // But opening the chat is good enough for now.
+                              )));
+                          },
+                       );
+                  }),
+              ],
+              
+              if (users.isEmpty && messages.isEmpty)
+                  const Padding(
+                      padding: EdgeInsets.only(top: 20),
+                      child: Center(child: Text("No results found.", style: TextStyle(color: Colors.grey))),
+                  )
+          ],
+      );
+  }
+
+  Map<String, dynamic> _searchResults = {'users': [], 'messages': []};
+
+  Future<void> _performSearch(String query) async {
+       if (query.isEmpty) {
+           setState(() => _searchResults = {'users': [], 'messages': []});
+           return;
+       }
+       setState(() => _isLoading = true);
+       
+       try {
+           const storage = FlutterSecureStorage();
+           final token = await storage.read(key: 'access_token');
+           final uri = Uri.parse('${baseUrl}chat/search/').replace(queryParameters: {'q': query});
+           
+           final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+           if (response.statusCode == 200) {
+               if (mounted) {
+                   setState(() {
+                       _searchResults = jsonDecode(response.body);
+                       _isLoading = false;
+                   });
+               }
+           } else {
+               if (mounted) setState(() => _isLoading = false);
+           }
+       } catch (e) {
+           if (mounted) setState(() => _isLoading = false);
+       }
+  }
       final isSelected = _selectedFilter == value;
       return FilterChip(
         label: Text(label),

@@ -128,3 +128,58 @@ class CommunityChatView(APIView):
     def get(self, request):
         conversation, created = Conversation.objects.get_or_create(is_public=True)
         return Response({"id": conversation.id, "created": created})
+
+# 5. Grouped Search API
+class ChatSearchView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return Response({"users": [], "messages": []})
+        
+        user = request.request.user
+
+        # 1. Search Users (Global, filtering out self and admins/staff if desired, but user wants users)
+        # Limit to 10 for performance
+        users = User.objects.filter(username__icontains=query).exclude(id=user.id)[:10]
+        from .serializers import ChatUserSerializer
+        users_data = ChatUserSerializer(users, many=True).data
+
+        # 2. Search Messages (In my conversations)
+        # We need messages where I am a participant in the conversation
+        messages = Message.objects.filter(
+            text__icontains=query,
+            conversation__participants=user
+        ).select_related('sender', 'sender__profile').order_by('-created_at')[:20]
+        
+        from .serializers import MessageSerializer
+        # We need a serializer that includes the conversation_id
+        # MessageSerializer typically has it? No, let's check.
+        # MessageSerializer usually doesn't show conversation ID if it's nested.
+        # Let's inspect MessageSerializer again or just use it and rely on 'conversation' FK?
+        # Message model has 'conversation'. Serializer might not field it.
+        # We'll use a custom data construction or ensure MessageSerializer has it.
+        
+        messages_data = []
+        for m in messages:
+            # Re-using MessageSerializer but adding context might be needed for 'is_me'
+            ser = MessageSerializer(m, context={'request': request}).data
+            ser['conversation_id'] = m.conversation.id
+            
+            # Add context about the OTHER participant for display title
+            others = m.conversation.participants.exclude(id=user.id)
+            title = ", ".join([u.username for u in others]) if others.exists() else "Community/Self"
+            ser['chat_title'] = title
+            # Add Avatar of the SENDER (already in sender field) or OTHER?
+            # Usually search result shows "Chat with Bob: 'Hello [match]'"
+            # If Bob sent it: [Bob's Pic] Bob: "Hello..."
+            # If I sent it: [My Pic] Me: "Hello..."
+            # Wait, better to show the chat partner's pic?
+            # Let's stick to the Message Sender for now.
+            messages_data.append(ser)
+
+        return Response({
+            "users": users_data,
+            "messages": messages_data
+        })
