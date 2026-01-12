@@ -20,7 +20,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id']
+        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read']
 
     def get_reply_to(self, obj):
         if obj.reply_to:
