@@ -71,3 +71,10 @@ class ContentReportSerializer(serializers.ModelSerializer):
         model = ContentReport
         fields = '__all__'
         read_only_fields = ['status', 'reporter']
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import Notification
+        model = Notification
+        fields = '__all__'
+        read_only_fields = ['recipient', 'created_at']

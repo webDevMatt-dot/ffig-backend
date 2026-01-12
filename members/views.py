@@ -173,3 +173,24 @@ class AdminContentReportDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = ContentReport.objects.all()
     serializer_class = ContentReportSerializer
+
+# --- NOTIFICATIONS (Admin Only for now) ---
+from .serializers import NotificationSerializer
+from .models import Notification
+
+class NotificationListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        # Return only unread notifications for the user
+        return Notification.objects.filter(recipient=self.request.user, is_read=False).order_by('-created_at')
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        notification = get_object_or_404(Notification, id=pk, recipient=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response({"status": "marked as read"})

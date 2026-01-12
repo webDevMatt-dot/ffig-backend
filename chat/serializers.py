@@ -40,12 +40,20 @@ class ConversationSerializer(serializers.ModelSerializer):
     participants = ChatUserSerializer(many=True, read_only=True)
     last_message = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Conversation
-        fields = ['id', 'participants', 'updated_at', 'last_message']
-
     def get_last_message(self, obj):
         last_msg = obj.messages.order_by('-created_at').first()
         if last_msg:
             return MessageSerializer(last_msg, context=self.context).data
         return None
+
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if request and request.user:
+             # Count messages in this conversation where I am a participant, but NOT the sender, and is_read=False
+             return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
+        return 0
+
+    unread_count = serializers.SerializerMethodField()
+    class Meta:
+        model = Conversation
+        fields = ['id', 'participants', 'updated_at', 'last_message', 'unread_count']

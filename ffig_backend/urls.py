@@ -58,7 +58,8 @@ from members.views import (
     BusinessProfileCreateView, MarketingRequestCreateView, ContentReportCreateView,
     AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
-    AdminContentReportListView, AdminContentReportDetailView
+    AdminContentReportListView, AdminContentReportDetailView,
+    NotificationListView, NotificationMarkReadView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView
@@ -132,4 +133,8 @@ urlpatterns = [
     
     # Explicitly serve media files (Required for Render/Production if not using S3)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+
+    # Notifications
+    path('api/notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('api/notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
 ]
