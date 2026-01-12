@@ -27,6 +27,14 @@ class _ChatScreenState extends State<ChatScreen> {
   List<dynamic> _messages = [];
   List<dynamic> _groupedMessages = [];
   int? _activeConversationId;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  List<int> _searchResults = []; // Indices in _groupedMessages
+  int _currentSearchIndex = 0;
+  
+  // Timer for debouncing search
+  Timer? _searchDebounce;
+
   Timer? _timer;
   bool _isLoading = true; // Add loading state
   Map<String, dynamic>? _replyMessage; // Swipe to reply state (Use Map instead of dynamic for type safety)
@@ -167,12 +175,89 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (kDebugMode) print(e);
     }
+
+  }
+
+  void _toggleSearch() {
+      setState(() {
+          _isSearching = !_isSearching;
+          if (!_isSearching) {
+              _searchController.clear();
+              _searchResults.clear();
+              _currentSearchIndex = 0;
+          }
+      });
+  }
+
+  void _performInChatSearch(String query) {
+      if (query.isEmpty) {
+          setState(() => _searchResults.clear());
+          return;
+      }
+      
+      final lowerQuery = query.toLowerCase();
+      // Find ALL matches. 
+      // Note: _groupedMessages contains 'is_header' entries too. Skip them.
+      // We search from NEWEST (index 0) to OLDEST.
+      // But typically "Next" means older (up) or newer (down)?
+      // WhatsApp: "Up" arrow goes to older messages (further up the list). "Down" goes to newer.
+      // Our list is Reversed? List[0] is bottom.
+      
+      List<int> results = [];
+      for (int i = 0; i < _groupedMessages.length; i++) {
+          final item = _groupedMessages[i];
+          if (item['is_header'] == true) continue;
+          
+          final text = (item['text'] ?? '').toString().toLowerCase();
+          if (text.contains(lowerQuery)) {
+              results.add(i);
+          }
+      }
+      
+      setState(() {
+          _searchResults = results;
+          _currentSearchIndex = 0; // Start at first found (newest)
+          if (results.isNotEmpty) {
+               _scrollToMessage(results[0], indexMode: true);
+          }
+      });
+  }
+
+  void _nextSearchResult() {
+      if (_searchResults.isEmpty) return;
+      setState(() {
+          if (_currentSearchIndex < _searchResults.length - 1) {
+              _currentSearchIndex++;
+              _scrollToMessage(_searchResults[_currentSearchIndex], indexMode: true);
+          } else {
+             // Loop back or stay? Stay.
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No older matches."), duration: Duration(milliseconds: 500)));
+          }
+      });
+  }
+
+   void _prevSearchResult() {
+      if (_searchResults.isEmpty) return;
+      setState(() {
+          if (_currentSearchIndex > 0) {
+              _currentSearchIndex--;
+              _scrollToMessage(_searchResults[_currentSearchIndex], indexMode: true);
+          } else {
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No newer matches."), duration: Duration(milliseconds: 500)));
+          }
+      });
   }
 
 
-  void _scrollToMessage(int replyId) {
+  void _scrollToMessage(int idOrIndex, {bool indexMode = false}) {
       // Find the message in our list
-      final indexInData = _groupedMessages.indexWhere((m) => m['id'] == replyId);
+      int indexInData = -1;
+      
+      if (indexMode) {
+          indexInData = idOrIndex;
+      } else {
+          indexInData = _groupedMessages.indexWhere((m) => m['id'] == idOrIndex);
+      }
       
       if (indexInData != -1) {
           // Calculate Widget Index (Reverse Mapping)
@@ -191,7 +276,8 @@ class _ChatScreenState extends State<ChatScreen> {
                );
                
                // Highlight for 3 seconds
-               setState(() => _highlightedMessageId = replyId);
+               final int targetId = indexMode ? _groupedMessages[indexInData]['id'] : idOrIndex;
+               setState(() => _highlightedMessageId = targetId);
                Timer(const Duration(seconds: 3), () {
                    if (mounted) {
                        setState(() => _highlightedMessageId = null);
@@ -286,9 +372,43 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.recipientName),
+        titleSpacing: 0,
+        title: _isSearching 
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                cursorColor: Colors.white,
+                decoration: const InputDecoration(
+                    hintText: "Search...",
+                    hintStyle: TextStyle(color: Colors.white70),
+                    border: InputBorder.none,
+                ),
+                onChanged: (val) {
+                   if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+                   _searchDebounce = Timer(const Duration(milliseconds: 300), () => _performInChatSearch(val));
+                },
+              )
+            : Text(widget.recipientName),
         elevation: 1,
-        actions: [
+        actions: _isSearching 
+        ? [
+            IconButton(
+                icon: const Icon(Icons.keyboard_arrow_up), // Older
+                onPressed: _nextSearchResult,
+                tooltip: "Older",
+            ),
+            IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down), // Newer
+                onPressed: _prevSearchResult,
+                tooltip: "Newer",
+            ),
+            IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _toggleSearch,
+            ),
+        ] 
+        : [
             PopupMenuButton<String>(
                 onSelected: (value) {
                     if (value == 'clear') _clearChat();
@@ -296,9 +416,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     if (value == 'block') _blockUser();
                     if (value == 'report') _reportUser(widget.recipientName);
                     if (value == 'favorite') _toggleFavorite();
-                    if (value == 'search') {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Search feature coming soon.")));
-                    }
+                    if (value == 'search') _toggleSearch();
                 },
                 itemBuilder: (BuildContext context) {
                     if (isCommunity) {
@@ -593,4 +711,5 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
 }
