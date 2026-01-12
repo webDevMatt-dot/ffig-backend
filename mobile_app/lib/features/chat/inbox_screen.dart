@@ -312,23 +312,21 @@ class _InboxScreenState extends State<InboxScreen> {
                       children: [
                         Text(
                           _formatTimestamp(chat['last_message']?['created_at']),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 12, color: unreadCount > 0 ? FfigTheme.primaryBrown : Colors.grey[600], fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         if (unreadCount > 0)
                           Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary, // Using Theme Color
-                              shape: BoxShape.circle,
+                              color: FfigTheme.primaryBrown,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               unreadCount.toString(),
-                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
-                          )
-                        else
-                           const Icon(Icons.chevron_right, color: Colors.grey, size: 16),
+                          ),
                       ],
                     ),
                     onTap: () {

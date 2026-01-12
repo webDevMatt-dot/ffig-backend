@@ -59,7 +59,8 @@ from members.views import (
     AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
     AdminContentReportListView, AdminContentReportDetailView,
-    NotificationListView, NotificationMarkReadView
+    NotificationListView, NotificationMarkReadView,
+    ToggleFavoriteView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView
@@ -119,6 +120,7 @@ urlpatterns = [
     path('api/members/me/business/', BusinessProfileCreateView.as_view(), name='create-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
+    path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),
 
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),

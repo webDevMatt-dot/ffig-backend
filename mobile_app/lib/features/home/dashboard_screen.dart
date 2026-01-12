@@ -93,36 +93,80 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   }
 
   Future<void> _checkUnreadMessages() async {
-    final token = await const FlutterSecureStorage().read(key: 'access_token');
-    // Adjust URL based on device
-    const String endpoint = '${baseUrl}chat/unread-count/';
-
-    // 1. Quit early if not premium
-    if (!_isPremium) return; 
-
-    try {
-      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final int currentCount = data['unread_count'];
-
-        // If we have MORE unread messages than before, Ding!
-        if (currentCount > _lastUnreadCount) {
-           final player = AudioPlayer();
-           await player.play(AssetSource('sounds/ding.mp3'));
-           
-           // Notification removed as per user request
-        }
-        if (mounted) {
-          setState(() {
-            _lastUnreadCount = currentCount;
-          });
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print("Notification Check Error: $e");
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    
+    // 1. Check Chat Messages (Existing)
+    if (_isPremium) {
+       try {
+         final response = await http.get(Uri.parse('${baseUrl}chat/unread-count/'), headers: {'Authorization': 'Bearer $token'});
+         if (response.statusCode == 200) {
+           final data = jsonDecode(response.body);
+           final int currentCount = data['unread_count'];
+           if (currentCount > _lastUnreadCount) {
+              final player = AudioPlayer();
+              await player.play(AssetSource('sounds/ding.mp3'));
+           }
+           if (mounted) setState(() => _lastUnreadCount = currentCount);
+         }
+       } catch (e) { /* ignore */ }
     }
+
+    // 2. Check Admin Notifications (New)
+    if (_isAdmin) {
+       _checkAdminNotifications(token);
+    }
+  }
+
+  Future<void> _checkAdminNotifications(String? token) async {
+      try {
+          final response = await http.get(Uri.parse('${baseUrl}notifications/'), headers: {'Authorization': 'Bearer $token'});
+          if (response.statusCode == 200) {
+              final List data = jsonDecode(response.body);
+              if (data.isNotEmpty) {
+                  final latest = data.first; // Created at desc
+                  final int id = latest['id'];
+                  
+                  // If new notification found
+                  if (id > _lastNotificationId) {
+                      _lastNotificationId = id;
+                      
+                      // Show Popup (Non-disturbing)
+                      showSimpleNotification(
+                          Text(latest['title'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                          subtitle: Text(latest['message'], style: const TextStyle(color: Colors.white)),
+                          background: FfigTheme.primaryBrown,
+                          duration: const Duration(seconds: 5),
+                          slideDismissDirection: DismissDirection.up,
+                          trailing: Builder(builder: (context) {
+                              return TextButton(
+                                  onPressed: () {
+                                      OverlaySupportEntry.of(context)?.dismiss();
+                                      _markNotificationRead(id, token);
+                                  },
+                                  child: const Text("Mark Read", style: TextStyle(color: Colors.white))
+                              );
+                          })
+                      );
+                      
+                      // Play sound for Admin too
+                      final player = AudioPlayer();
+                      await player.play(AssetSource('sounds/ding.mp3'));
+                  }
+              }
+          }
+      } catch (e) {
+         if (kDebugMode) print("Admin Note Error: $e");
+      }
+  }
+
+  Future<void> _markNotificationRead(int id, String? token) async {
+       try {
+           await http.post(
+               Uri.parse('${baseUrl}notifications/$id/read/'),
+               headers: {'Authorization': 'Bearer $token'}
+           );
+       } catch (e) { /* ignore */ }
   }
 
   Future<void> _checkPremiumStatus() async {
