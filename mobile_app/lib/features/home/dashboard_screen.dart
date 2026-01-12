@@ -169,6 +169,16 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       }
     } catch (e) {
       print("Error checking premium/admin status: $e");
+      if (mounted) {
+          showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                  title: const Text("Profile Load Error"),
+                  content: Text("Failed to load user data: $e"),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
+              )
+          );
+      }
     }
   }
 
