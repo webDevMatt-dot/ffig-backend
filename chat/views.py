@@ -13,7 +13,34 @@ class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
-        return self.request.user.conversations.all().order_by('-updated_at')
+        from django.db.models import Q
+        user = self.request.user
+        queryset = user.conversations.all().order_by('-updated_at')
+
+        # 1. Critical: Filter by Recipient ID (Fixes Chat Bleed)
+        recipient_id = self.request.query_params.get('recipient_id')
+        if recipient_id:
+             queryset = queryset.filter(participants__id=recipient_id)
+
+        # 2. Search
+        search = self.request.query_params.get('search')
+        if search:
+             queryset = queryset.filter(
+                 Q(participants__username__icontains=search) | 
+                 Q(message__text__icontains=search)
+             ).distinct()
+
+        # 3. Filter (Unread/Favorites)
+        filter_type = self.request.query_params.get('filter')
+        if filter_type == 'unread':
+             queryset = queryset.filter(
+                 message__is_read=False
+             ).exclude(message__sender=user).distinct()
+        elif filter_type == 'favorites':
+             if hasattr(user, 'profile'):
+                 queryset = queryset.filter(participants__in=user.profile.favorites.all()).distinct()
+        
+        return queryset
 
 # 2. Get messages for a specific conversation
 class MessageListView(generics.ListAPIView):

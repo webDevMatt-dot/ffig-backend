@@ -54,11 +54,21 @@ class UserAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: bgColor,
-      backgroundImage: useUrl ? NetworkImage(imageUrl!) : null,
-      onBackgroundImageError: (_, __) {},
-      child: !useUrl 
-          ? _buildInitials(bgColor, txtColor) // Show initials if no image
-          : null, // Image is shown via backgroundImage
+      // Use ClipOval child instead of backgroundImage to safely handle 404s on Web
+      child: ClipOval(
+        child: SizedBox.fromSize(
+          size: Size.fromRadius(radius),
+          child: useUrl 
+            ? Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                   return _buildInitials(bgColor, txtColor);
+                },
+              )
+            : _buildInitials(bgColor, txtColor),
+        ),
+      ),
     );
   }
 

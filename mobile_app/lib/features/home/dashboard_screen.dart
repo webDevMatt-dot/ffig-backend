@@ -166,6 +166,18 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           await storage.write(key: 'is_premium', value: _isPremium.toString());
           await storage.write(key: 'is_staff', value: _isAdmin.toString());
         }
+      } else {
+        // ERROR HANDLER
+        if (mounted) {
+             showDialog(
+                 context: context,
+                 builder: (context) => AlertDialog(
+                     title: const Text("Session Expired or Failed"),
+                     content: Text("Server returned status ${response.statusCode}.\nPlease log in again."),
+                     actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
+                 )
+             );
+        }
       }
     } catch (e) {
       print("Error checking premium/admin status: $e");

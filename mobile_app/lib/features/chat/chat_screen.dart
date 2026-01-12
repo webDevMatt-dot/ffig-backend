@@ -452,7 +452,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                                     border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
-                                  child: Column(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  child: IntrinsicWidth(
+                                    child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start, 
                                     children: [
                                       // SHOW REPLY CONTEXT
@@ -517,11 +519,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                       ),
-                  ),
-                );
+                    ),
+                  );
               },
             ),
           ),

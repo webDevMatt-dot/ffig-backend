@@ -39,7 +39,9 @@ class _EventsScreenState extends State<EventsScreen> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

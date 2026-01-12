@@ -1,4 +1,5 @@
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -16,7 +17,11 @@ class VersionService {
         final List data = jsonDecode(response.body);
         
         String platformName = 'ANDROID';
-        if (Platform.isIOS) platformName = 'IOS';
+        if (kIsWeb) {
+             platformName = 'WEB';
+        } else if (Platform.isIOS) {
+             platformName = 'IOS';
+        }
         
         final versionData = data.firstWhere(
             (v) => v['platform'] == platformName, orElse: () => null);

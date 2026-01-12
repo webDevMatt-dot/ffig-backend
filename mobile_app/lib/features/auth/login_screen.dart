@@ -98,6 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
           await storage.write(key: 'is_staff', value: data['is_staff'].toString());
         }
 
+        // VERIFY TOKEN WRITE (Debug Step)
+        final verifyToken = await storage.read(key: 'access_token');
+        if (verifyToken != accessToken) {
+             throw Exception("Token Storage Failed! Read-back returned: $verifyToken");
+        }
+
         if (mounted) {
            Navigator.pushAndRemoveUntil(
             context,
