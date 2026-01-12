@@ -162,6 +162,8 @@ class _InboxScreenState extends State<InboxScreen> {
             _isLoading = false;
           });
         }
+      } else {
+        if (mounted && !silent) setState(() => _isLoading = false);
       }
     } catch (e) {
       if (kDebugMode) print(e);

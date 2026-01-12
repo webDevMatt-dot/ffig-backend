@@ -53,6 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   Timer? _notificationTimer;
 
   int _lastUnreadCount = 0;
+  int _lastNotificationId = 0;
 
   // New Data Sources (Mocked for now)
   List<HeroItem> _heroItems = [];
