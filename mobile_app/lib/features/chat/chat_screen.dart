@@ -724,7 +724,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         onOpen: _onOpenLink,
                                         text: msg['text'],
                                         style: const TextStyle(fontSize: 16),
-                                        linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
+                                        linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.none),
                                         options: const LinkifyOptions(humanize: false),
                                       ),
                                       const SizedBox(height: 4),
