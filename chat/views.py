@@ -27,15 +27,15 @@ class ConversationListView(generics.ListAPIView):
         if search:
              queryset = queryset.filter(
                  Q(participants__username__icontains=search) | 
-                 Q(message__text__icontains=search)
+                 Q(messages__text__icontains=search)
              ).distinct()
 
         # 3. Filter (Unread/Favorites)
         filter_type = self.request.query_params.get('filter')
         if filter_type == 'unread':
              queryset = queryset.filter(
-                 message__is_read=False
-             ).exclude(message__sender=user).distinct()
+                 messages__is_read=False
+             ).exclude(messages__sender=user).distinct()
         elif filter_type == 'favorites':
              if hasattr(user, 'profile'):
                  queryset = queryset.filter(participants__in=user.profile.favorites.all()).distinct()
