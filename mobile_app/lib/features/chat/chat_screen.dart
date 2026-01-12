@@ -6,6 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'dart:async'; // For timer
 import 'package:intl/intl.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart'; // For Clipboard
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
@@ -374,6 +377,60 @@ class _ChatScreenState extends State<ChatScreen> {
        }
   }
 
+  Future<void> _onOpenLink(LinkableElement link) async {
+    final uri = Uri.parse(link.url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open link.")));
+    }
+  }
+
+  void _showMessageOptions(Map<String, dynamic> msg) {
+      final isMe = msg['is_me'];
+      final text = msg['text'];
+      final username = msg['sender']['username'];
+
+      showModalBottomSheet(
+          context: context,
+          builder: (context) => SafeArea(
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                      ListTile(
+                          leading: const Icon(Icons.copy),
+                          title: const Text("Copy Text"),
+                          onTap: () async {
+                              await Clipboard.setData(ClipboardData(text: text));
+                              if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied to clipboard"), duration: Duration(seconds: 1)));
+                              }
+                          },
+                      ),
+                      ListTile(
+                          leading: const Icon(Icons.reply),
+                          title: const Text("Reply"),
+                          onTap: () {
+                              Navigator.pop(context);
+                              setState(() => _replyMessage = msg);
+                          },
+                      ),
+                      if (!isMe)
+                          ListTile(
+                              leading: const Icon(Icons.flag, color: Colors.red),
+                              title: const Text("Report User", style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                  Navigator.pop(context);
+                                  _reportUser(username);
+                              },
+                          ),
+                  ],
+              ),
+          ),
+      );
+  }
+
   Future<void> _toggleFavorite() async {
       int? targetId = widget.recipientId;
       
@@ -607,7 +664,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               GestureDetector(
                                 onLongPress: () {
-                                     if (!isMe) _reportUser(username);
+                                     _showMessageOptions(msg);
                                 },
                                 child: Container(
                                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
@@ -663,9 +720,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                               ),
                                           ),
                                       
-                                      Text(
-                                        msg['text'],
+                                      Linkify(
+                                        onOpen: _onOpenLink,
+                                        text: msg['text'],
                                         style: const TextStyle(fontSize: 16),
+                                        linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
+                                        options: const LinkifyOptions(humanize: false),
                                       ),
                                       const SizedBox(height: 4),
                                       Align(
