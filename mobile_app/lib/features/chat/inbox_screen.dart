@@ -461,6 +461,7 @@ class _InboxScreenState extends State<InboxScreen> {
            if (mounted) setState(() => _isLoading = false);
        }
   }
+  Widget _buildFilterChip(String label, String value) {
       final isSelected = _selectedFilter == value;
       return FilterChip(
         label: Text(label),
