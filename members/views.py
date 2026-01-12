@@ -101,7 +101,16 @@ class ContentReportCreateView(generics.CreateAPIView):
     serializer_class = ContentReportSerializer
     
     def perform_create(self, serializer):
-        serializer.save(reporter=self.request.user)
+        report = serializer.save(reporter=self.request.user)
+        
+        # Notify Admins
+        admins = User.objects.filter(is_staff=True)
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                title="New Content Report Filed",
+                message=f"{self.request.user.username} reported a {report.get_reported_item_type_display()}: {report.reason}",
+            )
 
 # --- ADMIN DASHBOARD API ---
 

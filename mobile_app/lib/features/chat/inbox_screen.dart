@@ -312,7 +312,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       maxLines: 1, 
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: unreadCount > 0 ? Colors.black87 : Colors.grey,
+                        color: unreadCount > 0 ? Theme.of(context).colorScheme.onSurface : Colors.grey,
                         fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
                       ),
                     ),
@@ -444,21 +444,31 @@ class _InboxScreenState extends State<InboxScreen> {
        try {
            const storage = FlutterSecureStorage();
            final token = await storage.read(key: 'access_token');
-           final uri = Uri.parse('${baseUrl}chat/search/').replace(queryParameters: {'q': query});
+           final uri = Uri.parse('${baseUrl}chat/search/?q=$query');
            
            final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
            if (response.statusCode == 200) {
                if (mounted) {
+                   final data = jsonDecode(response.body);
                    setState(() {
-                       _searchResults = jsonDecode(response.body);
+                       _searchResults = data;
                        _isLoading = false;
                    });
+                   if ((data['users'] as List).isEmpty && (data['messages'] as List).isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No results found."), duration: Duration(seconds: 1)));
+                   }
                }
            } else {
-               if (mounted) setState(() => _isLoading = false);
+               if (mounted) {
+                   setState(() => _isLoading = false);
+                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Search failed: ${response.statusCode}")));
+               }
            }
        } catch (e) {
-           if (mounted) setState(() => _isLoading = false);
+           if (mounted) { 
+               setState(() => _isLoading = false);
+               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+           }
        }
   }
   Widget _buildFilterChip(String label, String value) {

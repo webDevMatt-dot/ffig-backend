@@ -11,6 +11,7 @@ import 'home_management/manage_ticker_screen.dart';
 import 'events_management/manage_events_screen.dart';
 import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
+import 'moderation/admin_reports_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -57,6 +58,17 @@ class AdminDashboardScreen extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
         ),
         
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "Community & Moderation"),
+        
+        _buildAdminTile(
+          context,
+          icon: Icons.flag_outlined, 
+          title: "Reports (Moderation)",
+          subtitle: "Review reported users & content",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen())),
+        ),
+
         const SizedBox(height: 24),
         _buildSectionHeader(context, "Approvals & Analytics"),
 
@@ -144,6 +156,12 @@ class AdminDashboardScreen extends StatelessWidget {
                   Icons.event, 
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen()))
                 ),
+                 _buildWideTile(
+                   context, 
+                   "Reports", 
+                   Icons.flag_outlined, 
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen()))
+                 ),
                  _buildWideTile(
                    context, 
                    "Approvals", 

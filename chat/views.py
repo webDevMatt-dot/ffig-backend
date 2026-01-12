@@ -52,7 +52,7 @@ class MessageListView(generics.ListAPIView):
         
         # Security Check
         conversation = get_object_or_404(Conversation, id=conversation_id)
-        if not conversation.is_public and self.request.user not in conversation.participants.all():
+        if not conversation.is_public and self.request.user not in conversation.participants.all() and not self.request.user.is_staff:
              return Message.objects.none()
 
         # 1. Get messages with eager loading (N+1 fix)

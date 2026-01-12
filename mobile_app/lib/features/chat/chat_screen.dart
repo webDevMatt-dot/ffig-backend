@@ -203,8 +203,9 @@ class _ChatScreenState extends State<ChatScreen> {
       // WhatsApp: "Up" arrow goes to older messages (further up the list). "Down" goes to newer.
       // Our list is Reversed? List[0] is bottom.
       
+      // Search Reversed (Newest First) so that "Next" goes to Older
       List<int> results = [];
-      for (int i = 0; i < _groupedMessages.length; i++) {
+      for (int i = _groupedMessages.length - 1; i >= 0; i--) {
           final item = _groupedMessages[i];
           if (item['is_header'] == true) continue;
           
@@ -213,12 +214,19 @@ class _ChatScreenState extends State<ChatScreen> {
               results.add(i);
           }
       }
+      // Results are now [NewestIndex, ... OldestIndex] (since we iterated backwards from end? No.)
+      // _groupedMessages: 0=Oldest, Max=Newest.
+      // Loop Max down to 0.
+      // First found is at Max (Newest).
+      // So results[0] = Max (Newest).
       
       setState(() {
           _searchResults = results;
-          _currentSearchIndex = 0; // Start at first found (newest)
+          _currentSearchIndex = 0; // Start at Newest
           if (results.isNotEmpty) {
                _scrollToMessage(results[0], indexMode: true);
+          } else {
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No matches found.")));
           }
       });
   }
@@ -305,23 +313,65 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _reportUser(String? username) {
+    final reasonController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Report ${username ?? 'User'}?"),
-        content: const Text("Would you like to report this user for inappropriate behavior?"),
+        title: Text("Report ${username ?? 'User'}"),
+        content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+                const Text("Please verify the reason for reporting this user:"),
+                const SizedBox(height: 10),
+                TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "Reason..."),
+                    maxLines: 3,
+                )
+            ]
+        ),
         actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
             TextButton(
                 onPressed: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User reported. Thank you.")));
+                    if (reasonController.text.isNotEmpty) {
+                        _sendReport(reasonController.text);
+                    }
                 }, 
                 child: const Text("Report", style: TextStyle(color: Colors.red))
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _sendReport(String reason) async {
+       try {
+           const storage = FlutterSecureStorage();
+           final token = await storage.read(key: 'access_token');
+           
+           // Pack Context into Reason (Format: [CID:123] Reason)
+           final fullReason = "[CID:$_activeConversationId] $reason";
+           
+           final response = await http.post(
+               Uri.parse('${baseUrl}members/report/'),
+               headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+               body: jsonEncode({
+                   'reported_item_type': 'USER',
+                   'reported_item_id': widget.recipientId?.toString() ?? 'unknown',
+                   'reason': fullReason
+               })
+           );
+           
+           if (response.statusCode == 201) {
+               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Report submitted successfully.")));
+           } else {
+               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to submit report.")));
+           }
+       } catch (e) {
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error submitting report.")));
+       }
   }
 
   Future<void> _toggleFavorite() async {
@@ -377,12 +427,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                cursorColor: Colors.white,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: Colors.black87),
+                cursorColor: FfigTheme.primaryBrown,
+                decoration: InputDecoration(
                     hintText: "Search...",
-                    hintStyle: TextStyle(color: Colors.white70),
-                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
                 ),
                 onChanged: (val) {
                    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
@@ -394,13 +447,13 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: _isSearching 
         ? [
             IconButton(
-                icon: const Icon(Icons.keyboard_arrow_up), // Older
-                onPressed: _nextSearchResult,
+                icon: const Icon(Icons.keyboard_arrow_up), // Older (Up in list)
+                onPressed: _nextSearchResult, // Next in Results (Older)
                 tooltip: "Older",
             ),
             IconButton(
-                icon: const Icon(Icons.keyboard_arrow_down), // Newer
-                onPressed: _prevSearchResult,
+                icon: const Icon(Icons.keyboard_arrow_down), // Newer (Down in list)
+                onPressed: _prevSearchResult, // Prev in Results (Newer)
                 tooltip: "Newer",
             ),
             IconButton(
@@ -615,23 +668,26 @@ class _ChatScreenState extends State<ChatScreen> {
                                         style: const TextStyle(fontSize: 16),
                                       ),
                                       const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end, // Align time right
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            timeString,
-                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                          ),
-                                          if (isMe) ...[
-                                            const SizedBox(width: 4),
-                                            Icon(
-                                              isRead ? Icons.done_all : Icons.check, 
-                                              size: 14,
-                                              color: isRead ? Colors.blueAccent : Colors.black54, 
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.end, // Align time right
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              timeString,
+                                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                                             ),
+                                            if (isMe && !isCommunity) ...[
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                isRead ? Icons.done_all : Icons.check, 
+                                                size: 14,
+                                                color: isRead ? Colors.blueAccent : Colors.black54, 
+                                              ),
+                                            ],
                                           ],
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),
