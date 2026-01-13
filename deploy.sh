@@ -28,6 +28,9 @@ flutter build web --release
 echo "📦 Building Android APK (Release)..."
 flutter build apk --release
 
+echo "📦 Building Android App Bundle (Release)..."
+flutter build appbundle
+
 echo "📂 Copying APK to Web Source Directory..."
 # Extract Version from pubspec.yaml
 VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
