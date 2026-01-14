@@ -18,10 +18,18 @@ class ProfileSerializer(serializers.ModelSerializer):
     industry_label = serializers.CharField(source='get_industry_display', read_only=True)
     
     is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
+    admin_notice = serializers.SerializerMethodField()
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice']
+
+    def get_admin_notice(self, obj):
+        # Only show the notice if the request user IS the profile user
+        request = self.context.get('request', None)
+        if request and request.user == obj.user:
+            return obj.admin_notice
+        return None
 
     def update(self, instance, validated_data):
         # The 'source' fields (user.first_name) come in as a nested dictionary under 'user'
@@ -69,8 +77,33 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
 class ContentReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentReport
+    reporter_username = serializers.CharField(source='reporter.username', read_only=True)
+    reported_user = serializers.SerializerMethodField()
+    target_user_id = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ContentReport
         fields = '__all__'
         read_only_fields = ['status', 'reporter']
+
+    def get_reported_user(self, obj):
+        try:
+            if obj.reported_item_type == 'USER':
+                user = User.objects.get(id=obj.reported_item_id)
+                return f"{user.username} (ID: {user.id})"
+            return f"ID: {obj.reported_item_id}"
+        except:
+             return "Unknown User"
+
+    def get_target_user_id(self, obj):
+        # Helper to get the user ID to act upon
+        try:
+            if obj.reported_item_type == 'USER':
+                return int(obj.reported_item_id)
+            # For CHAT, if we had message lookup we'd resolve it here
+            return None 
+        except:
+            return None
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:

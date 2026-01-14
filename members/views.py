@@ -79,6 +79,33 @@ class ToggleFavoriteView(APIView):
             is_favorite = True
             
         return Response({'status': 'success', 'is_favorite': is_favorite})
+    
+class BlockUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        # Block a user
+        target_user = get_object_or_404(User, id=user_id)
+        if target_user == request.user:
+            return Response({"error": "You cannot block yourself"}, status=400)
+            
+        request.user.profile.blocked_users.add(target_user)
+        return Response({"status": "blocked", "user_id": user_id})
+
+    def delete(self, request, user_id):
+        # Unblock a user
+        target_user = get_object_or_404(User, id=user_id)
+        request.user.profile.blocked_users.remove(target_user)
+        return Response({"status": "unblocked", "user_id": user_id})
+
+class BlockedUserListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProfileSerializer 
+
+    def get_queryset(self):
+        # Return profiles of users I have blocked
+        return Profile.objects.filter(user__in=self.request.user.profile.blocked_users.all())
+
 
 # --- USER SUBMISSION VIEWS ---
 
@@ -182,6 +209,61 @@ class AdminContentReportDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = ContentReport.objects.all()
     serializer_class = ContentReportSerializer
+
+class AdminModerationActionView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        
+        action = request.data.get('action') # 'WARN', 'SUSPEND', 'BLOCK', 'DELETE'
+        target_user_id = request.data.get('target_user_id')
+        reason = request.data.get('reason', '')
+        
+        if not action or not target_user_id:
+            return Response({'error': 'Missing action or target_user_id'}, status=400)
+            
+        target_user = get_object_or_404(User, id=target_user_id)
+        
+        if action == 'WARN':
+            # Set the notice on the profile
+            target_user.profile.admin_notice = reason
+            target_user.profile.save()
+            
+            Notification.objects.create(
+                recipient=target_user,
+                title="Warning from Admin",
+                message=f"You have received a warning: {reason}"
+            )
+            return Response({'status': 'warned'})
+            
+        elif action == 'SUSPEND':
+            # Suspend for 7 days by default, or parse duration
+            duration = 7 
+            target_user.profile.suspension_expiry = timezone.now() + timedelta(days=duration)
+            target_user.profile.admin_notice = f"Suspended for {duration} days: {reason}"
+            target_user.profile.save()
+            
+            # Notify
+            Notification.objects.create(
+                recipient=target_user,
+                title="Account Suspended",
+                message=f"Your account has been suspended for {duration} days. Reason: {reason}"
+            )
+            return Response({'status': 'suspended'})
+            
+        elif action == 'BLOCK':
+            target_user.is_active = False
+            target_user.save()
+             # Notify (email would be better here since they can't login, but creating notif for record)
+            return Response({'status': 'blocked'})
+            
+        elif action == 'DELETE':
+            target_user.delete()
+            return Response({'status': 'deleted'})
+            
+        return Response({'error': 'Invalid action'}, status=400)
 
 # --- NOTIFICATIONS (Admin Only for now) ---
 from .serializers import NotificationSerializer

@@ -311,8 +311,32 @@ class _ChatScreenState extends State<ChatScreen> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chat muted.")));
   }
 
-  void _blockUser() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User blocked.")));
+  Future<void> _blockUser() async {
+     try {
+         final token = await const FlutterSecureStorage().read(key: 'access_token');
+         final userId = widget.recipientId; 
+         
+         if (userId == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cannot block unknown user.")));
+              return;
+         }
+
+         final response = await http.post(
+              Uri.parse('${baseUrl}members/block/$userId/'),
+              headers: {'Authorization': 'Bearer $token'}
+         );
+
+         if (response.statusCode == 200) {
+              if (mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User blocked. You will no longer receive messages from them.")));
+                   Navigator.pop(context); // Exit chat
+              }
+         } else {
+             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to block user.")));
+         }
+     } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error blocking user.")));
+     }
   }
 
   void _reportUser(String? username) {

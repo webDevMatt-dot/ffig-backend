@@ -10,6 +10,7 @@ import '../../main.dart'; // To access themeController global
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import '../tickets/my_tickets_screen.dart';
+import 'blocked_users_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isPremium = false;
   String _tier = "FREE";
   bool _readReceiptsEnabled = true; // Default true
+  String? _adminNotice;
   
   @override
   void initState() {
@@ -49,13 +51,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _email = data['email'] ?? "Unknown";
               _isPremium = data['is_premium'] ?? false;
               _tier = data['tier'] ?? "FREE";
-              final profile = data['profile'] ?? {}; // Ensure profile data is included in backend or separate call
-              // Note: Members/me/ endpoint needs to return profile data including `read_receipts_enabled`
-              // Since we just added the field to model, we rely on Serializer update.
-              // Assuming ProfileSerializer is nested or we create a separate one.
-              if (data['profile'] != null) {
-                 _readReceiptsEnabled = data['profile']['read_receipts_enabled'] ?? true;
-              }
+              // Backend returns flat JSON via ProfileSerializer
+              _readReceiptsEnabled = data['read_receipts_enabled'] ?? true;
+              _adminNotice = data['admin_notice']; // May be null
             });
           }
         }
@@ -157,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
            await http.patch(
                Uri.parse('${baseUrl}members/me/'), // Ensure this endpoint handles profile update
                headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-               body: jsonEncode({'profile': {'read_receipts_enabled': enabled}})
+               body: jsonEncode({'read_receipts_enabled': enabled})
            );
        } catch (e) {
            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update privacy settings.")));
@@ -208,6 +206,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SizedBox(height: 16),
           
+          const SizedBox(height: 16),
+          
+          if (_adminNotice != null && _adminNotice!.isNotEmpty)
+             Container(
+                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                     color: Colors.orange.withOpacity(0.1),
+                     borderRadius: BorderRadius.circular(12),
+                     border: Border.all(color: Colors.orange),
+                 ),
+                 child: Row(
+                     children: [
+                         const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 32),
+                         const SizedBox(width: 16),
+                         Expanded(
+                             child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                     const Text("Account Notice", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                                     const SizedBox(height: 4),
+                                     Text(_adminNotice!, style: const TextStyle(fontSize: 13)),
+                                 ],
+                             ),
+                         )
+                     ],
+                 ),
+             ),
+             
           // 1. General (Edit Profile, Change Password)
           _buildSectionHeader("General"),
           ListTile(
@@ -272,6 +299,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (val) {
                 setState(() => _readReceiptsEnabled = val);
                 _updatePrivacy(val);
+            },
+          ),
+          
+          ListTile(
+            leading: const Icon(Icons.block, color: Colors.grey),
+            title: const Text("Blocked Users"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockedUsersScreen()));
             },
           ),
           

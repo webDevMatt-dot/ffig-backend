@@ -30,6 +30,8 @@ class Profile(models.Model):
     ]
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     subscription_expiry = models.DateTimeField(null=True, blank=True)
+    suspension_expiry = models.DateTimeField(null=True, blank=True)
+    admin_notice = models.TextField(blank=True, help_text="Reason for warning/suspension (visible to user)")
     
     # Deprecated (Map to Tier later)
     is_premium = models.BooleanField(default=False) 
@@ -39,6 +41,9 @@ class Profile(models.Model):
     
     # Favorites
     favorites = models.ManyToManyField(User, related_name='favorited_by', blank=True)
+    
+    # Blocking
+    blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
 
     # We'll stick to a placeholder image for now to save setup time
     photo_url = models.URLField(blank=True, default="https://ui-avatars.com/api/?background=D4AF37&color=fff&name=Founder")

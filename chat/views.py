@@ -100,10 +100,29 @@ class SendMessageView(APIView):
             conversation = get_object_or_404(Conversation, id=conversation_id)
             if not conversation.is_public and sender not in conversation.participants.all():
                  return Response({"error": "You are not a participant"}, status=403)
+            
+            # BLOCKING CHECK (For 1-on-1 chats)
+            if not conversation.is_public and conversation.participants.count() == 2:
+                # Identify the other person
+                recipient = conversation.participants.exclude(id=sender.id).first()
+                if recipient:
+                    # check if recipient blocked me
+                    if hasattr(recipient, 'profile') and sender in recipient.profile.blocked_users.all():
+                        return Response({"error": "You cannot send messages to this user."}, status=403)
+                    # check if I blocked recipient (optional, but good UX to prevent sending)
+                    if hasattr(sender, 'profile') and recipient in sender.profile.blocked_users.all():
+                        return Response({"error": "You have blocked this user. Unblock to send messages."}, status=403)
 
         # Scenario B: Starting a new chat with a User ID
         elif recipient_id:
             recipient = get_object_or_404(User, id=recipient_id)
+            
+            # BLOCKING CHECK
+            if hasattr(recipient, 'profile') and sender in recipient.profile.blocked_users.all():
+                return Response({"error": "You cannot send messages to this user."}, status=403)
+            if hasattr(sender, 'profile') and recipient in sender.profile.blocked_users.all():
+                return Response({"error": "You have blocked this user. Unblock to send messages."}, status=403)
+
             # Check if conversation already exists
             conversation = Conversation.objects.filter(participants=sender).filter(participants=recipient).first()
             if not conversation:

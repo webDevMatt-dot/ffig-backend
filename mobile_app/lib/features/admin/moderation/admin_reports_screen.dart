@@ -67,7 +67,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                    
                    return ListTile(
                      title: Text("Reason: ${report['reason']}", maxLines: 1, overflow: TextOverflow.ellipsis),
-                     subtitle: Text("Reported by: ${report['reporter_username'] ?? 'Unknown'}\nStatus: $status"),
+                     subtitle: RichText(
+                         text: TextSpan(
+                             style: DefaultTextStyle.of(context).style,
+                             children: [
+                                 TextSpan(text: "Reported by: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                                 TextSpan(text: "${report['reporter_username'] ?? 'Unknown'}\n"),
+                                 TextSpan(text: "Reported User: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                                 TextSpan(text: "${report['reported_user'] ?? 'Unknown'}"),
+                                 TextSpan(text: "\nStatus: $status", style: TextStyle(color: isResolved ? Colors.green : Colors.orange)),
+                             ],
+                         ),
+                     ),
                      trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                      tileColor: isResolved ? null : Colors.red.withOpacity(0.05),
                      onTap: () async {

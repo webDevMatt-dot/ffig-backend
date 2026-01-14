@@ -115,6 +115,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     const SizedBox(height: 16),
                     _buildInfoRow("Reporter", widget.report['reporter_username'] ?? 'Unknown'),
                     _buildInfoRow("Type", widget.report['reported_item_type']),
+                    _buildInfoRow("Reported User", widget.report['reported_user'] ?? 'Unknown'),
                     _buildInfoRow("Target ID", widget.report['reported_item_id']),
                     _buildInfoRow("Date", widget.report['created_at']),
                     
@@ -156,14 +157,30 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                          
                     const SizedBox(height: 40),
                     if (_currentStatus != 'RESOLVED')
-                        SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                                icon: const Icon(Icons.check),
-                                label: const Text("Mark as Resolved"),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.all(16)),
-                                onPressed: _resolveReport,
+                        Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.check),
+                                  label: const Text("Mark as Resolved"),
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.all(16)),
+                                  onPressed: _resolveReport,
+                              ),
                             ),
+                            const SizedBox(height: 24),
+                            const Divider(),
+                            const SizedBox(height: 16),
+                            const Text("Administrative Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 16),
+                            if (widget.report['target_user_id'] != null) ...[
+                                _buildActionBtn("Warn User", Colors.orange, Icons.warning, () => _confirmAction('WARN')),
+                                _buildActionBtn("Suspend (7 Days)", Colors.deepOrange, Icons.timer_off, () => _confirmAction('SUSPEND')),
+                                _buildActionBtn("Block User", Colors.red, Icons.block, () => _confirmAction('BLOCK')),
+                                _buildActionBtn("Delete User", Colors.black, Icons.delete_forever, () => _confirmAction('DELETE')),
+                            ] else
+                                const Text("Action unavailable: No direct user target.", style: TextStyle(color: Colors.grey)),
+                          ],
                         )
                     else
                         const Center(child: Text("✅ Report Resolved", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)))
@@ -171,6 +188,71 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             ),
         ),
     );
+  }
+
+  Widget _buildActionBtn(String label, Color color, IconData icon, VoidCallback onTap) {
+      return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                  icon: Icon(icon, color: color),
+                  label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                      side: BorderSide(color: color),
+                  ),
+                  onPressed: onTap
+              ),
+          ),
+      );
+  }
+
+  Future<void> _confirmAction(String action) async {
+      final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+              title: Text("Confirm $action?"),
+              content: const Text("This action cannot be easily undone."),
+              actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                  ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                      onPressed: () => Navigator.pop(context, true), 
+                      child: const Text("Confirm")
+                  ),
+              ],
+          )
+      );
+
+      if (confirmed == true) {
+          _performAction(action);
+      }
+  }
+
+  Future<void> _performAction(String action) async {
+       try {
+          final token = await _storage.read(key: 'access_token');
+          final response = await http.post(
+              Uri.parse('${baseUrl}admin/moderation/actions/'),
+              headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+              body: jsonEncode({
+                  'action': action,
+                  'target_user_id': widget.report['target_user_id'],
+                  'reason': widget.report['reason'] // Pass report reason as context
+              })
+          );
+
+          if (response.statusCode == 200) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action $action Successful")));
+              // Optionally resolve the report too
+              if (_currentStatus != 'RESOLVED') _resolveReport(); 
+          } else {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action Failed: ${response.body}")));
+          }
+      } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
+      }
   }
 
   Widget _buildInfoRow(String label, String value) {

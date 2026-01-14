@@ -42,9 +42,9 @@ from members.views import (
     BusinessProfileCreateView, MarketingRequestCreateView, ContentReportCreateView,
     AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
-    AdminContentReportListView, AdminContentReportDetailView,
+    AdminContentReportListView, AdminContentReportDetailView, AdminModerationActionView,
     NotificationListView, NotificationMarkReadView,
-    ToggleFavoriteView
+    ToggleFavoriteView, BlockUserView, BlockedUserListView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView
@@ -97,12 +97,18 @@ urlpatterns = [
     # Admin Moderation
     path('api/admin/moderation/reports/', AdminContentReportListView.as_view(), name='admin-report-list'),
     path('api/admin/moderation/reports/<int:pk>/', AdminContentReportDetailView.as_view(), name='admin-report-detail'),
+    path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
 
     # User Submissions
     path('api/members/me/business/', BusinessProfileCreateView.as_view(), name='create-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
+    path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),
+    
+    # Blocking
+    path('api/members/block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),
+    path('api/members/blocked/', BlockedUserListView.as_view(), name='blocked-user-list'),
 
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
