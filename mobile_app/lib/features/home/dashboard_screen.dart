@@ -389,9 +389,14 @@ class _DashboardScreenState extends State<DashboardScreen>
             // Ensure ID is string safely
             final Map<String, dynamic> data = Map<String, dynamic>.from(json);
             data['id'] = data['id'].toString();
-            // Map 'image' (Django) to 'image_url' (Dart)
             if (data.containsKey('image')) {
-              data['image_url'] = data['image'];
+               var url = data['image'].toString();
+               final domain = baseUrl.replaceAll('/api/', '');
+               if (url.startsWith('/')) {
+                 data['image_url'] = '$domain$url';
+               } else {
+                 data['image_url'] = url;
+               }
             }
             return HeroItem.fromJson(data);
           }).toList();
@@ -403,9 +408,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               founders.first,
             );
             data['id'] = data['id'].toString();
-            // Map 'photo' (Django) to 'photo_url' (Dart)
+            final domain = baseUrl.replaceAll('/api/', '');
             if (data.containsKey('photo')) {
-              data['photo_url'] = data['photo'];
+              var url = data['photo'].toString();
+              if (url.startsWith('/')) {
+                data['photo_url'] = '$domain$url';
+              } else {
+                 data['photo_url'] = url;
+              }
             }
             _founderProfile = FounderProfile.fromJson(data);
           } else {
@@ -878,82 +888,137 @@ class _DashboardScreenState extends State<DashboardScreen>
 
                   // ROW 3: FOUNDER SPOTLIGHT (If available)
                   if (_founderProfile != null)
-                    BentoTile(
-                      title: "Spotlight",
-                      subtitle: _founderProfile!.name,
-                      height: 220, // Taller
-                      color: Colors.transparent, // Background handled by image
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            backgroundColor: Colors.transparent,
-                            insetPadding: const EdgeInsets.all(16),
-                            child: FounderCard(profile: _founderProfile!),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: InkWell(
+                        onTap: () {
+                           showDialog(
+                             context: context,
+                             builder: (context) => Dialog(
+                               backgroundColor: Colors.transparent,
+                               insetPadding: const EdgeInsets.all(16),
+                               child: FounderCard(profile: _founderProfile!),
+                             ),
+                           );
+                        },
+                        borderRadius: BorderRadius.circular(32),
+                        child: Container(
+                          height: 300, 
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                               BoxShadow(
+                                 color: Colors.black.withOpacity(0.3),
+                                 blurRadius: 20,
+                                 offset: const Offset(0, 10),
+                               ),
+                            ],
                           ),
-                        );
-                      },
-                      child: Stack(
-                        children: [
-                          // Background Image
-                          Positioned.fill(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: ColorFiltered(
-                                // Darken image for text readability
-                                colorFilter: ColorFilter.mode(
-                                  Colors.black.withOpacity(0.4),
-                                  BlendMode.darken,
-                                ),
-                                child: Image.network(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(32),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Full Bleed Image
+                                Image.network(
                                   _founderProfile!.photoUrl,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (c,e,s) => Container(color: Colors.grey[900], child: const Icon(Icons.person, color: Colors.white, size: 50)),
                                 ),
-                              ),
-                            ),
-                          ),
-                          // Text Overlay
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                  colors: [
-                                    Colors.black.withOpacity(0.9),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _founderProfile!.name,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                
+                                // Gradient Overlay (Subtle)
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [Colors.transparent, Colors.black87],
+                                      stops: [0.5, 1.0],
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "${_founderProfile!.businessName} • ${_founderProfile!.country}",
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white70,
-                                      fontSize: 12,
+                                ),
+
+                                // Top Badge: Spotlight
+                                Positioned(
+                                  top: 20,
+                                  left: 20,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        color: Colors.white.withOpacity(0.1),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.star, color: Color(0xFFD4AF37), size: 16), // Gold star
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              "FOUNDER OF THE WEEK",
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white, 
+                                                fontSize: 12, 
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1.0
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+
+                                // Bottom Details
+                                Positioned(
+                                  bottom: 24,
+                                  left: 24,
+                                  right: 24,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _founderProfile!.name,
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                          children: [
+                                              Text(
+                                                _founderProfile!.businessName.toUpperCase(),
+                                                style: GoogleFonts.inter(
+                                                  color: const Color(0xFFD4AF37), // Gold
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.5
+                                                ),
+                                              ),
+                                              Container(
+                                                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                                                  width: 4, height: 4, 
+                                                  decoration: const BoxDecoration(color: Colors.white54, shape: BoxShape.circle)
+                                              ),
+                                              Text(
+                                                _founderProfile!.country,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white70,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                          ],
+                                      )
+                                    ],
+                                  ),
+                                )
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
 
@@ -1040,14 +1105,14 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 260, // Increased from 220 to 260
+              height: 320, // Increased
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.only(
                   left: 24,
                   right: 24,
-                  bottom: 120,
-                ), // Added padding for nav bar
+                  bottom: 20, // Reduced bottom padding as it's a fixed height container
+                ), 
                 itemCount: _events.length > 2 ? 2 : _events.length,
                 itemBuilder: (context, index) {
                   if (index >= _events.length) return const SizedBox.shrink();
@@ -1062,7 +1127,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                       ),
                       child: Container(
-                        width: 240, // Widened to prevent overlap
+                        width: 200, // Reduced width
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardTheme.color,
                           borderRadius: BorderRadius.circular(16),

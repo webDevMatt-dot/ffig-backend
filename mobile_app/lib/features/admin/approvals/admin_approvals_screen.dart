@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/services/admin_api_service.dart';
+import '../../../../core/api/constants.dart';
 
 class AdminApprovalsScreen extends StatelessWidget {
   const AdminApprovalsScreen({super.key});
@@ -189,7 +190,14 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
                                 subtitle: Text(item['link'] ?? 'No link'),
                             ),
                             if (item['image'] != null)
-                                SizedBox(height: 100, child: Image.network(item['image'])),
+                                Builder(builder: (c) {
+                                  var url = item['image'].toString();
+                                  if (url.startsWith('/')) {
+                                      final domain = baseUrl.replaceAll('/api/', '');
+                                      url = '$domain$url';
+                                  }
+                                  return SizedBox(height: 100, child: Image.network(url));
+                                }),
                              if (item['video'] != null)
                                 const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
                             

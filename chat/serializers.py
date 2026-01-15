@@ -5,10 +5,11 @@ from .models import Conversation, Message
 # A simple User serializer for chat participants
 class ChatUserSerializer(serializers.ModelSerializer):
     tier = serializers.CharField(source='profile.tier', read_only=True)
+    photo_url = serializers.CharField(source='profile.photo_url', read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'tier']
+        fields = ['id', 'username', 'tier', 'photo_url']
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = ChatUserSerializer(read_only=True)

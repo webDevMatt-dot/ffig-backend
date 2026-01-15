@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
+import '../../core/api/constants.dart';
+import 'share_to_chat_sheet.dart';
 
 class VVIPReelsScreen extends StatefulWidget {
   const VVIPReelsScreen({super.key});
@@ -117,8 +119,12 @@ class _ReelItemState extends State<_ReelItem> {
   }
 
   Future<void> _initMedia() async {
-    final videoUrl = widget.item['video'];
+    var videoUrl = widget.item['video'];
     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
+      if (videoUrl.toString().startsWith('/')) {
+         final domain = baseUrl.replaceAll('/api/', '');
+         videoUrl = '$domain$videoUrl';
+      }
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
       await _videoController!.initialize();
       _chewieController = ChewieController(
@@ -176,8 +182,45 @@ class _ReelItemState extends State<_ReelItem> {
   }
   
   void _share() {
-      final text = "Check out this ${widget.item['type']} on FFig: ${widget.item['title']}\n${widget.item['link'] ?? ''}";
-      Share.share(text);
+      showModalBottomSheet(
+          context: context, 
+          backgroundColor: Colors.transparent,
+          builder: (context) => Container(
+              decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+              ),
+              child: SafeArea(
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                          ListTile(
+                              leading: const Icon(Icons.share),
+                              title: const Text("Share Externally"),
+                              onTap: () {
+                                  Navigator.pop(context);
+                                  final text = "Check out this ${widget.item['type']} on FFig: ${widget.item['title']}\n${widget.item['link'] ?? ''}";
+                                  Share.share(text);
+                              },
+                          ),
+                          ListTile(
+                              leading: const Icon(Icons.send),
+                              title: const Text("Send in App"),
+                              onTap: () {
+                                  Navigator.pop(context);
+                                  showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (c) => ShareToChatSheet(item: widget.item)
+                                  );
+                              },
+                          ),
+                      ],
+                  ),
+              ),
+          )
+      );
   }
 
   @override
@@ -186,7 +229,12 @@ class _ReelItemState extends State<_ReelItem> {
         return const Center(child: CircularProgressIndicator(color: Colors.white));
     }
 
-    final imageUrl = widget.item['image'];
+    var imageUrl = widget.item['image'];
+    if (imageUrl != null && imageUrl.toString().startsWith('/')) {
+        final domain = baseUrl.replaceAll('/api/', '');
+        imageUrl = '$domain$imageUrl';
+    }
+
     final bool hasVideo = _chewieController != null;
     
     return Stack(
@@ -227,7 +275,7 @@ class _ReelItemState extends State<_ReelItem> {
                     const SizedBox(height: 20),
                     _ActionButton(
                         icon: Icons.comment, 
-                        label: "Comment", // "$_commentsCount",
+                        label: "$_commentsCount",
                         onTap: _showComments
                     ),
                     const SizedBox(height: 20),
@@ -360,10 +408,15 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                              itemCount: _comments.length,
                              itemBuilder: (c, i) {
                                  final com = _comments[i];
+                                 var photoUrl = com['photo_url'];
+                                 if (photoUrl != null && photoUrl.toString().startsWith('/')) {
+                                     final domain = baseUrl.replaceAll('/api/', '');
+                                     photoUrl = '$domain$photoUrl';
+                                 }
                                  return ListTile(
                                      leading: CircleAvatar(
-                                         backgroundImage: NetworkImage(com['photo_url'] ?? ''),
-                                         child: com['photo_url'] == null ? Text(com['username'][0]) : null,
+                                         backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                                         child: photoUrl == null || photoUrl.isEmpty ? Text(com['username'][0].toUpperCase()) : null,
                                      ),
                                      title: Text(com['username'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                      subtitle: Text(com['content']),
