@@ -17,6 +17,7 @@ import '../premium/locked_screen.dart';
 import '../premium/premium_screen.dart';
 import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
+import '../settings/settings_screen.dart';
 import '../chat/inbox_screen.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'dart:async';
