@@ -373,7 +373,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       padding: EdgeInsets.only(bottom: 8),
                       child: Text("Users", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
                   ),
-                  ...users.map((u) => ListTile(
+                  ...users.where((u) => u['username'] != _myUsername).map((u) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
                       title: Text(u['username'], style: const TextStyle(fontWeight: FontWeight.bold)),

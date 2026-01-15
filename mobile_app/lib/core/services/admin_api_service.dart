@@ -325,7 +325,13 @@ class AdminApiService {
       headers: {'Authorization': 'Bearer $token'},
     );
      if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      if (data is List) {
+          return data;
+      } else if (data is Map && data.containsKey('results')) {
+          return data['results'];
+      }
+      return [];
     } else {
       throw Exception('Failed to search users: ${response.statusCode}');
     }

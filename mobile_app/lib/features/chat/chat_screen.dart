@@ -698,17 +698,22 @@ class _ChatScreenState extends State<ChatScreen> {
                                 },
                                 child: Container(
                                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
-                                  decoration: BoxDecoration(
+                                    decoration: BoxDecoration(
                                     color: isHighlighted 
                                         ? Colors.amber.withOpacity(0.4) 
-                                        : (isMe ? FfigTheme.accentBrown.withOpacity(0.2) : Theme.of(context).cardColor),
+                                        : (isMe 
+                                            ? FfigTheme.primaryBrown 
+                                            : (Theme.of(context).brightness == Brightness.dark 
+                                                ? const Color(0xFF21262D) 
+                                                : Colors.grey[200])), // Solid colors
                                     borderRadius: BorderRadius.only(
                                         topLeft: const Radius.circular(16),
                                         topRight: const Radius.circular(16),
                                         bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
                                         bottomRight: isMe ? Radius.zero : const Radius.circular(16)
                                     ),
-                                    border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
+                                    // Remove border for solid style, or keep subtle
+                                    // border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   child: IntrinsicWidth(
@@ -753,7 +758,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       Linkify(
                                         onOpen: _onOpenLink,
                                         text: msg['text'],
-                                        style: const TextStyle(fontSize: 16),
+                                        style: TextStyle(fontSize: 16, color: isMe ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
                                         linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.none),
                                         options: const LinkifyOptions(humanize: false),
                                       ),
@@ -766,14 +771,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                           children: [
                                             Text(
                                               timeString,
-                                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                              style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.grey[600]),
                                             ),
                                             if (isMe && !isCommunity) ...[
                                               const SizedBox(width: 4),
                                               Icon(
                                                 isRead ? Icons.done_all : Icons.check, 
                                                 size: 14,
-                                                color: isRead ? Colors.blueAccent : Colors.black54, 
+                                                color: isRead ? Colors.blueAccent : Colors.white70, 
                                               ),
                                             ],
                                           ],

@@ -113,9 +113,26 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
         }
     }
 
+
     Future<void> _decide(int id, String status) async {
-        await _api.updateMarketingStatus(id, status);
-        _load();
+        setState(() => _isLoading = true);
+        try {
+            await _api.updateMarketingStatus(id, status);
+            if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Request marked as $status"), backgroundColor: Colors.green)
+                );
+            }
+            await _load();
+        } catch (e) {
+            if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+                );
+                // Reload anyway to reset state
+                 _load();
+            }
+        }
     }
 
     @override

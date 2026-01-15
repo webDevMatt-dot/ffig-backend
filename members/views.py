@@ -10,8 +10,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAdminUser
 from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
 from .serializers import (
-    ProfileSerializer, BusinessProfileSerializer, 
-    MarketingRequestSerializer, ContentReportSerializer
+    ProfileSerializer, BusinessProfileSerializer, AdminBusinessProfileSerializer,
+    MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer
 )
 
 @api_view(['GET'])
@@ -208,7 +208,7 @@ class AdminBusinessProfileListView(generics.ListCreateAPIView):
 class AdminBusinessProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = BusinessProfile.objects.all()
-    serializer_class = BusinessProfileSerializer
+    serializer_class = AdminBusinessProfileSerializer
 
 class AdminMarketingRequestListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAdminUser]
@@ -218,7 +218,7 @@ class AdminMarketingRequestListView(generics.ListCreateAPIView):
 class AdminMarketingRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = MarketingRequest.objects.all()
-    serializer_class = MarketingRequestSerializer
+    serializer_class = AdminMarketingRequestSerializer
 
 class AdminContentReportListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAdminUser]

@@ -49,7 +49,7 @@ class FfigTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: pureWhite,
+      scaffoldBackgroundColor: const Color(0xFFF9FAFB), // Soft off-white
       
       // Color Scheme
       colorScheme: ColorScheme.fromSeed(
@@ -58,10 +58,10 @@ class FfigTheme {
         onPrimary: pureWhite, 
         secondary: accentBrown,
         onSecondary: pureWhite,
-        background: pureWhite,
+        background: const Color(0xFFF9FAFB),
         surface: pureWhite,
         onSurface: textDark,
-        outline: Colors.grey.shade200,
+        outline: Colors.grey.shade300,
       ),
 
       // Typography
@@ -69,10 +69,10 @@ class FfigTheme {
 
       // AppBar Theme (Clean & Minimal)
       appBarTheme: AppBarTheme(
-        backgroundColor: pureWhite,
+        backgroundColor: const Color(0xFFF9FAFB),
         scrolledUnderElevation: 0,
         elevation: 0,
-        centerTitle: false, // Left aligned is more "Web"
+        centerTitle: false, 
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w600, color: textDark,
         ),
@@ -87,72 +87,43 @@ class FfigTheme {
         hintStyle: GoogleFonts.inter(color: textLight, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12), 
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         enabledBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
-           borderSide: BorderSide(color: Colors.grey.shade200),
+           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
            borderSide: const BorderSide(color: primaryBrown, width: 1),
-        ),
-        errorBorder: OutlineInputBorder(
-           borderRadius: BorderRadius.circular(12),
-           borderSide: BorderSide(color: Colors.red.shade300, width: 1),
         ),
       ),
 
       // Button Theme (Slick & Rounded)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: pureBlack, // High contrast black buttons
+          backgroundColor: primaryBrown, // Brand Brown for Light Mode
           foregroundColor: Colors.white,
-          elevation: 0, 
+          elevation: 2, 
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12), 
-          ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.5,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
 
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: textDark,
-          side: BorderSide(color: Colors.grey.shade300),
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 15, fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: textDark,
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-      ),
-
-      // Card Theme (Soft Shadows)
+      // Card Theme (Soft defined borders)
       cardTheme: CardThemeData(
         color: pureWhite,
-        elevation: 0, // Flat aesthetic with border often better for web
+        elevation: 0, 
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.shade100, width: 1),
+          side: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
         margin: const EdgeInsets.only(bottom: 12),
       ),
       
       dividerTheme: DividerThemeData(
-        color: Colors.grey.shade100,
+        color: Colors.grey.shade200,
         thickness: 1,
         space: 24,
       ),
@@ -265,7 +236,7 @@ class FfigTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24), // More rounded for Bento feel
-          side: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
+          side: BorderSide(color: Colors.white.withOpacity(0.12), width: 1),
         ),
         margin: const EdgeInsets.only(bottom: 12),
       ),

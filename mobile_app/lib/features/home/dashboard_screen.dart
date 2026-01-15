@@ -778,9 +778,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
-              itemCount: _events.length > 1 ? _events.length - 1 : 0,
+              itemCount: _events.length > 2 ? 2 : (_events.length > 0 ? _events.length - 1 : 0),
               itemBuilder: (context, index) {
                 // Skip the first one since it is Featured
+                if (index + 1 >= _events.length) return const SizedBox.shrink();
                 final event = _events[index + 1];
                 return Padding(
                   padding: const EdgeInsets.only(right: 16),

@@ -563,7 +563,7 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                 final results = await _api.searchUsers(query);
                 if (mounted) setState(() => _results = results);
             } catch (e) {
-                // ignore
+                if (kDebugMode) print("User Search Error: $e");
             } finally {
                 if (mounted) setState(() => _loading = false);
             }

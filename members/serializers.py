@@ -62,17 +62,31 @@ class ProfileSerializer(serializers.ModelSerializer):
         # Online if active in last 5 minutes
         return (timezone.now() - obj.last_seen) < timedelta(minutes=5)
 
+
 class BusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessProfile
         fields = '__all__'
         read_only_fields = ['user', 'status', 'feedback']
 
+class AdminBusinessProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessProfile
+        fields = '__all__'
+        read_only_fields = ['user'] # Admin can edit status and feedback
+
+
 class MarketingRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarketingRequest
         fields = '__all__'
         read_only_fields = ['user', 'status', 'feedback']
+
+class AdminMarketingRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MarketingRequest
+        fields = '__all__'
+        read_only_fields = ['user'] # Admin can edit status and feedback
 
 class ContentReportSerializer(serializers.ModelSerializer):
     class Meta:
