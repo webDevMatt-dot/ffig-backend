@@ -14,6 +14,7 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
   final _websiteController = TextEditingController();
   final _descController = TextEditingController();
   bool _isLoading = false;
+  bool _isEditing = false; // Track if we are editing an existing profile
 
   @override
   void initState() {
@@ -22,8 +23,21 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
   }
 
   Future<void> _fetchExisting() async {
-    // TODO: Fetch from backend /api/members/business/me/
-    // For now, assume fresh
+    setState(() => _isLoading = true);
+    try {
+      final api = AdminApiService();
+      final data = await api.fetchMyBusinessProfile();
+      if (data != null) {
+          _isEditing = true;
+          _nameController.text = data['company_name'] ?? '';
+          _websiteController.text = data['website'] ?? '';
+          _descController.text = data['description'] ?? '';
+      }
+    } catch (e) {
+       // Ignore errors, assume fresh
+    } finally {
+       if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _save() async {
@@ -32,13 +46,20 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
 
     try {
       final api = AdminApiService();
-      await api.createBusinessProfile({
+      final data = {
         'company_name': _nameController.text,
         'website': _websiteController.text,
         'description': _descController.text,
-      });
+      };
+
+      if (_isEditing) {
+          await api.updateBusinessProfile(data);
+      } else {
+          await api.createBusinessProfile(data);
+      }
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Submitted for Approval!")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isEditing ? "Profile Updated!" : "Submitted for Approval!")));
         Navigator.pop(context);
       }
     } catch(e) {

@@ -332,7 +332,13 @@ class _ChatScreenState extends State<ChatScreen> {
                    Navigator.pop(context); // Exit chat
               }
          } else {
-             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to block user.")));
+             String msg = "Failed to block user";
+             try {
+                final body = jsonDecode(response.body);
+                if (body['error'] != null) msg = body['error'];
+             } catch (_) {}
+             
+             if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$msg (${response.statusCode})")));
          }
      } catch (e) {
           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error blocking user.")));

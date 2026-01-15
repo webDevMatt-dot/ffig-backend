@@ -39,12 +39,12 @@ from events.views import (
 )
 from members.views import (
     MemberListView, UserProfileView, premium_content,
-    BusinessProfileCreateView, MarketingRequestCreateView, ContentReportCreateView,
+    MyBusinessProfileView, MarketingRequestCreateView, ContentReportCreateView,
     AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
     AdminContentReportListView, AdminContentReportDetailView, AdminModerationActionView,
     NotificationListView, NotificationMarkReadView,
-    ToggleFavoriteView, BlockUserView, BlockedUserListView
+    ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView
@@ -100,8 +100,9 @@ urlpatterns = [
     path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
 
     # User Submissions
-    path('api/members/me/business/', BusinessProfileCreateView.as_view(), name='create-business-profile'),
+    path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
+    path('api/members/marketing/feed/', MarketingFeedView.as_view(), name='marketing-feed'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),

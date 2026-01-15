@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
@@ -89,6 +89,9 @@ class BlockUserView(APIView):
         if target_user == request.user:
             return Response({"error": "You cannot block yourself"}, status=400)
             
+        if not hasattr(request.user, 'profile'):
+            Profile.objects.create(user=request.user)
+
         request.user.profile.blocked_users.add(target_user)
         return Response({"status": "blocked", "user_id": user_id})
 
@@ -109,9 +112,19 @@ class BlockedUserListView(generics.ListAPIView):
 
 # --- USER SUBMISSION VIEWS ---
 
-class BusinessProfileCreateView(generics.CreateAPIView):
+class MyBusinessProfileView(generics.RetrieveUpdateDestroyAPIView,
+                            mixins.CreateModelMixin):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = BusinessProfileSerializer
+
+    def get_object(self):
+        # Return the user's business profile or 404
+        return get_object_or_404(BusinessProfile, user=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        if hasattr(request.user, 'business_profile'):
+             return Response({'error': 'Business Profile already exists. Use PATCH to update.'}, status=400)
+        return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -122,6 +135,13 @@ class MarketingRequestCreateView(generics.CreateAPIView):
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class MarketingFeedView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = MarketingRequestSerializer
+
+    def get_queryset(self):
+        return MarketingRequest.objects.filter(status='APPROVED').order_by('-created_at')
 
 class ContentReportCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]

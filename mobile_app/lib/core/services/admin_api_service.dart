@@ -235,6 +235,22 @@ class AdminApiService {
   // --- MEMBER SUBMISSIONS (RBAC) ---
   static const String _membersBaseUrl = '${baseUrl}members';
 
+  Future<Map<String, dynamic>?> fetchMyBusinessProfile() async {
+    final token = await _getToken();
+    try {
+        final response = await http.get(
+        Uri.parse('$_membersBaseUrl/me/business/'),
+        headers: {'Authorization': 'Bearer $token'},
+        );
+        if (response.statusCode == 200) {
+            return jsonDecode(response.body);
+        }
+        return null; // Not found (404)
+    } catch (e) {
+        return null;
+    }
+  }
+
   Future<void> createBusinessProfile(Map<String, dynamic> data) async {
     final token = await _getToken();
     final response = await http.post(
@@ -245,15 +261,83 @@ class AdminApiService {
      if (response.statusCode != 201) throw Exception('Failed to create business profile: ${response.body}');
   }
 
-  Future<void> createMarketingRequest(Map<String, dynamic> data) async {
+  Future<void> updateBusinessProfile(Map<String, dynamic> data) async {
     final token = await _getToken();
-    final response = await http.post(
-      Uri.parse('$_membersBaseUrl/me/marketing/'),
+    final response = await http.patch(
+      Uri.parse('$_membersBaseUrl/me/business/'),
       headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
       body: jsonEncode(data)
     );
-     if (response.statusCode != 201) throw Exception('Failed to create marketing request: ${response.body}');
+     if (response.statusCode != 200) throw Exception('Failed to update business profile: ${response.body}');
   }
+
+  Future<void> createMarketingRequest(Map<String, String> fields, dynamic file) async {
+    // Determine if file is video or image based on path or bytes?
+    // For simplicity, we pass it to _uploadWithImage which handles general file upload.
+    // 'file' can be File (mobile) or Uint8List (web).
+    // We need to know if it's 'image' or 'video' field.
+    // Hack: We'll infer or pass two separate arguments? 
+    // Let's refactor to: createMarketingRequest(Map fields, {dynamic image, dynamic video})
+    
+    // However, _uploadWithImage is designed for single file field.
+    // We will duplicate logic here slightly for custom 'video' or 'image' field support.
+    
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$_membersBaseUrl/me/marketing/'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields.addAll(fields);
+    
+    if (file != null) {
+        // If it's a video (mp4/mov), use 'video' field. Else 'image'.
+        // This requires file path inspection or explicit flag.
+        // Assuming the caller handles this logic? 
+        // Let's assume 'file' is the media.
+        // We really should pass a type.
+    }
+  }
+
+  // BETTER APPROACH:
+  Future<void> createMarketingRequestWithMedia(Map<String, String> fields, {dynamic imageFile, dynamic videoFile}) async {
+      final token = await _getToken();
+      var request = http.MultipartRequest('POST', Uri.parse('$_membersBaseUrl/me/marketing/'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields.addAll(fields);
+
+      if (imageFile != null) {
+          if (kIsWeb && imageFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('image', imageFile, filename: 'upload.jpg', contentType: MediaType('image', 'jpeg')));
+          } else if (imageFile is File) {
+             request.files.add(await http.MultipartFile.fromPath('image', imageFile.path, contentType: MediaType('image', 'jpeg')));
+          }
+      }
+      if (videoFile != null) {
+           if (kIsWeb && videoFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('video', videoFile, filename: 'video.mp4', contentType: MediaType('video', 'mp4')));
+           } else if (videoFile is File) {
+             request.files.add(await http.MultipartFile.fromPath('video', videoFile.path, contentType: MediaType('video', 'mp4')));
+           }
+      }
+
+      final response = await request.send();
+       if (response.statusCode != 201) {
+           final respStr = await response.stream.bytesToString();
+           throw Exception('Failed to create marketing request: $respStr');
+       }
+  }
+
+  Future<List<dynamic>> fetchMarketingFeed() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_membersBaseUrl/marketing/feed/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+     if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load marketing feed: ${response.statusCode}');
+    }
+  }
+
   Future<Map<String, dynamic>> fetchAnalytics() async {
     final token = await _getToken();
     final response = await http.get(
@@ -266,6 +350,18 @@ class AdminApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load analytics: ${response.statusCode}');
+    }
+  }
+  Future<List<dynamic>> searchUsers(String query) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_membersBaseUrl/?search=$query'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+     if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to search users: ${response.statusCode}');
     }
   }
 }

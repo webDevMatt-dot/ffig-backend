@@ -8,6 +8,7 @@ import '../marketing/business_profile_editor_screen.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../marketing/marketing_requests_screen.dart';
 import '../chat/community_chat_screen.dart';
+import 'vvip_reels_screen.dart';
 import '../../core/api/constants.dart';
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -116,6 +117,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                           ),
                           _buildHeaderAction(context, "Manage\nBusiness", Icons.business, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const BusinessProfileEditorScreen()))),
                           _buildHeaderAction(context, "Marketing\nCenter", Icons.campaign, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const MarketingRequestsScreen()))),
+                          _buildHeaderAction(context, "VIP\nReels", Icons.play_circle_fill, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const VVIPReelsScreen()))),
                         ],
                       ),
                     ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:country_picker/country_picker.dart';
@@ -178,6 +179,56 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     }
   }
 
+  Future<void> _showUserPicker() async {
+      await showDialog(
+          context: context,
+          builder: (context) => _UserPickerDialog(
+              onUserSelected: (user) {
+                  setState(() {
+                      // 1. Populate Name and Bio
+                      // If 'first_name'/'last_name' exist (MemberSerializer), use them. 
+                      // Otherwise try 'username'.
+                      final String first = user['first_name'] ?? '';
+                      final String last = user['last_name'] ?? '';
+                      if (first.isNotEmpty) {
+                          _nameController.text = "$first $last".trim();
+                      } else {
+                          // Fallback
+                          _nameController.text = user['username'] ?? '';
+                      }
+                      
+                      // 2. Populate Business/Role
+                      // Priority: business_name > industry_label > industry
+                      if (user['business_name'] != null && user['business_name'].isNotEmpty) {
+                           _businessController.text = user['business_name'];
+                      } else {
+                           _businessController.text = user['industry_label'] ?? user['industry'] ?? '';
+                      }
+
+                      // 3. Populate Location
+                      if (user['location'] != null) {
+                           _countryController.text = user['location'];
+                      }
+                      
+                      // 4. Bio
+                      if (user['bio'] != null) {
+                          _bioController.text = user['bio'];
+                      }
+                      
+                      // 5. Image (Tricky: We have bytes and file, but this is a URL)
+                      // Ideally, the backend 'createFounderProfile' should accept a URL string too?
+                      // OR we download strictly for display?
+                      // Since 'createFounderProfile' expects Multipart, we can't easily send a URL unless we change backend.
+                      // Workaround: We can't pre-fill the *file* from a URL without downloading it.
+                      // For now, we WON'T set the image to avoid complexity, or we warn user.
+                      // Better: If we are just filling text, that's fine.
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Details populated. Please upload a high-res photo if needed.")));
+                  });
+              },
+          ),
+      );
+  }
+
   Future<void> _deleteItem(int id) async {
     // In a real app this would be a dialog
     // if (!confirm('Are you sure you want to delete this item?')) return; 
@@ -272,24 +323,38 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                 const SizedBox(height: 24),
                 
                 // Photo
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 150, width: 150,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Theme.of(context).dividerColor),
+                // Photo
+                Center(
+                    child: Column(
+                        children: [
+                             GestureDetector(
+                                onTap: _pickImage,
+                                child: Container(
+                                    height: 120, width: 120,
+                                    decoration: BoxDecoration(
+                                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Theme.of(context).dividerColor),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: _selectedImageBytes != null
+                                        ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                                        : const Icon(Icons.person_add, size: 40, color: Colors.grey),
+                                ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                                onPressed: _showUserPicker,
+                                icon: const Icon(Icons.search),
+                                label: const Text("Pick Existing User"),
+                                style: TextButton.styleFrom(
+                                    foregroundColor: FfigTheme.primaryBrown,
+                                    textStyle: const TextStyle(fontWeight: FontWeight.bold)
+                                ),
+                            ),
+                        ],
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: _selectedImageBytes != null
-                        ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
-                        : const Icon(Icons.person_add, size: 50, color: Colors.grey),
-                  ),
                 ),
-                const SizedBox(height: 12),
-                if (_editingId != null)
-                   const Text("Tap to change photo (Optional)", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 const SizedBox(height: 24),
                 
                 TextFormField(
@@ -436,4 +501,98 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     );
 
   }
+}
+
+class _UserPickerDialog extends StatefulWidget {
+  final Function(Map<String, dynamic>) onUserSelected;
+  const _UserPickerDialog({required this.onUserSelected});
+
+  @override
+  State<_UserPickerDialog> createState() => _UserPickerDialogState();
+}
+
+class _UserPickerDialogState extends State<_UserPickerDialog> {
+    final _searchController = TextEditingController();
+    List<dynamic> _results = [];
+    bool _loading = false;
+    Timer? _debounce;
+    final _api = AdminApiService();
+
+    @override
+    void dispose() {
+        _debounce?.cancel();
+        _searchController.dispose();
+        super.dispose();
+    }
+
+    void _search(String query) {
+        if (_debounce?.isActive ?? false) _debounce!.cancel();
+        _debounce = Timer(const Duration(milliseconds: 500), () async {
+            if (query.isEmpty) {
+                if (mounted) setState(() => _results = []);
+                return;
+            }
+            if (mounted) setState(() => _loading = true);
+            try {
+                final results = await _api.searchUsers(query);
+                if (mounted) setState(() => _results = results);
+            } catch (e) {
+                // ignore
+            } finally {
+                if (mounted) setState(() => _loading = false);
+            }
+        });
+    }
+
+    @override
+    Widget build(BuildContext context) {
+        return AlertDialog(
+            title: const Text("Select User"),
+            content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        TextField(
+                            controller: _searchController,
+                            decoration: const InputDecoration(
+                                labelText: "Search by name or email...",
+                                prefixIcon: Icon(Icons.search),
+                                border: OutlineInputBorder(),
+                            ),
+                            onChanged: _search,
+                        ),
+                        const SizedBox(height: 16),
+                        Flexible(
+                            child: _loading 
+                                ? const Center(child: CircularProgressIndicator())
+                                : _results.isEmpty 
+                                    ? const Text("No users found", style: TextStyle(color: Colors.grey))
+                                    : ListView.separated(
+                                        shrinkWrap: true,
+                                        itemCount: _results.length,
+                                        separatorBuilder: (c, i) => const Divider(),
+                                        itemBuilder: (context, index) {
+                                            final user = _results[index];
+                                            final name = user['username'] ?? 'Unknown';
+                                            final sub = user['email'] ?? '';
+                                            return ListTile(
+                                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                subtitle: Text(sub),
+                                                onTap: () {
+                                                    widget.onUserSelected(user);
+                                                    Navigator.pop(context);
+                                                },
+                                            );
+                                        },
+                                    ),
+                        ),
+                    ],
+                ),
+            ),
+            actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            ],
+        );
+    }
 }
