@@ -65,6 +65,28 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['username'] = self.user.username
         data['is_staff'] = self.user.is_staff
         data['is_superuser'] = self.user.is_superuser
+        
+        # Moderation Checks
+        try:
+            profile = self.user.profile
+            from django.utils import timezone
+            
+            # Warning
+            if profile.admin_notice:
+                data['admin_notice'] = profile.admin_notice
+            
+            # Suspension
+            if profile.suspension_expiry and profile.suspension_expiry > timezone.now():
+                data['is_suspended'] = True
+                data['suspension_expiry'] = profile.suspension_expiry.isoformat()
+            
+            # Blocked
+            if profile.is_blocked:
+                data['is_blocked'] = True
+                
+        except Exception:
+            pass
+            
         return data
 
 class UserSerializer(serializers.ModelSerializer):

@@ -24,7 +24,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/services/membership_service.dart';
-import '../../core/services/version_service.dart'; 
+import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../../core/api/constants.dart';
@@ -40,14 +40,17 @@ import 'widgets/bento_tile.dart';
 import '../../shared_widgets/glass_nav_bar.dart';
 import 'widgets/news_ticker.dart';
 
- class DashboardScreen extends StatefulWidget {
+import '../../shared_widgets/moderation_dialog.dart';
+
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   // ... (Keep existing state variables)
   int _selectedIndex = 0;
   List<dynamic> _events = [];
@@ -76,7 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     _checkPremiumStatus();
     _checkPremiumStatus();
     _loadHomepageContent();
-    _checkForUpdates();
+    // _checkForUpdates(); // Removed
     // Start the Global Listener (Checks every 10 seconds)
     _notificationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkUnreadMessages();
@@ -93,91 +96,125 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkForUpdates();
+      // _checkForUpdates(); // Removed
     }
   }
 
   Future<void> _checkUnreadMessages() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    
+
     // 1. Check Chat Messages (Existing)
     if (_isPremium) {
-       try {
-         final response = await http.get(Uri.parse('${baseUrl}chat/unread-count/'), headers: {'Authorization': 'Bearer $token'});
-         if (response.statusCode == 200) {
-           final data = jsonDecode(response.body);
-           final int currentCount = data['unread_count'];
-           if (currentCount > _lastUnreadCount) {
-              final player = AudioPlayer();
-              await player.play(AssetSource('sounds/ding.mp3'));
-           }
-           if (mounted) setState(() => _lastUnreadCount = currentCount);
-         }
-       } catch (e) { /* ignore */ }
+      try {
+        final response = await http.get(
+          Uri.parse('${baseUrl}chat/unread-count/'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final int currentCount = data['unread_count'];
+          if (currentCount > _lastUnreadCount) {
+            final player = AudioPlayer();
+            await player.play(AssetSource('sounds/ding.mp3'));
+          }
+          if (mounted) setState(() => _lastUnreadCount = currentCount);
+        }
+      } catch (e) {
+        /* ignore */
+      }
     }
 
     // 2. Check Admin Notifications (New)
     if (_isAdmin) {
-       _checkAdminNotifications(token);
+      _checkAdminNotifications(token);
     }
   }
 
   Future<void> _checkAdminNotifications(String? token) async {
-      try {
-          final response = await http.get(Uri.parse('${baseUrl}notifications/'), headers: {'Authorization': 'Bearer $token'});
-          if (response.statusCode == 200) {
-              final List data = jsonDecode(response.body);
-              if (data.isNotEmpty) {
-                  final latest = data.first; // Created at desc
-                  final int id = latest['id'];
-                  
-                  // If new notification found
-                  if (id > _lastNotificationId) {
-                      _lastNotificationId = id;
-                      
-                      // Show Popup (Non-disturbing)
-                      showSimpleNotification(
-                          Text(latest['title'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                          subtitle: Text(latest['message'], style: const TextStyle(color: Colors.white)),
-                          background: FfigTheme.primaryBrown,
-                          duration: const Duration(seconds: 5),
-                          slideDismissDirection: DismissDirection.up,
-                          trailing: Builder(builder: (context) {
-                              return TextButton(
-                                  onPressed: () {
-                                      OverlaySupportEntry.of(context)?.dismiss();
-                                      _markNotificationRead(id, token);
-                                  },
-                                  child: const Text("Mark Read", style: TextStyle(color: Colors.white))
-                              );
-                          })
-                      );
-                      
-                      // Play sound for Admin too
-                      final player = AudioPlayer();
-                      await player.play(AssetSource('sounds/ding.mp3'));
-                  }
-              }
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}notifications/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          final latest = data.first; // Created at desc
+          final int id = latest['id'];
+
+          // If new notification found
+          if (id > _lastNotificationId) {
+            _lastNotificationId = id;
+
+            // Check persisted ID first
+            const storage = FlutterSecureStorage();
+            final savedIdStr = await storage.read(key: 'last_notif_id');
+            final savedId = int.tryParse(savedIdStr ?? '0') ?? 0;
+
+            if (id > savedId) {
+              _lastNotificationId = id;
+              await storage.write(key: 'last_notif_id', value: id.toString());
+
+              // Show Popup (Non-disturbing)
+              showSimpleNotification(
+                Text(
+                  latest['title'],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                subtitle: Text(
+                  latest['message'],
+                  style: const TextStyle(color: Colors.white),
+                ),
+                background: FfigTheme.primaryBrown,
+                duration: const Duration(seconds: 5),
+                slideDismissDirection: DismissDirection.up,
+                trailing: Builder(
+                  builder: (context) {
+                    return TextButton(
+                      onPressed: () {
+                        OverlaySupportEntry.of(context)?.dismiss();
+                        _markNotificationRead(id, token);
+                      },
+                      child: const Text(
+                        "Mark Read",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  },
+                ),
+              );
+
+              // Play sound for Admin too
+              final player = AudioPlayer();
+              await player.play(AssetSource('sounds/ding.mp3'));
+            }
           }
-      } catch (e) {
-         if (kDebugMode) print("Admin Note Error: $e");
+        }
       }
+    } catch (e) {
+      if (kDebugMode) print("Admin Note Error: $e");
+    }
   }
 
   Future<void> _markNotificationRead(int id, String? token) async {
-       try {
-           await http.post(
-               Uri.parse('${baseUrl}notifications/$id/read/'),
-               headers: {'Authorization': 'Bearer $token'}
-           );
-       } catch (e) { /* ignore */ }
+    try {
+      await http.post(
+        Uri.parse('${baseUrl}notifications/$id/read/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   Future<void> _checkPremiumStatus() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    
+
     // Guest Mode
     if (token == null) {
       if (mounted) {
@@ -195,7 +232,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     const String endpoint = '${baseUrl}members/me/';
 
     try {
-      final response = await http.get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {'Authorization': 'Bearer $token'},
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
@@ -203,47 +243,105 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             _isPremium = data['is_premium'] ?? false;
             // Also update admin status from API to be robust
             if (data.containsKey('is_staff')) {
-               _isAdmin = data['is_staff'];
+              _isAdmin = data['is_staff'];
             }
             _userProfile = data; // Store full profile for Avatar
             // Update Global Membership State
             MembershipService.setTier(data['tier']);
             MembershipService.isAdmin = _isAdmin;
-            _isPremium = MembershipService.isPremium; // Keep for now, or replace usage
+            _isPremium =
+                MembershipService.isPremium; // Keep for now, or replace usage
           });
-          
+
           await storage.write(key: 'is_premium', value: _isPremium.toString());
           await storage.write(key: 'is_staff', value: _isAdmin.toString());
+
+          // Check Moderation Status
+          _checkModerationStatus();
         }
       } else {
         // ERROR HANDLER
         if (mounted) {
-             showDialog(
-                 context: context,
-                 builder: (context) => AlertDialog(
-                     title: const Text("Session Expired or Failed"),
-                     content: Text("Server returned status ${response.statusCode}.\nPlease log in again."),
-                     actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-                 )
-             );
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text("Session Expired or Failed"),
+              content: Text(
+                "Server returned status ${response.statusCode}.\nPlease log in again.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK"),
+                ),
+              ],
+            ),
+          );
         }
       }
     } catch (e) {
       print("Error checking premium/admin status: $e");
       if (mounted) {
-          showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                  title: const Text("Profile Load Error"),
-                  content: Text("Failed to load user data: $e"),
-                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-              )
-          );
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Profile Load Error"),
+            content: Text("Failed to load user data: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
       }
     }
   }
 
-  Future<void> _fetchEvents() async { // Renamed from _fetchFeaturedEvents
+  void _checkModerationStatus() {
+    if (_userProfile == null) return;
+
+    // 1. Blocked
+    if (_userProfile!['is_blocked'] == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const ModerationDialog(type: ModerationType.block),
+      );
+      return;
+    }
+
+    // 2. Suspended
+    if (_userProfile!['is_suspended'] == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ModerationDialog(
+          type: ModerationType.suspend,
+          message:
+              "Your account is suspended until ${_userProfile!['suspension_expiry'] ?? 'review completed'}.",
+        ),
+      );
+      return;
+    }
+
+    // 3. Warning (Show only once per session or always? Assuming always until admin clears it)
+    if (_userProfile!['admin_notice'] != null &&
+        _userProfile!['admin_notice'].toString().isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => ModerationDialog(
+          type: ModerationType.warning,
+          message: _userProfile!['admin_notice'],
+        ),
+      );
+    }
+  }
+
+  Future<void> _fetchEvents() async {
+    // Renamed from _fetchFeaturedEvents
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
@@ -253,10 +351,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
     try {
-      final response = await http.get(
-        Uri.parse(endpoint),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(endpoint), headers: headers);
 
       if (response.statusCode == 200) {
         setState(() {
@@ -272,7 +367,6 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       print("Connection error: $e");
       setState(() => _isLoading = false);
     }
-
   }
 
   Future<void> _loadHomepageContent() async {
@@ -295,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             data['id'] = data['id'].toString();
             // Map 'image' (Django) to 'image_url' (Dart)
             if (data.containsKey('image')) {
-                data['image_url'] = data['image']; 
+              data['image_url'] = data['image'];
             }
             return HeroItem.fromJson(data);
           }).toList();
@@ -303,11 +397,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           // 2. Founder Profile (Take the first one)
           final founders = results[1] as List;
           if (founders.isNotEmpty) {
-            final Map<String, dynamic> data = Map<String, dynamic>.from(founders.first);
+            final Map<String, dynamic> data = Map<String, dynamic>.from(
+              founders.first,
+            );
             data['id'] = data['id'].toString();
             // Map 'photo' (Django) to 'photo_url' (Dart)
             if (data.containsKey('photo')) {
-                data['photo_url'] = data['photo'];
+              data['photo_url'] = data['photo'];
             }
             _founderProfile = FounderProfile.fromJson(data);
           } else {
@@ -317,17 +413,19 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           // 3. Flash Alert (Take the newest valid one)
           final alerts = results[2] as List;
           if (alerts.isNotEmpty) {
-             final Map<String, dynamic> data = Map<String, dynamic>.from(alerts.last); // Last = Newest usually
-             data['id'] = data['id'].toString();
-             _flashAlert = FlashAlert.fromJson(data);
+            final Map<String, dynamic> data = Map<String, dynamic>.from(
+              alerts.last,
+            ); // Last = Newest usually
+            data['id'] = data['id'].toString();
+            _flashAlert = FlashAlert.fromJson(data);
           } else {
             _flashAlert = null;
           }
 
           // 4. News Ticker
           final tickers = results[3] as List;
-           // Map 'text' to string
-           _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
+          // Map 'text' to string
+          _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
         });
       }
     } catch (e) {
@@ -335,34 +433,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     }
   }
 
-  Future<void> _checkForUpdates() async {
-    final updateData = await VersionService().checkUpdate();
-    if (updateData != null && mounted) {
-      final bool required = updateData['required'];
-      final String url = updateData['url'];
-      final String version = updateData['latestVersion'];
-
-      showDialog(
-        context: context,
-        barrierDismissible: !required,
-        builder: (context) => AlertDialog(
-          title: const Text("Update Available"),
-          content: Text("A new version ($version) of the app is available. Please update to continue enjoying the latest features."),
-          actions: [
-            if (!required)
-              TextButton(child: const Text("Later"), onPressed: () => Navigator.pop(context)),
-            ElevatedButton(
-              onPressed: () {
-                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-              child: const Text("Update Now"),
-            )
-          ],
-        ),
-      );
-    }
-  }
+  // Update check removed as per user request
+  // Future<void> _checkForUpdates() async { ... }
 
   void _showLoginDialog() {
     showDialog(
@@ -371,15 +443,24 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         title: const Text("Login Required"),
         content: const Text("Please login or sign up to access this feature."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LoginScreen()));
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (c) => const LoginScreen()),
+              );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FfigTheme.primaryBrown,
+              foregroundColor: Colors.white,
+            ),
             child: const Text("Login"),
-          )
+          ),
         ],
       ),
     );
@@ -402,28 +483,43 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
   void _checkMobileWeb() {
     // If on Web AND (Android OR iOS)
-    if (kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
-       // Wait a beat so it doesn't clash with other dialogs
-       Future.delayed(const Duration(seconds: 2), () {
-           showDialog(
-             context: context, 
-             builder: (context) => AlertDialog(
-               title: const Text("Get the Full Experience"),
-               content: const Text("For the best experience, including Push Notifications and Offline Access, download our mobile app."),
-               actions: [
-                 TextButton(onPressed: () => Navigator.pop(context), child: const Text("Stay on Web")),
-                 ElevatedButton(
-                   onPressed: () {
-                      // Navigate to APK download
-                      launchUrl(Uri.parse('https://femalefoundersinitiativeglobal.onrender.com/app.apk'), mode: LaunchMode.externalApplication);
-                   }, 
-                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-                   child: const Text("Download App")
-                 )
-               ],
-             )
-           );
-       });
+    if (kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS)) {
+      // Wait a beat so it doesn't clash with other dialogs
+      Future.delayed(const Duration(seconds: 2), () {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Get the Full Experience"),
+            content: const Text(
+              "For the best experience, including Push Notifications and Offline Access, download our mobile app.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Stay on Web"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to Play Store
+                  launchUrl(
+                    Uri.parse(
+                      'https://play.google.com/store/apps/details?id=com.ffiglobal.mobile_app',
+                    ),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: FfigTheme.primaryBrown,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("Download App"),
+              ),
+            ],
+          ),
+        );
+      });
     }
   }
 
@@ -432,18 +528,27 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     return Scaffold(
       extendBody: true, // Allow body to flow behind the floating nav bar
       appBar: AppBar(
-        title: Text("MEMBER PORTAL", style: GoogleFonts.inter(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
+        title: Text(
+          "MEMBER PORTAL",
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         flexibleSpace: ClipRRect(
-           child: BackdropFilter(
-             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-             child: Container(color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8)),
-           ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+            ),
+          ),
         ),
         actions: [
           // Profile Avatar (Top Right)
-           IconButton(
+          IconButton(
             icon: Badge(
               isLabelVisible: _lastUnreadCount > 0,
               label: Text('$_lastUnreadCount'),
@@ -451,9 +556,12 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             ),
             onPressed: () {
               // Reset count on tap instantly for better UX
-              setState(() => _lastUnreadCount = 0); 
+              setState(() => _lastUnreadCount = 0);
               if (MembershipService.canInbox) {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InboxScreen()),
+                );
               } else {
                 MembershipService.showUpgradeDialog(context, "Inbox");
               }
@@ -462,36 +570,51 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
           // Profile Avatar or Login Button (Top Right)
           if (_userProfile != null)
-             InkWell(
-               onTap: () async {
-                 await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-                 // Refresh profile on return in case edited
-                 _checkPremiumStatus();
-               },
-               child: Container(
-                 padding: const EdgeInsets.all(2),
-                 margin: const EdgeInsets.only(right: 8),
-                 decoration: BoxDecoration(
-                   shape: BoxShape.circle,
-                   border: Border.all(color: FfigTheme.primaryBrown, width: 1.5),
-                 ),
-                 child: UserAvatar(
-                   radius: 16, // Small for AppBar
-                   imageUrl: _userProfile!['photo'] ?? _userProfile!['photo_url'],
-                   firstName: _userProfile!['first_name'] ?? '',
-                   lastName: _userProfile!['last_name'] ?? '',
-                   username: _userProfile!['username'] ?? 'M',
-                 ),
-               ),
-             )
+            InkWell(
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+                // Refresh profile on return in case edited
+                _checkPremiumStatus();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: FfigTheme.primaryBrown, width: 1.5),
+                ),
+                child: UserAvatar(
+                  radius: 16, // Small for AppBar
+                  imageUrl:
+                      _userProfile!['photo'] ?? _userProfile!['photo_url'],
+                  firstName: _userProfile!['first_name'] ?? '',
+                  lastName: _userProfile!['last_name'] ?? '',
+                  username: _userProfile!['username'] ?? 'M',
+                ),
+              ),
+            )
           else
-             Padding(
-               padding: const EdgeInsets.only(right: 8),
-               child: TextButton(
-                 onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LoginScreen())),
-                 child: const Text("Login", style: TextStyle(fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
-               ),
-             ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton(
+                onPressed: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (c) => const LoginScreen()),
+                ),
+                child: const Text(
+                  "Login",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: FfigTheme.primaryBrown,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       body: PageView(
@@ -503,50 +626,73 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           _buildHomeTab(),
           const EventsScreen(),
           const MemberListScreen(),
-          MembershipService.isPremium 
-              ? const PremiumScreen() 
-              : (MembershipService.isStandard ? const StandardScreen() : const LockedScreen()),
-          if (_isAdmin) const AdminDashboardScreen(), // Allow swiping to Admin if Admin
+          MembershipService.isPremium
+              ? const PremiumScreen()
+              : (MembershipService.isStandard
+                    ? const StandardScreen()
+                    : const LockedScreen()),
+          if (_isAdmin)
+            const AdminDashboardScreen(), // Allow swiping to Admin if Admin
         ],
       ),
       bottomNavigationBar: GlassNavBar(
         selectedIndex: _selectedIndex,
         onItemSelected: (index) {
-            // Handle Admin Tab Logic or Restrictions first
-           if (!_isAdmin && index == 4) return; 
-           
-           // RBAC: Network/Members Tab (Index 2)
-           if (index == 2) {
-              if (_userProfile == null) {
-                  _showLoginDialog();
-                  return;
-              }
-              if (!MembershipService.canViewLimitedDirectory) {
-                  MembershipService.showUpgradeDialog(context, "Member Directory");
-                  return;
-              }
-           }
-           
-           // RBAC: VVIP (Index 3)
-           if (index == 3 && _userProfile == null) {
-               _showLoginDialog();
-               return;
-           }
+          // Handle Admin Tab Logic or Restrictions first
+          if (!_isAdmin && index == 4) return;
 
-           // Animate to page
-           _pageController.animateToPage(
-             index, 
-             duration: const Duration(milliseconds: 300), 
-             curve: Curves.easeInOut
-           );
+          // RBAC: Network/Members Tab (Index 2)
+          if (index == 2) {
+            if (_userProfile == null) {
+              _showLoginDialog();
+              return;
+            }
+            if (!MembershipService.canViewLimitedDirectory) {
+              MembershipService.showUpgradeDialog(context, "Member Directory");
+              return;
+            }
+          }
+
+          // RBAC: VVIP (Index 3)
+          if (index == 3 && _userProfile == null) {
+            _showLoginDialog();
+            return;
+          }
+
+          // Animate to page
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         },
         items: [
-          GlassNavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: "Home"),
-          GlassNavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: "Events"),
-          GlassNavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: "Network"),
-          GlassNavItem(icon: Icons.diamond_outlined, activeIcon: Icons.diamond, label: "VVIP"),
+          GlassNavItem(
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home,
+            label: "Home",
+          ),
+          GlassNavItem(
+            icon: Icons.calendar_month_outlined,
+            activeIcon: Icons.calendar_month,
+            label: "Events",
+          ),
+          GlassNavItem(
+            icon: Icons.people_outline,
+            activeIcon: Icons.people,
+            label: "Network",
+          ),
+          GlassNavItem(
+            icon: Icons.diamond_outlined,
+            activeIcon: Icons.diamond,
+            label: "VVIP",
+          ),
           if (_isAdmin)
-             GlassNavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: "Admin"),
+            GlassNavItem(
+              icon: Icons.admin_panel_settings_outlined,
+              activeIcon: Icons.admin_panel_settings,
+              label: "Admin",
+            ),
         ],
       ),
     );
@@ -567,288 +713,391 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       onRefresh: _onRefresh,
       color: FfigTheme.primaryBrown,
       child: SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 0. Flash Alert
-          if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 0. Flash Alert
+            if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
 
-          // 1. Editorial Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('EEEE, MMM d').format(DateTime.now()).toUpperCase(), 
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "${_getGreeting()},\nFounder.", 
-                  style: Theme.of(context).textTheme.displayLarge
-                ),
-              ],
-            ),
-          ),
-
-          // 2. Hero Carousel (Replacing single static card)
-          if (_heroItems.isNotEmpty)
+            // 1. Editorial Header
             Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: HeroCarousel(items: _heroItems),
-            ),
-          
-          // 3. News Ticker
-          if (_newsTickerItems.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 32),
-              child: NewsTicker(newsItems: _newsTickerItems),
-            ),
-
-          // 4. Founder of the Week
-          if (_founderProfile != null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text("SPOTLIGHT", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)),
-                ),
-                FounderCard(profile: _founderProfile!),
-                const SizedBox(height: 32),
-              ],
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat(
+                      'EEEE, MMM d',
+                    ).format(DateTime.now()).toUpperCase(),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge?.copyWith(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "${_getGreeting()},\nFounder.",
+                    style: Theme.of(context).textTheme.displayLarge,
+                  ),
+                ],
+              ),
             ),
 
+            // 2. Hero Carousel (Replacing single static card)
+            if (_heroItems.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: HeroCarousel(items: _heroItems),
+              ),
 
-          // 2. BENTO GRID LAYOUT
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                // ROW 1: STATUS & EVENTS
-                Row(
-                  children: [
-                   // Membership Status Tile
-                    Expanded(
-                      child: BentoTile(
-                        title: _isPremium ? "Premium" : "Standard",
-                        subtitle: "Membership",
-                        height: 160,
-                        color: _isPremium ? FfigTheme.primaryBrown : const Color(0xFF161B22),
-                        isGlass: true, // Glass effect for consistency
-                        icon: Icon(Icons.verified_user, color: _isPremium ? Colors.white : Colors.grey, size: 24),
-                        onTap: () {
-                          // TODO: Navigate to Membership details
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Events Quick Access
-                    Expanded(
-                      child: BentoTile(
-                        title: "Events",
-                        subtitle: "${_events.length} Upcoming",
-                        height: 160,
-                        isGlass: true, // Glass effect
-                        icon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown, size: 24),
-                        onTap: () {
-                           setState(() => _selectedIndex = 1);
-                           _pageController.jumpToPage(1); // Jump to Events Tab
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+            // 3. News Ticker
+            if (_newsTickerItems.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
+                child: NewsTicker(newsItems: _newsTickerItems),
+              ),
 
-                // ROW 2: MAIN FEATURE (FIND FOUNDER)
-                BentoTile(
-                  title: "Network",
-                  subtitle: "Connect with Global Founders",
-                  height: 180,
-                  isGlass: true,
-                  icon: const Icon(Icons.search, color: FfigTheme.accentBrown, size: 28),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                         color: FfigTheme.primaryBrown,
-                         borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text("Find a Founder", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            // 4. Founder of the Week
+            if (_founderProfile != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      "SPOTLIGHT",
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge?.copyWith(color: Colors.grey),
                     ),
                   ),
-                  onTap: () {
-                     if (_userProfile == null) {
-                        _showLoginDialog();
-                        return;
-                    }
-                    if (MembershipService.canViewLimitedDirectory) {
-                        setState(() => _selectedIndex = 2);
-                        _pageController.jumpToPage(2); // Jump to Network Tab
-                    } else {
-                        MembershipService.showUpgradeDialog(context, "Member Directory");
-                    }
-                  }
-                ),
-                const SizedBox(height: 16),
+                  FounderCard(profile: _founderProfile!),
+                  const SizedBox(height: 32),
+                ],
+              ),
 
-                // ROW 3: FOUNDER SPOTLIGHT (If available)
-                if (_founderProfile != null)
+            // 2. BENTO GRID LAYOUT
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  // ROW 1: STATUS & EVENTS
+                  Row(
+                    children: [
+                      // Membership Status Tile
+                      Expanded(
+                        child: BentoTile(
+                          title: _isPremium ? "Premium" : "Standard",
+                          subtitle: "Membership",
+                          height: 160,
+                          color: _isPremium
+                              ? FfigTheme.primaryBrown
+                              : const Color(0xFF161B22),
+                          isGlass: true, // Glass effect for consistency
+                          icon: Icon(
+                            Icons.verified_user,
+                            color: _isPremium ? Colors.white : Colors.grey,
+                            size: 24,
+                          ),
+                          onTap: () {
+                            // TODO: Navigate to Membership details
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Events Quick Access
+                      Expanded(
+                        child: BentoTile(
+                          title: "Events",
+                          subtitle: "${_events.length} Upcoming",
+                          height: 160,
+                          isGlass: true, // Glass effect
+                          icon: const Icon(
+                            Icons.calendar_month,
+                            color: FfigTheme.accentBrown,
+                            size: 24,
+                          ),
+                          onTap: () {
+                            setState(() => _selectedIndex = 1);
+                            _pageController.jumpToPage(1); // Jump to Events Tab
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ROW 2: MAIN FEATURE (FIND FOUNDER)
                   BentoTile(
-                    title: "Spotlight",
-                    subtitle: _founderProfile!.name,
-                    height: 220, // Taller
-                    color: Colors.transparent, // Background handled by image
-                    onTap: () {
-                       // Navigate to details if needed
-                    },
-                    child: Stack(
-                      children: [
-                        // Background Image
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: ColorFiltered( // Darken image for text readability
-                               colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
-                               child: Image.network(_founderProfile!.photoUrl, fit: BoxFit.cover),
-                            ),
+                    title: "Network",
+                    subtitle: "Connect with Global Founders",
+                    height: 180,
+                    isGlass: true,
+                    icon: const Icon(
+                      Icons.search,
+                      color: FfigTheme.accentBrown,
+                      size: 28,
+                    ),
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: FfigTheme.primaryBrown,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "Find a Founder",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
-                        // Text Overlay
-                        const Positioned(
-                          bottom: 0, right: 0,
-                          child: Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-                        )
-                      ],
+                      ),
                     ),
+                    onTap: () {
+                      if (_userProfile == null) {
+                        _showLoginDialog();
+                        return;
+                      }
+                      if (MembershipService.canViewLimitedDirectory) {
+                        setState(() => _selectedIndex = 2);
+                        _pageController.jumpToPage(2); // Jump to Network Tab
+                      } else {
+                        MembershipService.showUpgradeDialog(
+                          context,
+                          "Member Directory",
+                        );
+                      }
+                    },
                   ),
-                
-                 if (_founderProfile != null) const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                 // ROW 4: RESOURCES & INBOX
-                 Row(
-                  children: [
-                    Expanded(
-                      child: BentoTile(
-                        title: "Inbox",
-                        subtitle: _lastUnreadCount > 0 ? "$_lastUnreadCount Unread" : "No messages",
-                        height: 140,
-                        isGlass: true, // Glass effect for hover/light mode
-                        icon: Icon(Icons.chat_bubble_outline, color: _lastUnreadCount > 0 ? FfigTheme.primaryBrown : Colors.grey),
-                        onTap: () {
-                            if (_userProfile == null) {
-                                _showLoginDialog();
-                                return;
-                            }
-                            setState(() => _lastUnreadCount = 0);
-                            Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()));
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: BentoTile(
-                        title: "Resources",
-                        subtitle: "Library",
-                        height: 140,
-                        isGlass: true, // Glass effect for hover/light mode
-                        icon: const Icon(Icons.book, color: Colors.grey),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ResourcesScreen())),
-                      ),
-                    ),
-                  ],
-                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 48),
-
-          // 4. "Trending" Horizontal List
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("TRENDING NOW", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)),
-                const Text("View All", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 220,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
-              itemCount: _events.length > 2 ? 2 : _events.length,
-              itemBuilder: (context, index) {
-                if (index >= _events.length) return const SizedBox.shrink();
-                final event = _events[index];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailScreen(event: event))),
-                    child: Container(
-                      width: 160,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardTheme.color,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  // ROW 3: FOUNDER SPOTLIGHT (If available)
+                  if (_founderProfile != null)
+                    BentoTile(
+                      title: "Spotlight",
+                      subtitle: _founderProfile!.name,
+                      height: 220, // Taller
+                      color: Colors.transparent, // Background handled by image
+                      onTap: () {
+                        // Navigate to details if needed
+                      },
+                      child: Stack(
                         children: [
-                          Expanded(
-                            flex: 3,
+                          // Background Image
+                          Positioned.fill(
                             child: ClipRRect(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                              child: Image.network(event['image_url'], fit: BoxFit.cover, width: double.infinity),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    event['title'],
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                      fontSize: 12,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    event['date'].toString().split('T')[0],
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
+                              borderRadius: BorderRadius.circular(16),
+                              child: ColorFiltered(
+                                // Darken image for text readability
+                                colorFilter: ColorFilter.mode(
+                                  Colors.black.withOpacity(0.4),
+                                  BlendMode.darken,
+                                ),
+                                child: Image.network(
+                                  _founderProfile!.photoUrl,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                           ),
+                          // Text Overlay
+                          const Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
                         ],
                       ),
                     ),
+
+                  if (_founderProfile != null) const SizedBox(height: 16),
+
+                  // ROW 4: RESOURCES & INBOX
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BentoTile(
+                          title: "Inbox",
+                          subtitle: _lastUnreadCount > 0
+                              ? "$_lastUnreadCount Unread"
+                              : "No messages",
+                          height: 140,
+                          isGlass: true, // Glass effect for hover/light mode
+                          icon: Icon(
+                            Icons.chat_bubble_outline,
+                            color: _lastUnreadCount > 0
+                                ? FfigTheme.primaryBrown
+                                : Colors.grey,
+                          ),
+                          onTap: () {
+                            if (_userProfile == null) {
+                              _showLoginDialog();
+                              return;
+                            }
+                            setState(() => _lastUnreadCount = 0);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (c) => const InboxScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: BentoTile(
+                          title: "Resources",
+                          subtitle: "Library",
+                          height: 140,
+                          isGlass: true, // Glass effect for hover/light mode
+                          icon: const Icon(Icons.book, color: Colors.grey),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => const ResourcesScreen(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 80),
-        ],
+
+            const SizedBox(height: 48),
+
+            // 4. "Trending" Horizontal List
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "TRENDING NOW",
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge?.copyWith(color: Colors.grey),
+                  ),
+                  const Text(
+                    "View All",
+                    style: TextStyle(
+                      color: FfigTheme.primaryBrown,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  bottom: 120,
+                ), // Added padding for nav bar
+                itemCount: _events.length > 2 ? 2 : _events.length,
+                itemBuilder: (context, index) {
+                  if (index >= _events.length) return const SizedBox.shrink();
+                  final event = _events[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailScreen(event: event),
+                        ),
+                      ),
+                      child: Container(
+                        width: 160,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardTheme.color,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16),
+                                ),
+                                child: Image.network(
+                                  event['image_url'],
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      event['title'],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            fontSize: 12,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurface,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      event['date'].toString().split('T')[0],
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 120),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   String _getGreeting() {
@@ -864,19 +1113,37 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       child: Column(
         children: [
           Container(
-            width: 70, height: 70,
+            width: 70,
+            height: 70,
             decoration: BoxDecoration(
               color: Theme.of(context).cardTheme.color,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).dividerTheme.color ?? Colors.grey.withOpacity(0.1)),
+              border: Border.all(
+                color:
+                    Theme.of(context).dividerTheme.color ??
+                    Colors.grey.withOpacity(0.1),
+              ),
               boxShadow: [
-                 BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
               ],
             ),
-            child: Icon(icon, color: Theme.of(context).iconTheme.color, size: 28),
+            child: Icon(
+              icon,
+              color: Theme.of(context).iconTheme.color,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

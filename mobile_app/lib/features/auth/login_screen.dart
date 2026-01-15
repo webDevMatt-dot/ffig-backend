@@ -9,6 +9,7 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../shared_widgets/moderation_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,7 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _checkForUpdates() async {
     final updateData = await VersionService().checkUpdate();
-    if (updateData != null && mounted && updateData['updateAvailable'] == true) {
+    if (updateData != null &&
+        mounted &&
+        updateData['updateAvailable'] == true) {
       _showUpdateDialog(updateData);
     }
   }
@@ -56,15 +59,20 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Text("Version $version is available."),
         actions: [
           if (!required)
-            TextButton(child: const Text("Later"), onPressed: () => Navigator.pop(context)),
+            TextButton(
+              child: const Text("Later"),
+              onPressed: () => Navigator.pop(context),
+            ),
           ElevatedButton(
             onPressed: () {
-               // Cache Busting: Add timestamp to force fresh download
-               final uri = Uri.parse("$url?t=${DateTime.now().millisecondsSinceEpoch}");
-               launchUrl(uri, mode: LaunchMode.externalApplication);
+              // Cache Busting: Add timestamp to force fresh download
+              final uri = Uri.parse(
+                "$url?t=${DateTime.now().millisecondsSinceEpoch}",
+              );
+              launchUrl(uri, mode: LaunchMode.externalApplication);
             },
             child: const Text("Update"),
-          )
+          ),
         ],
       ),
     );
@@ -73,14 +81,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(() => _isLoading = true);
 
-    String url = '${baseUrl}auth/login/'; 
+    String url = '${baseUrl}auth/login/';
 
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': _emailController.text.trim(), 
+          'username': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
         }),
       );
@@ -93,25 +101,65 @@ class _LoginScreenState extends State<LoginScreen> {
         const storage = FlutterSecureStorage();
         await storage.write(key: 'access_token', value: accessToken);
         await storage.write(key: 'refresh_token', value: refreshToken);
-        
+
         if (data.containsKey('is_staff')) {
-          await storage.write(key: 'is_staff', value: data['is_staff'].toString());
+          await storage.write(
+            key: 'is_staff',
+            value: data['is_staff'].toString(),
+          );
+        }
+
+        // Moderation Checks (Block/Suspend)
+        if (data['is_blocked'] == true) {
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) =>
+                  const ModerationDialog(type: ModerationType.block),
+            );
+          }
+          return; // Stop login
+        }
+
+        if (data['is_suspended'] == true) {
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => ModerationDialog(
+                type: ModerationType.suspend,
+                message:
+                    "Your account is suspended until ${data['suspension_expiry']}.",
+              ),
+            );
+          }
+          return; // Stop login
         }
 
         // VERIFY TOKEN WRITE (Debug Step)
         final verifyToken = await storage.read(key: 'access_token');
         if (verifyToken != accessToken) {
-             throw Exception("Token Storage Failed! Read-back returned: $verifyToken");
+          throw Exception(
+            "Token Storage Failed! Read-back returned: $verifyToken",
+          );
         }
 
         if (mounted) {
-           Navigator.pushAndRemoveUntil(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            (route) => false, 
+            (route) => false,
           );
         }
-        
+      } else if (response.statusCode == 401) {
+        // Account might be deleted/disabled
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const ModerationDialog(type: ModerationType.delete),
+        );
       } else {
         _showError("Invalid credentials.");
       }
@@ -164,7 +212,8 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 // 1. Brand Mark (Gold)
                 Container(
-                  height: 64, width: 64,
+                  height: 64,
+                  width: 64,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: FfigTheme.primaryBrown.withOpacity(0.1),
@@ -178,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // 2. Headline
                 Text(
                   "Welcome back.",
@@ -213,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   textInputAction: TextInputAction.go, // Show "Go" or arrow
-                  onSubmitted: (_) => _login(),        // Enter = Login
+                  onSubmitted: (_) => _login(), // Enter = Login
                   decoration: const InputDecoration(
                     labelText: "Password",
                     prefixIcon: Icon(Icons.lock_outline, size: 20),
@@ -224,35 +273,67 @@ class _LoginScreenState extends State<LoginScreen> {
                 // 4. Action Button
                 ElevatedButton(
                   onPressed: _isLoading ? null : _login,
-                  child: _isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                    : const Text("Sign In"),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text("Sign In"),
                 ),
 
                 const SizedBox(height: 32),
 
                 // 5. Links
                 TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen())),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SignUpScreen(),
+                    ),
+                  ),
                   child: RichText(
                     text: TextSpan(
                       style: Theme.of(context).textTheme.bodyMedium,
                       children: [
-                         const TextSpan(text: "No account? "),
-                         TextSpan(text: "Sign Up", style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+                        const TextSpan(text: "No account? "),
+                        TextSpan(
+                          text: "Sign Up",
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // 6. Version Indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Text("v$_version", style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500)),
+                    Text(
+                      "v$_version",
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ],

@@ -265,6 +265,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                   onRefresh: _fetchMembers,
                   color: FfigTheme.primaryBrown,
                   child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 120),
                     itemCount: _members.length,
                   itemBuilder: (context, index) {
                     final member = _members[index];

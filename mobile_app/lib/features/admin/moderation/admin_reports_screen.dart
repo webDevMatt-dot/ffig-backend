@@ -57,7 +57,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         : _reports.isEmpty 
             ? const Center(child: Text("No reports found."))
             : ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120), // Added padding for nav bar
                 itemCount: _reports.length,
                 separatorBuilder: (c, i) => const Divider(),
                 itemBuilder: (context, index) {

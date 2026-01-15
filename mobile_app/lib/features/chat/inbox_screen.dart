@@ -255,6 +255,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 ),
               )
             : ListView.separated(
+                padding: const EdgeInsets.only(bottom: 120),
                 itemCount: _conversations.length,
                 separatorBuilder: (c, i) => const Divider(height: 1),
                 itemBuilder: (context, index) {
@@ -366,7 +367,7 @@ class _InboxScreenState extends State<InboxScreen> {
       final messages = _searchResults['messages'] as List;
 
       return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
           children: [
               if (users.isNotEmpty) ...[
                   const Padding(

@@ -52,7 +52,7 @@ class _EventsScreenState extends State<EventsScreen> {
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
             itemCount: _events.length,
             itemBuilder: (context, index) {
               final event = _events[index];

@@ -236,6 +236,7 @@ class AdminModerationActionView(APIView):
     def post(self, request):
         from django.contrib.auth.models import User
         from django.utils import timezone
+        from datetime import timedelta
         
         action = request.data.get('action') # 'WARN', 'SUSPEND', 'BLOCK', 'DELETE'
         target_user_id = request.data.get('target_user_id')
@@ -274,8 +275,10 @@ class AdminModerationActionView(APIView):
             return Response({'status': 'suspended'})
             
         elif action == 'BLOCK':
-            target_user.is_active = False
-            target_user.save()
+            target_user.profile.is_blocked = True
+            target_user.profile.save()
+            # target_user.is_active = False # Don't deactivate so they can see the 'Blocked' dialog
+            # target_user.save()
              # Notify (email would be better here since they can't login, but creating notif for record)
             return Response({'status': 'blocked'})
             

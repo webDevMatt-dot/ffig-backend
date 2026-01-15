@@ -33,7 +33,7 @@ class AdminDashboardScreen extends StatelessWidget {
 
   Widget _buildMobileLayout(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
       children: [
         _buildSectionHeader(context, "General Management"),
         _buildAdminTile(
