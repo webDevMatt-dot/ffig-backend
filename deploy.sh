@@ -23,7 +23,7 @@ flutter clean
 flutter pub get
 
 echo "🔨 Building Web App (Release)..."
-flutter build web --web-renderer html --release
+flutter build web --release
 
 echo "📦 Building Android APK (Release)..."
 flutter build apk --release
