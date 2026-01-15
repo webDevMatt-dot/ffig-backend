@@ -85,27 +85,35 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white; // standard clean dark
+    final textColor = isDark ? Colors.white : Colors.black;
+    final hintColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final inputFill = isDark ? Colors.grey[800] : Colors.grey[100];
+
     return Container(
         height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+        decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20))
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
             children: [
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
-                const Text("Share to Chat", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text("Share to Chat", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor)),
                 const SizedBox(height: 16),
                 TextField(
                     controller: _searchController,
+                    style: TextStyle(color: textColor),
                     decoration: InputDecoration(
                         hintText: "Search users...",
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintStyle: TextStyle(color: hintColor),
+                        prefixIcon: Icon(Icons.search, color: hintColor),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         filled: true,
-                        fillColor: Colors.grey[100]
+                        fillColor: inputFill
                     ),
                     onChanged: (val) => _search(val),
                 ),
@@ -114,7 +122,7 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
                     child: _isLoading 
                     ? const Center(child: CircularProgressIndicator())
                     : _users.isEmpty 
-                        ? const Center(child: Text("Search for a user to share with."))
+                        ? Center(child: Text("Search for a user to share with.", style: TextStyle(color: hintColor)))
                         : ListView.builder(
                             itemCount: _users.length,
                             itemBuilder: (context, index) {
@@ -129,7 +137,7 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
                                         backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
                                         child: photoUrl == null ? Text(user['username'][0].toUpperCase()) : null,
                                     ),
-                                    title: Text(user['username']),
+                                    title: Text(user['username'], style: TextStyle(color: textColor)),
                                     trailing: const Icon(Icons.send, color: Colors.blue),
                                     onTap: () => _send(user),
                                 );

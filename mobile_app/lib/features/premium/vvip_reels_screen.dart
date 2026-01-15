@@ -66,9 +66,12 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
           PageView.builder(
             scrollDirection: Axis.vertical,
             controller: _pageController,
-            itemCount: _reels.length,
+            itemCount: _reels.length + 1,
             itemBuilder: (context, index) {
-              return _ReelItem(item: _reels[index]);
+              if (index == _reels.length) {
+                  return const _CaughtUpPage();
+              }
+              return _ReelItem(item: _reels[index], key: ValueKey(_reels[index]['id']));
             },
           ),
           Positioned(
@@ -85,10 +88,39 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
   }
 }
 
+class _CaughtUpPage extends StatelessWidget {
+    const _CaughtUpPage();
+    
+    @override
+    Widget build(BuildContext context) {
+        return Container(
+            color: Colors.black,
+            child: const Center(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                        Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                        SizedBox(height: 24),
+                        Text(
+                            "You're all caught up!",
+                            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                            "Check back later for more.",
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                    ],
+                ),
+            ),
+        );
+    }
+}
+
 
 class _ReelItem extends StatefulWidget {
   final Map<String, dynamic> item;
-  const _ReelItem({required this.item});
+  const _ReelItem({super.key, required this.item});
 
   @override
   State<_ReelItem> createState() => _ReelItemState();
@@ -121,20 +153,38 @@ class _ReelItemState extends State<_ReelItem> {
   Future<void> _initMedia() async {
     var videoUrl = widget.item['video'];
     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
-      if (videoUrl.toString().startsWith('/')) {
+      String urlString = videoUrl.toString();
+      // Fix relative URLs
+      if (urlString.startsWith('/')) {
          final domain = baseUrl.replaceAll('/api/', '');
-         videoUrl = '$domain$videoUrl';
+         videoUrl = '$domain$urlString';
+      } 
+      // Fix mixed content (Production app getting localhost URL)
+      else if (baseUrl.contains('onrender')) {
+           final domain = baseUrl.replaceAll('/api/', '');
+           if (urlString.contains('localhost')) {
+              videoUrl = urlString.replaceAll(RegExp(r'http://localhost:\d+'), domain);
+           } else if (urlString.contains('127.0.0.1')) {
+              videoUrl = urlString.replaceAll(RegExp(r'http://127.0.0.1:\d+'), domain);
+           }
       }
+
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
-      await _videoController!.initialize();
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: true,
-        looping: true,
-        aspectRatio: _videoController!.value.aspectRatio,
-        showControls: false, // Clean look like Reels/TikTok
-      );
-      if (mounted) setState(() => _isInit = true);
+      try {
+        await _videoController!.initialize();
+        _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: true,
+            looping: true,
+            aspectRatio: _videoController!.value.aspectRatio,
+            showControls: false, // Clean look like Reels/TikTok
+        );
+         if (mounted) setState(() => _isInit = true);
+      } catch (e) {
+         debugPrint("Video Init Error: $e");
+         _videoController = null; // Fallback to image
+         if (mounted) setState(() => _isInit = true);
+      }
     } else {
         if (mounted) setState(() => _isInit = true);
     }
@@ -182,21 +232,26 @@ class _ReelItemState extends State<_ReelItem> {
   }
   
   void _share() {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+      final textColor = isDark ? Colors.white : Colors.black;
+
       showModalBottomSheet(
           context: context, 
           backgroundColor: Colors.transparent,
           builder: (context) => Container(
-              decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+              decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20))
               ),
               child: SafeArea(
                   child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                          Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                           ListTile(
-                              leading: const Icon(Icons.share),
-                              title: const Text("Share Externally"),
+                              leading: Icon(Icons.share, color: textColor),
+                              title: Text("Share Externally", style: TextStyle(color: textColor)),
                               onTap: () {
                                   Navigator.pop(context);
                                   final text = "Check out this ${widget.item['type']} on FFig: ${widget.item['title']}\n${widget.item['link'] ?? ''}";
@@ -204,8 +259,8 @@ class _ReelItemState extends State<_ReelItem> {
                               },
                           ),
                           ListTile(
-                              leading: const Icon(Icons.send),
-                              title: const Text("Send in App"),
+                              leading: Icon(Icons.send, color: textColor),
+                              title: Text("Send in App", style: TextStyle(color: textColor)),
                               onTap: () {
                                   Navigator.pop(context);
                                   showModalBottomSheet(
@@ -230,9 +285,20 @@ class _ReelItemState extends State<_ReelItem> {
     }
 
     var imageUrl = widget.item['image'];
-    if (imageUrl != null && imageUrl.toString().startsWith('/')) {
-        final domain = baseUrl.replaceAll('/api/', '');
-        imageUrl = '$domain$imageUrl';
+    if (imageUrl != null) {
+        String urlString = imageUrl.toString();
+        if (urlString.startsWith('/')) {
+            final domain = baseUrl.replaceAll('/api/', '');
+            imageUrl = '$domain$urlString';
+        } else if (baseUrl.contains('onrender')) {
+           // Fix mixed content
+           final domain = baseUrl.replaceAll('/api/', '');
+           if (urlString.contains('localhost')) {
+              imageUrl = urlString.replaceAll(RegExp(r'http://localhost:\d+'), domain);
+           } else if (urlString.contains('127.0.0.1')) {
+              imageUrl = urlString.replaceAll(RegExp(r'http://127.0.0.1:\d+'), domain);
+           }
+        }
     }
 
     final bool hasVideo = _chewieController != null;
