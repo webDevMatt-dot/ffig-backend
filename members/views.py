@@ -143,6 +143,49 @@ class MarketingFeedView(generics.ListAPIView):
     def get_queryset(self):
         return MarketingRequest.objects.filter(status='APPROVED').order_by('-created_at')
 
+class MarketingLikeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from .models import MarketingLike
+        marketing_request = get_object_or_404(MarketingRequest, id=pk)
+        
+        # Toggle Like
+        like, created = MarketingLike.objects.get_or_create(user=request.user, marketing_request=marketing_request)
+        if not created:
+            like.delete()
+            return Response({'status': 'unliked', 'count': marketing_request.likes.count()})
+        else:
+            # Notify creator
+            if marketing_request.user != request.user:
+                 Notification.objects.create(
+                     recipient=marketing_request.user,
+                     title="New Like",
+                     message=f"{request.user.username} liked your post."
+                 )
+            return Response({'status': 'liked', 'count': marketing_request.likes.count()})
+
+class MarketingCommentView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    from .serializers import MarketingCommentSerializer
+    serializer_class = MarketingCommentSerializer
+
+    def get_queryset(self):
+        return MarketingComment.objects.filter(marketing_request_id=self.kwargs['pk']).order_by('created_at')
+
+    def perform_create(self, serializer):
+        from .models import MarketingComment
+        marketing_request = get_object_or_404(MarketingRequest, id=self.kwargs['pk'])
+        serializer.save(user=self.request.user, marketing_request=marketing_request)
+        
+        # Notify creator
+        if marketing_request.user != self.request.user:
+                Notification.objects.create(
+                    recipient=marketing_request.user,
+                    title="New Comment",
+                    message=f"{self.request.user.username} commented on your post."
+                )
+
 class ContentReportCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ContentReportSerializer

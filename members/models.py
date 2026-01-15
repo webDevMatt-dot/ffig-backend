@@ -118,3 +118,18 @@ def create_user_profile(sender, instance, created, **kwargs):
                 title="New User Registration",
                 message=f"New user joined: {instance.username} ({instance.email})"
             )
+
+class MarketingLike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    marketing_request = models.ForeignKey(MarketingRequest, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'marketing_request')
+
+class MarketingComment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    marketing_request = models.ForeignKey(MarketingRequest, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+

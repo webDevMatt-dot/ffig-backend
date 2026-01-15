@@ -44,7 +44,8 @@ from members.views import (
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
     AdminContentReportListView, AdminContentReportDetailView, AdminModerationActionView,
     NotificationListView, NotificationMarkReadView,
-    ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView
+    ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
+    MarketingLikeView, MarketingCommentView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView
@@ -103,6 +104,8 @@ urlpatterns = [
     path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
     path('api/members/marketing/feed/', MarketingFeedView.as_view(), name='marketing-feed'),
+    path('api/members/marketing/<int:pk>/like/', MarketingLikeView.as_view(), name='marketing-like'),
+    path('api/members/marketing/<int:pk>/comments/', MarketingCommentView.as_view(), name='marketing-comments'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),

@@ -76,17 +76,56 @@ class AdminBusinessProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['user'] # Admin can edit status and feedback
 
 
+class MarketingLikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import MarketingLike
+        model = MarketingLike
+        fields = '__all__'
+
+class MarketingCommentSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    photo_url = serializers.CharField(source='user.profile.photo_url', read_only=True)
+    
+    class Meta:
+        from .models import MarketingComment
+        model = MarketingComment
+        fields = ['id', 'user', 'username', 'photo_url', 'content', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
 class MarketingRequestSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    user_photo = serializers.CharField(source='user.profile.photo_url', read_only=True)
+
     class Meta:
         model = MarketingRequest
         fields = '__all__'
         read_only_fields = ['user', 'status', 'feedback']
 
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request', None)
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(user=request.user).exists()
+        return False
+
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = MarketingRequest
         fields = '__all__'
         read_only_fields = ['user'] # Admin can edit status and feedback
+    
+    def get_likes_count(self, obj):
+        return obj.likes.count()
 
 class ContentReportSerializer(serializers.ModelSerializer):
     class Meta:

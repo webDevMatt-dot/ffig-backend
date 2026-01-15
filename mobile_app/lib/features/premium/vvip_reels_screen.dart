@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
 
@@ -82,6 +83,7 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
   }
 }
 
+
 class _ReelItem extends StatefulWidget {
   final Map<String, dynamic> item;
   const _ReelItem({required this.item});
@@ -91,14 +93,27 @@ class _ReelItem extends StatefulWidget {
 }
 
 class _ReelItemState extends State<_ReelItem> {
+  final _api = AdminApiService();
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _isInit = false;
+  
+  // Social State
+  bool _isLiked = false;
+  int _likesCount = 0;
+  int _commentsCount = 0;
 
   @override
   void initState() {
     super.initState();
     _initMedia();
+    _initSocial();
+  }
+  
+  void _initSocial() {
+      _isLiked = widget.item['is_liked'] ?? false;
+      _likesCount = widget.item['likes_count'] ?? 0;
+      _commentsCount = widget.item['comments_count'] ?? 0;
   }
 
   Future<void> _initMedia() async {
@@ -113,9 +128,9 @@ class _ReelItemState extends State<_ReelItem> {
         aspectRatio: _videoController!.value.aspectRatio,
         showControls: false, // Clean look like Reels/TikTok
       );
-      setState(() => _isInit = true);
+      if (mounted) setState(() => _isInit = true);
     } else {
-        setState(() => _isInit = true);
+        if (mounted) setState(() => _isInit = true);
     }
   }
 
@@ -124,6 +139,45 @@ class _ReelItemState extends State<_ReelItem> {
     _videoController?.dispose();
     _chewieController?.dispose();
     super.dispose();
+  }
+  
+  Future<void> _toggleLike() async {
+      final prevLiked = _isLiked;
+      setState(() {
+          _isLiked = !_isLiked;
+          _likesCount += _isLiked ? 1 : -1;
+      });
+      
+      try {
+          final res = await _api.toggleMarketingLike(widget.item['id']);
+          if (mounted) setState(() {
+               _isLiked = res['status'] == 'liked';
+               _likesCount = res['count'];
+          });
+      } catch (e) {
+          // Revert
+          if (mounted) setState(() {
+               _isLiked = prevLiked;
+               _likesCount += _isLiked ? 1 : -1;
+          });
+      }
+  }
+  
+  void _showComments() {
+      showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => _CommentsSheet(requestId: widget.item['id'])
+      ).then((_) {
+          // Refresh comments count if needed, or rely on future builder inside sheet?
+          // For now, simple.
+      });
+  }
+  
+  void _share() {
+      final text = "Check out this ${widget.item['type']} on FFig: ${widget.item['title']}\n${widget.item['link'] ?? ''}";
+      Share.share(text);
   }
 
   @override
@@ -152,17 +206,45 @@ class _ReelItemState extends State<_ReelItem> {
              gradient: LinearGradient(
                begin: Alignment.topCenter,
                end: Alignment.bottomCenter,
-               colors: [Colors.transparent, Colors.black54],
+               colors: [Colors.transparent, Colors.black87],
                stops: [0.6, 1.0],
              ),
            ),
+        ),
+
+        // Side Action Bar (Right)
+        Positioned(
+            right: 16,
+            bottom: 100,
+            child: Column(
+                children: [
+                    _ActionButton(
+                        icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.white,
+                        label: "$_likesCount",
+                        onTap: _toggleLike
+                    ),
+                    const SizedBox(height: 20),
+                    _ActionButton(
+                        icon: Icons.comment, 
+                        label: "Comment", // "$_commentsCount",
+                        onTap: _showComments
+                    ),
+                    const SizedBox(height: 20),
+                    _ActionButton(
+                        icon: Icons.share, 
+                        label: "Share",
+                        onTap: _share
+                    ),
+                ],
+            ),
         ),
 
         // Info Layer
         Positioned(
             bottom: 40,
             left: 16,
-            right: 16,
+            right: 80, // Space for buttons
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,4 +273,122 @@ class _ReelItemState extends State<_ReelItem> {
       ],
     );
   }
+}
+
+class _ActionButton extends StatelessWidget {
+    final IconData icon;
+    final String label;
+    final VoidCallback onTap;
+    final Color color;
+    
+    const _ActionButton({required this.icon, required this.label, required this.onTap, this.color = Colors.white});
+    
+    @override
+    Widget build(BuildContext context) {
+        return GestureDetector(
+            onTap: onTap,
+            child: Column(
+                children: [
+                    Icon(icon, color: color, size: 30),
+                    const SizedBox(height: 4),
+                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 12))
+                ],
+            ),
+        );
+    }
+}
+
+class _CommentsSheet extends StatefulWidget {
+    final int requestId;
+    const _CommentsSheet({required this.requestId});
+    @override
+    State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+    final _api = AdminApiService();
+    final _controller = TextEditingController();
+    List<dynamic> _comments = [];
+    bool _loading = true;
+
+    @override
+    void initState() {
+        super.initState();
+        _load();
+    }
+    
+    Future<void> _load() async {
+        try {
+            final data = await _api.fetchMarketingComments(widget.requestId);
+            if (mounted) setState(() { _comments = data; _loading = false; });
+        } catch (e) {
+            if (mounted) setState(() => _loading = false);
+        }
+    }
+    
+    Future<void> _post() async {
+        if (_controller.text.trim().isEmpty) return;
+        final content = _controller.text;
+        _controller.clear(); 
+        // optimistic update?
+        try {
+            await _api.postMarketingComment(widget.requestId, content);
+            _load(); // reload
+        } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e")));
+        }
+    }
+
+    @override
+    Widget build(BuildContext context) {
+        return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+            ),
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Column(
+                children: [
+                    const SizedBox(height: 10),
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                    const Padding(padding: EdgeInsets.all(16), child: Text("Comments", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                    Expanded(
+                        child: _loading 
+                         ? const Center(child: CircularProgressIndicator()) 
+                         : ListView.builder(
+                             itemCount: _comments.length,
+                             itemBuilder: (c, i) {
+                                 final com = _comments[i];
+                                 return ListTile(
+                                     leading: CircleAvatar(
+                                         backgroundImage: NetworkImage(com['photo_url'] ?? ''),
+                                         child: com['photo_url'] == null ? Text(com['username'][0]) : null,
+                                     ),
+                                     title: Text(com['username'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                     subtitle: Text(com['content']),
+                                 );
+                             },
+                         )
+                    ),
+                    Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                            children: [
+                                Expanded(child: TextField(
+                                    controller: _controller,
+                                    decoration: InputDecoration(
+                                        hintText: "Add a comment...",
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16)
+                                    ),
+                                )),
+                                IconButton(icon: const Icon(Icons.send, color: FfigTheme.primaryBrown), onPressed: _post)
+                            ],
+                        ),
+                    )
+                ],
+            ),
+        );
+    }
 }

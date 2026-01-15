@@ -304,6 +304,33 @@ class AdminApiService {
     }
   }
 
+  Future<Map<String, dynamic>> toggleMarketingLike(int id) async {
+      final token = await _getToken();
+      final response = await http.post(
+          Uri.parse('$_membersBaseUrl/marketing/$id/like/'),
+          headers: {'Authorization': 'Bearer $token'}
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to like post: ${response.statusCode}');
+  }
+
+  Future<List<dynamic>> fetchMarketingComments(int id) async {
+       final token = await _getToken();
+       final response = await http.get(Uri.parse('$_membersBaseUrl/marketing/$id/comments/'), headers: {'Authorization': 'Bearer $token'});
+       if (response.statusCode == 200) return jsonDecode(response.body);
+       throw Exception('Failed to load comments');
+  }
+
+  Future<void> postMarketingComment(int id, String content) async {
+       final token = await _getToken();
+       final response = await http.post(
+           Uri.parse('$_membersBaseUrl/marketing/$id/comments/'),
+           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+           body: jsonEncode({'content': content})
+       );
+       if (response.statusCode != 201) throw Exception('Failed to post comment');
+  }
+
   Future<Map<String, dynamic>> fetchAnalytics() async {
     final token = await _getToken();
     final response = await http.get(
@@ -371,6 +398,20 @@ class AdminApiService {
           body: jsonEncode({'status': status})
       );
       if (response.statusCode != 200) throw Exception('Failed to update status');
+  }
+
+  Future<void> deleteMarketingRequest(int id) async {
+       final token = await _getToken();
+       // Assuming endpoint is standard viewset /members/me/marketing/{id}/ OR /admin/approvals/marketing/{id}/
+       // Given update uses /admin/approvals/marketing/{id}/, delete should likely be there too or standard object delete.
+       // User created requests are at /members/me/marketing/. Admin can likely delete via Admin interface.
+       // Let's try the approval endpoint with DELETE method if supported, or a specific admin delete.
+       // If backend viewset allows destroy, this works:
+       final response = await http.delete(
+          Uri.parse('${baseUrl}admin/approvals/marketing/$id/'),
+          headers: {'Authorization': 'Bearer $token'}
+       );
+       if (response.statusCode != 204) throw Exception('Failed to delete request');
   }
 
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)

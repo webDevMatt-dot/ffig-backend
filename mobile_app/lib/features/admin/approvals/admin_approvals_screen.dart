@@ -106,8 +106,14 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
         try {
             final data = await _api.fetchMarketingApprovals();
             // Filter locally
-            final pending = data.where((i) => i['status'] == 'PENDING').toList();
-            if (mounted) setState(() { _items = pending; _isLoading = false; });
+            // final pending = data.where((i) => i['status'] == 'PENDING').toList();
+            // Show ALL, but maybe sort PENDING first
+            data.sort((a,b) {
+                if (a['status'] == 'PENDING' && b['status'] != 'PENDING') return -1;
+                if (a['status'] != 'PENDING' && b['status'] == 'PENDING') return 1;
+                return 0; // Keep original order otherwise (usually date desc)
+            });
+            if (mounted) setState(() { _items = data; _isLoading = false; });
         } catch (e) {
             if (mounted) setState(() => _isLoading = false);
         }
@@ -135,6 +141,35 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
         }
     }
 
+    Future<void> _delete(int id) async {
+         // Confirm Dialog
+         final confirm = await showDialog<bool>(
+             context: context,
+             builder: (c) => AlertDialog(
+                 title: const Text("Delete Post?"),
+                 content: const Text("This cannot be undone."),
+                 actions: [
+                     TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
+                     TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+                 ],
+             )
+         );
+         
+         if (confirm != true) return;
+
+         setState(() => _isLoading = true);
+         try {
+             await _api.deleteMarketingRequest(id);
+             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deleted!")));
+             _load(); 
+         } catch (e) {
+             if (mounted) {
+                 setState(() => _isLoading = false);
+                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Delete Failed: $e")));
+             }
+         }
+    }
+
     @override
     Widget build(BuildContext context) {
         if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -158,10 +193,23 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
                              if (item['video'] != null)
                                 const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
                             
+                            
                             ButtonBar(
                                 children: [
-                                    TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),
-                                    ElevatedButton(onPressed: () => _decide(item['id'], 'APPROVED'), child: const Text("Approve")),
+                                    if (item['status'] == 'PENDING') ...[
+                                       TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),
+                                       ElevatedButton(onPressed: () => _decide(item['id'], 'APPROVED'), child: const Text("Approve")),
+                                    ] else ...[
+                                        // Already decided, show Delete
+                                        IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.red),
+                                            onPressed: () => _delete(item['id']),
+                                        ),
+                                        Text(item['status'], style: TextStyle(
+                                            color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
+                                            fontWeight: FontWeight.bold
+                                        )),
+                                    ]
                                 ],
                             )
                         ],
