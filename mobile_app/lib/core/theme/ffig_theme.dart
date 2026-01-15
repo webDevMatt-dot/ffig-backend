@@ -159,36 +159,39 @@ class FfigTheme {
     );
   }
 
-  // --- DARK THEME DATA (VVIP Night Mode) ---
+  // --- DARK THEME DATA (VVIP Night Mode - Obsidian Revamp) ---
   static ThemeData get darkTheme {
+    const obsidianBg = Color(0xFF0D1117);
+    const obsidianSurface = Color(0xFF161B22);
+    
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: pureBlack, 
+      scaffoldBackgroundColor: obsidianBg, 
       
       // Color Scheme
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryBrown,
         brightness: Brightness.dark,
-        primary: primaryBrown,
+        primary: primaryBrown, // #723e31
         onPrimary: pureWhite,
-        secondary: accentBrown,
+        secondary: accentBrown, // #c29a77
         onSecondary: pureBlack,
-        background: pureBlack,
-        surface: const Color(0xFF1E1E1E), // Dark Gunmetal for cards to differentiate from bg
-        onSurface: const Color(0xFFF0F0F0), // Off-white text
-        outline: accentBrown.withOpacity(0.3), // Subtle accent outlines
+        background: obsidianBg,
+        surface: obsidianSurface, 
+        onSurface: const Color(0xFFF0F6FC), // Off-white for high contrast on obsidian
+        outline: Colors.white.withOpacity(0.1), 
       ),
 
       // Typography
       textTheme: textTheme.apply(
-        bodyColor: const Color(0xFFCED4DA), // Light Grey for body
-        displayColor: const Color(0xFFF8F9FA), // Off-White for headings
+        bodyColor: const Color(0xFFC9D1D9), // Soft grey for body
+        displayColor: pureWhite, 
       ),
 
       // AppBar Theme
       appBarTheme: AppBarTheme(
-        backgroundColor: pureBlack,
+        backgroundColor: obsidianBg.withOpacity(0.8), // Semi-transparent for glass effect
         scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: false,
@@ -198,33 +201,33 @@ class FfigTheme {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
 
-      // Input Decoration
+      // Input Decoration (Dark Obsidian Input)
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2C2C2C), // Dark Grey Fill
+        fillColor: const Color(0xFF21262D), // Slightly lighter obsidian
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: GoogleFonts.inter(color: Colors.grey[500], fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: const Color(0xFF8B949E), fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12), 
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
-           borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
            borderRadius: BorderRadius.circular(12),
-           borderSide: const BorderSide(color: primaryBrown, width: 1),
+           borderSide: const BorderSide(color: accentBrown, width: 1), // Focus with Gold/Tan
         ),
       ),
 
       // Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBrown, // Primary Brown buttons on dark
+          backgroundColor: primaryBrown, 
           foregroundColor: pureWhite,
           elevation: 4,
-          shadowColor: primaryBrown.withOpacity(0.4),
+          shadowColor: Colors.black.withOpacity(0.5),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12), 
@@ -256,28 +259,28 @@ class FfigTheme {
         ),
       ),
 
-      // Card Theme
+      // Card Theme (Bento Tile Base)
       cardTheme: CardThemeData(
-        color: const Color(0xFF1E1E1E), // Gunmetal
+        color: obsidianSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: accentBrown.withOpacity(0.1), width: 1), // Subtle accent border
+          borderRadius: BorderRadius.circular(24), // More rounded for Bento feel
+          side: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
         ),
         margin: const EdgeInsets.only(bottom: 12),
       ),
       
       dividerTheme: DividerThemeData(
-        color: Colors.grey.shade800,
+        color: const Color(0xFF30363D),
         thickness: 1,
         space: 24,
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: const Color(0xFF141414),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFF161B22),
         selectedItemColor: accentBrown,
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Color(0xFF8B949E),
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: true,
         showUnselectedLabels: true,

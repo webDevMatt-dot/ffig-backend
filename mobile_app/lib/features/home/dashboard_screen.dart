@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui'; // For ImageFilter
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -35,9 +36,11 @@ import 'models/flash_alert.dart';
 import 'widgets/hero_carousel.dart';
 import 'widgets/founder_card.dart';
 import 'widgets/flash_alert_banner.dart';
+import 'widgets/bento_tile.dart';
+import '../../shared_widgets/glass_nav_bar.dart';
 import 'widgets/news_ticker.dart';
 
-class DashboardScreen extends StatefulWidget {
+ class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
@@ -45,6 +48,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
+  // ... (Keep existing state variables)
   int _selectedIndex = 0;
   List<dynamic> _events = [];
   bool _isLoading = true;
@@ -425,12 +429,18 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    final goldColor = Theme.of(context).colorScheme.primary;
-    
     return Scaffold(
+      extendBody: true, // Allow body to flow behind the floating nav bar
       appBar: AppBar(
-        title: Text("FEMALE FOUNDERS INITIATIVE GLOBAL MEMBER PORTAL", style: GoogleFonts.lato(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
+        title: Text("MEMBER PORTAL", style: GoogleFonts.inter(fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+           child: BackdropFilter(
+             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+             child: Container(color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8)),
+           ),
+        ),
         actions: [
           // Profile Avatar (Top Right)
            IconButton(
@@ -499,11 +509,11 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           if (_isAdmin) const AdminDashboardScreen(), // Allow swiping to Admin if Admin
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: GlassNavBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-           // Handle Admin Tab Logic or Restrictions first
-           if (!_isAdmin && index == 4) return; // Should not happen given logic but safe check
+        onItemSelected: (index) {
+            // Handle Admin Tab Logic or Restrictions first
+           if (!_isAdmin && index == 4) return; 
            
            // RBAC: Network/Members Tab (Index 2)
            if (index == 2) {
@@ -529,38 +539,14 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
              duration: const Duration(milliseconds: 300), 
              curve: Curves.easeInOut
            );
-           // Set state updated via onPageChanged
         },
-        backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: FfigTheme.primaryBrown.withOpacity(0.15),
-        destinations: [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined), 
-            selectedIcon: Icon(Icons.home, color: FfigTheme.textGrey),
-            label: 'Home'
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined), 
-            selectedIcon: Icon(Icons.calendar_month, color: FfigTheme.textGrey),
-            label: 'Events'
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline), 
-            selectedIcon: Icon(Icons.people, color: FfigTheme.textGrey),
-            label: 'Network'
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.diamond_outlined, color: FfigTheme.primaryBrown), // Always Gold
-            selectedIcon: Icon(Icons.diamond, color: FfigTheme.primaryBrown),
-            label: 'VVIP'
-          ),
-
+        items: [
+          GlassNavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: "Home"),
+          GlassNavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: "Events"),
+          GlassNavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: "Network"),
+          GlassNavItem(icon: Icons.diamond_outlined, activeIcon: Icons.diamond, label: "VVIP"),
           if (_isAdmin)
-          const NavigationDestination(
-            icon: Icon(Icons.admin_panel_settings_outlined, color: Colors.amber), 
-            label: 'Admin'
-          ),
+             GlassNavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: "Admin"),
         ],
       ),
     );
@@ -634,69 +620,141 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
               ],
             ),
 
-          // 3. Quick Actions Grid
+
+          // 2. BENTO GRID LAYOUT
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text("QUICK ACCESS", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey)),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
               children: [
-                _buildQuickAction(Icons.people_outline, "Members", () {
-                   if (_userProfile == null) {
-                       _showLoginDialog();
-                       return;
-                   }
-                   if (MembershipService.canViewLimitedDirectory) {
-                       setState(() => _selectedIndex = 2);
-                   } else {
-                       MembershipService.showUpgradeDialog(context, "Member Directory");
-                   }
-                }),
-                const SizedBox(width: 16),
-                _buildQuickAction(Icons.calendar_today_outlined, "Events", () => setState(() => _selectedIndex = 1)),
-                const SizedBox(width: 16),
-                // _buildQuickAction(Icons.chat_bubble_outline, "Inbox", () => Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()))),
-                // Custom implementation for Badge support in Quick Action
-                GestureDetector(
+                // ROW 1: STATUS & EVENTS
+                Row(
+                  children: [
+                   // Membership Status Tile
+                    Expanded(
+                      child: BentoTile(
+                        title: _isPremium ? "Premium" : "Standard",
+                        subtitle: "Membership",
+                        height: 160,
+                        color: _isPremium ? FfigTheme.primaryBrown : const Color(0xFF161B22),
+                        isGlass: false,
+                        icon: Icon(Icons.verified_user, color: _isPremium ? Colors.white : Colors.grey, size: 24),
+                        onTap: () {
+                          // TODO: Navigate to Membership details
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Events Quick Access
+                    Expanded(
+                      child: BentoTile(
+                        title: "Events",
+                        subtitle: "${_events.length} Upcoming",
+                        height: 160,
+                        isGlass: true, // Glass effect
+                        icon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown, size: 24),
+                        onTap: () => setState(() => _selectedIndex = 1),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ROW 2: MAIN FEATURE (FIND FOUNDER)
+                BentoTile(
+                  title: "Network",
+                  subtitle: "Connect with Global Founders",
+                  height: 180,
+                  isGlass: true,
+                  icon: const Icon(Icons.search, color: FfigTheme.accentBrown, size: 28),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                         color: FfigTheme.primaryBrown,
+                         borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text("Find a Founder", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  ),
                   onTap: () {
-                    if (_userProfile == null) {
+                     if (_userProfile == null) {
                         _showLoginDialog();
                         return;
                     }
-                    setState(() => _lastUnreadCount = 0);
-                    Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()));
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 70, height: 70,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.grey.shade100),
-                          boxShadow: [
-                             BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-                          ],
-                        ),
-                        child: Badge(
-                          isLabelVisible: _lastUnreadCount > 0,
-                          label: Text('$_lastUnreadCount'),
-                          offset: const Offset(5, -5),
-                          child: const Icon(Icons.chat_bubble_outline, color: FfigTheme.pureBlack, size: 28),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text("Inbox", style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                    if (MembershipService.canViewLimitedDirectory) {
+                        setState(() => _selectedIndex = 2);
+                    } else {
+                        MembershipService.showUpgradeDialog(context, "Member Directory");
+                    }
+                  }
                 ),
-                const SizedBox(width: 16),
-                 _buildQuickAction(Icons.book_outlined, "Resources", () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ResourcesScreen()))),
+                const SizedBox(height: 16),
+
+                // ROW 3: FOUNDER SPOTLIGHT (If available)
+                if (_founderProfile != null)
+                  BentoTile(
+                    title: "Spotlight",
+                    subtitle: _founderProfile!.name,
+                    height: 220, // Taller
+                    color: Colors.transparent, // Background handled by image
+                    onTap: () {
+                       // Navigate to details if needed
+                    },
+                    child: Stack(
+                      children: [
+                        // Background Image
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: ColorFiltered( // Darken image for text readability
+                               colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
+                               child: Image.network(_founderProfile!.photoUrl, fit: BoxFit.cover),
+                            ),
+                          ),
+                        ),
+                        // Text Overlay
+                        const Positioned(
+                          bottom: 0, right: 0,
+                          child: Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                        )
+                      ],
+                    ),
+                  ),
+                
+                 if (_founderProfile != null) const SizedBox(height: 16),
+
+                 // ROW 4: RESOURCES & INBOX
+                 Row(
+                  children: [
+                    Expanded(
+                      child: BentoTile(
+                        title: "Inbox",
+                        subtitle: _lastUnreadCount > 0 ? "$_lastUnreadCount Unread" : "No messages",
+                        height: 140,
+                        icon: Icon(Icons.chat_bubble_outline, color: _lastUnreadCount > 0 ? FfigTheme.primaryBrown : Colors.grey),
+                        onTap: () {
+                            if (_userProfile == null) {
+                                _showLoginDialog();
+                                return;
+                            }
+                            setState(() => _lastUnreadCount = 0);
+                            Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()));
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: BentoTile(
+                        title: "Resources",
+                        subtitle: "Library",
+                        height: 140,
+                        icon: const Icon(Icons.book, color: Colors.grey),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ResourcesScreen())),
+                      ),
+                    ),
+                  ],
+                 ),
               ],
             ),
           ),
