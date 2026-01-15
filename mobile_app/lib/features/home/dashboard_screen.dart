@@ -71,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchFeaturedEvents();
+    _fetchEvents(); // Fetches all events, not just featured
     _checkMobileWeb(); // Check for mobile web
     _checkPremiumStatus();
     _checkPremiumStatus();
@@ -243,11 +243,11 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     }
   }
 
-  Future<void> _fetchFeaturedEvents() async {
+  Future<void> _fetchEvents() async { // Renamed from _fetchFeaturedEvents
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
-    const String endpoint = '${baseUrl}events/featured/';
+    const String endpoint = '${baseUrl}events/';
 
     final headers = {'Content-Type': 'application/json'};
     if (token != null) headers['Authorization'] = 'Bearer $token';
@@ -556,7 +556,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     // Determine if we need to show loading indicators or just refresh silently
     // For pull-to-refresh, we usually just want to await the results
     await Future.wait([
-      _fetchFeaturedEvents(),
+      _fetchEvents(), // Changed from _fetchFeaturedEvents
       _loadHomepageContent(),
       _checkPremiumStatus(),
     ]);
@@ -636,7 +636,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                         subtitle: "Membership",
                         height: 160,
                         color: _isPremium ? FfigTheme.primaryBrown : const Color(0xFF161B22),
-                        isGlass: false,
+                        isGlass: true, // Glass effect for consistency
                         icon: Icon(Icons.verified_user, color: _isPremium ? Colors.white : Colors.grey, size: 24),
                         onTap: () {
                           // TODO: Navigate to Membership details
@@ -652,7 +652,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                         height: 160,
                         isGlass: true, // Glass effect
                         icon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown, size: 24),
-                        onTap: () => setState(() => _selectedIndex = 1),
+                        onTap: () {
+                           setState(() => _selectedIndex = 1);
+                           _pageController.jumpToPage(1); // Jump to Events Tab
+                        },
                       ),
                     ),
                   ],
@@ -684,6 +687,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                     }
                     if (MembershipService.canViewLimitedDirectory) {
                         setState(() => _selectedIndex = 2);
+                        _pageController.jumpToPage(2); // Jump to Network Tab
                     } else {
                         MembershipService.showUpgradeDialog(context, "Member Directory");
                     }
@@ -732,6 +736,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                         title: "Inbox",
                         subtitle: _lastUnreadCount > 0 ? "$_lastUnreadCount Unread" : "No messages",
                         height: 140,
+                        isGlass: true, // Glass effect for hover/light mode
                         icon: Icon(Icons.chat_bubble_outline, color: _lastUnreadCount > 0 ? FfigTheme.primaryBrown : Colors.grey),
                         onTap: () {
                             if (_userProfile == null) {
@@ -749,6 +754,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                         title: "Resources",
                         subtitle: "Library",
                         height: 140,
+                        isGlass: true, // Glass effect for hover/light mode
                         icon: const Icon(Icons.book, color: Colors.grey),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ResourcesScreen())),
                       ),
@@ -778,11 +784,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
-              itemCount: _events.length > 2 ? 2 : (_events.length > 0 ? _events.length - 1 : 0),
+              itemCount: _events.length > 2 ? 2 : _events.length,
               itemBuilder: (context, index) {
-                // Skip the first one since it is Featured
-                if (index + 1 >= _events.length) return const SizedBox.shrink();
-                final event = _events[index + 1];
+                if (index >= _events.length) return const SizedBox.shrink();
+                final event = _events[index];
                 return Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: GestureDetector(

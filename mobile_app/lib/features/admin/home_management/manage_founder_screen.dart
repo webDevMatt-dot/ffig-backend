@@ -545,6 +545,12 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
     final _api = AdminApiService();
 
     @override
+    void initState() {
+        super.initState();
+        _search(''); // Initial search
+    }
+
+    @override
     void dispose() {
         _debounce?.cancel();
         _searchController.dispose();
@@ -554,15 +560,15 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
     void _search(String query) {
         if (_debounce?.isActive ?? false) _debounce!.cancel();
         _debounce = Timer(const Duration(milliseconds: 500), () async {
-            if (query.isEmpty) {
-                if (mounted) setState(() => _results = []);
-                return;
-            }
-            if (mounted) setState(() => _loading = true);
-            try {
-                final results = await _api.searchUsers(query);
-                if (mounted) setState(() => _results = results);
-            } catch (e) {
+                if (query.isEmpty) {
+                   // Allow empty query to clear or reset?
+                   // If we want to show 'all users' when empty, we just search ''
+                }
+                if (mounted) setState(() => _loading = true);
+                try {
+                    final results = await _api.searchUsers(query);
+                    if (mounted) setState(() => _results = results);
+                } catch (e) {
                 if (kDebugMode) print("User Search Error: $e");
             } finally {
                 if (mounted) setState(() => _loading = false);

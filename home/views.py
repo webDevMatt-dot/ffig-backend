@@ -59,6 +59,14 @@ class AppVersionViewSet(BaseHomeViewSet):
     def get_queryset(self):
         return AppVersion.objects.order_by('-updated_at')
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Force Play Store URL for Android
+        for version in response.data:
+            if version.get('platform') == 'ANDROID':
+                version['update_url'] = "https://play.google.com/store/apps/details?id=com.ffiglobal.mobile_app"
+        return response
+
 # --- APK Download Helper ---
 import os
 from django.conf import settings

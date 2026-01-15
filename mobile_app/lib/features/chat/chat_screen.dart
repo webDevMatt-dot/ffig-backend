@@ -731,9 +731,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                               },
                                               child: Container(
                                                   margin: const EdgeInsets.only(bottom: 8),
-                                                  padding: const EdgeInsets.all(8),
                                                   decoration: BoxDecoration(
-                                                      color: Colors.black.withOpacity(0.05),
+                                                      color: const Color(0xFFc29a77), // Fixed Accent Brown
                                                       borderRadius: BorderRadius.circular(8),
                                                       border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
                                                   ),
