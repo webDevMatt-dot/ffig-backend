@@ -547,26 +547,41 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
         actions: [
-          // Profile Avatar (Top Right)
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _lastUnreadCount > 0,
-              label: Text('$_lastUnreadCount'),
-              child: const Icon(Icons.email_outlined),
-            ),
-            onPressed: () {
-              // Reset count on tap instantly for better UX
-              setState(() => _lastUnreadCount = 0);
-              if (MembershipService.canInbox) {
+          // Settings (Logged Out) or Inbox (Logged In)
+          if (_userProfile == null)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const InboxScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
                 );
-              } else {
-                MembershipService.showUpgradeDialog(context, "Inbox");
-              }
-            },
-          ),
+              },
+            )
+          else
+            IconButton(
+              icon: Badge(
+                isLabelVisible: _lastUnreadCount > 0,
+                label: Text('$_lastUnreadCount'),
+                child: const Icon(Icons.email_outlined),
+              ),
+              onPressed: () {
+                // Reset count on tap instantly for better UX
+                setState(() => _lastUnreadCount = 0);
+                if (MembershipService.canInbox) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const InboxScreen(),
+                    ),
+                  );
+                } else {
+                  MembershipService.showUpgradeDialog(context, "Inbox");
+                }
+              },
+            ),
 
           // Profile Avatar or Login Button (Top Right)
           if (_userProfile != null)
