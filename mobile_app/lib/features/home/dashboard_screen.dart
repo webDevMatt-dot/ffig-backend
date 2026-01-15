@@ -28,6 +28,7 @@ import '../../core/services/membership_service.dart';
 import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/user_avatar.dart';
+import 'widgets/founder_card.dart';
 import '../../core/api/constants.dart';
 
 import '../../core/theme/ffig_theme.dart';
@@ -883,7 +884,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                       height: 220, // Taller
                       color: Colors.transparent, // Background handled by image
                       onTap: () {
-                        // Navigate to details if needed
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: const EdgeInsets.all(16),
+                            child: FounderCard(profile: _founderProfile!),
+                          ),
+                        );
                       },
                       child: Stack(
                         children: [
@@ -1023,7 +1031,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                       ),
                       child: Container(
-                        width: 160,
+                        width: 240, // Widened to prevent overlap
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardTheme.color,
                           borderRadius: BorderRadius.circular(16),
