@@ -757,23 +757,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
 
             // 4. Founder of the Week
-            if (_founderProfile != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      "SPOTLIGHT",
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelLarge?.copyWith(color: Colors.grey),
-                    ),
-                  ),
-                  FounderCard(profile: _founderProfile!),
-                  const SizedBox(height: 32),
-                ],
-              ),
 
             // 2. BENTO GRID LAYOUT
             Padding(
