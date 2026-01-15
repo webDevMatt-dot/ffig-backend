@@ -38,7 +38,7 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
                 backgroundColor: const Color(0xFF161B22).withOpacity(0.9),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  side: Border.all(
+                  side: BorderSide(
                     color: FfigTheme.primaryBrown.withOpacity(0.5),
                   ),
                 ),
