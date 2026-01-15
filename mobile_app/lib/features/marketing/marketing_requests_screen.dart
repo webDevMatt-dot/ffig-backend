@@ -21,7 +21,7 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
     
     // File State
     File? selectedFile; 
-    Uint8List? selectedBytes;
+    dynamic selectedBytes; // Uint8List or String (URL)
     bool isVideo = false;
 
     await showDialog(context: context, builder: (context) {
@@ -83,7 +83,9 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
                                 child: selectedBytes != null 
                                     ? (isVideo 
                                         ? const Icon(Icons.videocam, size: 50, color: Colors.red) 
-                                        : Image.memory(selectedBytes!, fit: BoxFit.cover))
+                                        : (selectedBytes is Uint8List 
+                                            ? Image.memory(selectedBytes, fit: BoxFit.cover) 
+                                            : Image.network(selectedBytes, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image))))
                                     : const Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
@@ -95,8 +97,41 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
                         ),
                         if (selectedBytes != null && isVideo)
                             const Padding(padding: EdgeInsets.only(top:8), child: Text("Video Selected", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
-                    ],
-                ),
+                        
+                        const SizedBox(height: 12),
+                        const Text("OR", style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+
+                        TextField(
+                            decoration: const InputDecoration(
+                                labelText: "Media URL (Image or Video Link)",
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.link),
+                                helperText: "Enter a direct URL to an image or video file."
+                            ),
+                            onChanged: (val) {
+                                // If val is not empty, clear file selection
+                                if (val.isNotEmpty) {
+                                    setDialogState(() {
+                                        selectedFile = null;
+                                        selectedBytes = val as dynamic; // Store String URL in bytes variable (dynamic hack)
+                                        // Auto-detect video from URL extension?
+                                        if (val.toLowerCase().endsWith('.mp4') || val.toLowerCase().endsWith('.mov')) {
+                                            isVideo = true;
+                                        } else {
+                                            isVideo = false;
+                                        }
+                                    });
+                                } else {
+                                    setDialogState(() {
+                                        selectedBytes = null;
+                                    });
+                                }
+                            },
+                        ),
+                    ], // Close children
+                ), // Close Column
                 actions: [
                     TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                     ElevatedButton(

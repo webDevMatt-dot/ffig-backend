@@ -27,7 +27,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   final _bioController = TextEditingController();
   
   bool _isPremium = false;
-  Uint8List? _selectedImageBytes;
+  dynamic _selectedImageBytes; // Can be Uint8List (Bytes) or String (URL)
   File? _selectedImageFile;
   String? _editingId; // If null, we are creating. If set, we are updating.
   
@@ -338,8 +338,34 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                     ),
                                     clipBehavior: Clip.antiAlias,
                                     child: _selectedImageBytes != null
-                                        ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                                        ? (_selectedImageBytes is Uint8List 
+                                            ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
+                                            : Image.network(_selectedImageBytes as String, fit: BoxFit.cover)) // URL Support
                                         : const Icon(Icons.person_add, size: 40, color: Colors.grey),
+                                ),
+                            ),
+                            const SizedBox(height: 8),
+                            // URL Input
+                            SizedBox(
+                                width: 200,
+                                child: TextField(
+                                    decoration: const InputDecoration(
+                                        labelText: "Or Image URL",
+                                        isDense: true,
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.link, size: 16),
+                                    ),
+                                    style: const TextStyle(fontSize: 12),
+                                    onChanged: (val) {
+                                        setState(() {
+                                            if (val.isNotEmpty) {
+                                                _selectedImageBytes = val as dynamic; // Store URL as dynamic
+                                                _selectedImageFile = null;
+                                            } else {
+                                                _selectedImageBytes = null;
+                                            }
+                                        });
+                                    },
                                 ),
                             ),
                             const SizedBox(height: 8),

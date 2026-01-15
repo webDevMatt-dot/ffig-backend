@@ -22,7 +22,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   final _titleController = TextEditingController();
   final _urlController = TextEditingController();
   String _selectedType = 'Announcement';
-  Uint8List? _selectedImageBytes;
+  dynamic _selectedImageBytes; // Uint8List or String (URL)
   File? _selectedImageFile;
   
   String? _editingId; // If null, we are creating. If set, we are updating.
@@ -288,30 +288,53 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                 const SizedBox(height: 24),
                 
                 // Image Picker
+                // Image Picker
                 GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(12),
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                        border: Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _selectedImageBytes != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: _selectedImageBytes is Uint8List
+                                  ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
+                                  : Image.network(_selectedImageBytes as String, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, size: 50)),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                                const SizedBox(height: 8),
+                                Text(_editingId != null ? "Click to change image (optional)" : "Click to upload image"),
+                              ],
+                            ),
                     ),
-                    child: _selectedImageBytes != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.memory(_selectedImageBytes!, fit: BoxFit.cover),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                              const SizedBox(height: 8),
-                              Text(_editingId != null ? "Click to change image (optional)" : "Click to upload image"),
-                            ],
-                          ),
                   ),
+                const SizedBox(height: 16),
+                
+                TextField(
+                    decoration: const InputDecoration(
+                        labelText: "Or Image URL",
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.link),
+                    ),
+                    onChanged: (val) {
+                        setState(() {
+                            if (val.isNotEmpty) {
+                                _selectedImageBytes = val;
+                                _selectedImageFile = null;
+                            } else {
+                                _selectedImageBytes = null;
+                            }
+                        });
+                    },
                 ),
                 const SizedBox(height: 16),
                 

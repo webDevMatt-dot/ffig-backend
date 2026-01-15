@@ -197,41 +197,7 @@ class AdminApiService {
      if (response.statusCode != 200) throw Exception('Failed to update: ${response.body}');
   }
 
-  // Helper for Multipart requests (Handles Web (Uint8List) and Mobile (File))
-  Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
-    final token = await _getToken();
-    final url = id != null ? '$_baseUrl/$endpoint/$id/' : '$_baseUrl/$endpoint/';
-    
-    var request = http.MultipartRequest(method, Uri.parse(url));
-    
-    request.headers['Authorization'] = 'Bearer $token';
-    request.fields.addAll(fields);
 
-    if (imageFile != null) {
-      if (kIsWeb) {
-         if (imageFile is List<int>) {
-             request.files.add(http.MultipartFile.fromBytes(
-              fileField,
-              imageFile,
-              filename: 'upload.jpg', 
-              contentType: MediaType('image', 'jpeg'),
-            ));
-         }
-      } else if (imageFile is File) {
-        request.files.add(await http.MultipartFile.fromPath(
-          fileField,
-          imageFile.path,
-          contentType: MediaType('image', 'jpeg'),
-        ));
-      }
-    }
-
-    final response = await request.send();
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      final respStr = await response.stream.bytesToString();
-      throw Exception('Failed to upload/update: $respStr');
-    }
-  }
   // --- MEMBER SUBMISSIONS (RBAC) ---
   static const String _membersBaseUrl = '${baseUrl}members';
 
@@ -362,6 +328,94 @@ class AdminApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to search users: ${response.statusCode}');
+    }
+  }
+
+  // --- APPROVALS ---
+  
+  Future<List<dynamic>> fetchBusinessApprovals() async {
+      return await _fetchApprovals('business');
+  }
+
+  Future<List<dynamic>> fetchMarketingApprovals() async {
+      return await _fetchApprovals('marketing');
+  }
+
+  Future<List<dynamic>> _fetchApprovals(String type) async {
+      final token = await _getToken();
+      final url = '${baseUrl}admin/approvals/$type/'; // Ensure URL structure in backend
+      final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch approvals: ${response.statusCode}');
+  }
+
+  Future<void> updateBusinessStatus(int id, String status) async {
+      await _updateStatus('business', id, status);
+  }
+
+  Future<void> updateMarketingStatus(int id, String status) async {
+      await _updateStatus('marketing', id, status);
+  }
+
+  Future<void> _updateStatus(String type, int id, String status) async {
+      final token = await _getToken();
+      final response = await http.patch(
+          Uri.parse('${baseUrl}admin/approvals/$type/$id/'),
+          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+          body: jsonEncode({'status': status})
+      );
+      if (response.statusCode != 200) throw Exception('Failed to update status');
+  }
+
+  // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)
+  Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
+    final token = await _getToken();
+    final url = id != null ? '$_baseUrl/$endpoint/$id/' : '$_baseUrl/$endpoint/';
+    
+    // Check if imageFile is actually a URL string
+    if (imageFile is String && imageFile.startsWith('http')) {
+        // Just send as JSON field
+        final Map<String, dynamic> jsonFields = Map.from(fields);
+        jsonFields[fileField] = imageFile;
+        // Adjust headers for JSON
+        final response = method == 'POST' 
+            ? await http.post(Uri.parse(url), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: jsonEncode(jsonFields))
+            : await http.patch(Uri.parse(url), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: jsonEncode(jsonFields));
+            
+        if (response.statusCode != 200 && response.statusCode != 201) {
+            throw Exception('Failed to upload/update with URL: ${response.body}');
+        }
+        return;
+    }
+
+    // Normal Multipart
+    var request = http.MultipartRequest(method, Uri.parse(url));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields.addAll(fields);
+
+    if (imageFile != null) {
+      if (kIsWeb) {
+         if (imageFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes(
+              fileField,
+              imageFile,
+              filename: 'upload.jpg', 
+              contentType: MediaType('image', 'jpeg'),
+            ));
+         }
+      } else if (imageFile is File) {
+        request.files.add(await http.MultipartFile.fromPath(
+          fileField,
+          imageFile.path,
+          contentType: MediaType('image', 'jpeg'),
+        ));
+      }
+    }
+
+    final response = await request.send();
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final respStr = await response.stream.bytesToString();
+      throw Exception('Failed to upload/update: $respStr');
     }
   }
 }
