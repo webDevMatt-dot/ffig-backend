@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/ffig_theme.dart';
 import 'dart:math';
 import '../../core/utils/dialog_utils.dart';
+import 'edit_user_screen.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -160,236 +161,37 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
-  Future<void> _resetPassword(int userId, String newPassword) async {
-    try {
-      const storage = FlutterSecureStorage();
-      final token = await storage.read(key: 'access_token');
-      // Using the backend endpoint: /api/admin/password-reset/ (Assuming standard path)
-      final response = await http.post(
-        Uri.parse('${baseUrl}admin/reset-password/'), 
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId, 'new_password': newPassword}),
-      );
-      if (response.statusCode == 200) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Password reset to: $newPassword")));
-      } else {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Reset Failed: ${response.body}")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
-  }
-
-  // DIALOGS
-  void _showCreateDialog() {
-    final userController = TextEditingController();
-    final emailController = TextEditingController();
-    final passController = TextEditingController();
-    final fNameController = TextEditingController();
-    final lNameController = TextEditingController();
-    String selectedTier = 'FREE';
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("New Member", style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 24),
-                    _buildField(userController, "Username", Icons.person),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: _buildField(fNameController, "First Name", Icons.person_outline)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildField(lNameController, "Last Name", Icons.person_outline)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildField(emailController, "Email", Icons.email),
-                    const SizedBox(height: 16),
-                    _buildField(passController, "Password", Icons.lock, obscure: true),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                         decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Membership Tier"),
-                         value: selectedTier,
-                         items: const [
-                           DropdownMenuItem(value: 'FREE', child: Text("Free")),
-                           DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),
-                           DropdownMenuItem(value: 'PREMIUM', child: Text("Premium")),
-                         ], 
-                         onChanged: (val) {
-                           if (val != null) setState(() => selectedTier = val);
-                         }
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      onPressed: () => _createUser(
-                          userController.text, 
-                          emailController.text, 
-                          passController.text, 
-                          fNameController.text, 
-                          lNameController.text,
-                          selectedTier // Pass tier
-                      ),
-                      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown),
-                      child: const Text("CREATE MEMBER"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-      ),
-    );
-  }
-
-  void _showEditDialog(Map<String, dynamic> user) {
-    bool isStaff = user['is_staff'] ?? false;
-
-    // Determine current Tier
-    String currentTier = 'FREE';
-    // UserSerializer returns 'tier' at top level
-    if (user['tier'] != null) {
-       currentTier = user['tier'];
-    } else if (user['profile'] != null && user['profile'] is Map) {
-       currentTier = user['profile']['tier'] ?? 'FREE';
-    } else {
-       // Fallback for older API/Structure
-       bool isPremium = user['is_premium'] ?? false;
-       if (isPremium) currentTier = 'PREMIUM';
-    }
-    
-    final userController = TextEditingController(text: user['username']);
-    final emailController = TextEditingController(text: user['email']);
-    final fNameController = TextEditingController(text: user['first_name'] ?? '');
-    final lNameController = TextEditingController(text: user['last_name'] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                   Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       Text("Edit User", style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold)),
-                       IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
-                     ],
-                   ),
-                   const SizedBox(height: 24),
-                   _buildField(userController, "Username", Icons.person),
-                   const SizedBox(height: 16),
-                   _buildField(fNameController, "First Name", Icons.person_outline),
-                   const SizedBox(height: 16),
-                   _buildField(lNameController, "Last Name", Icons.person_outline),
-                   const SizedBox(height: 16),
-                   _buildField(emailController, "Email", Icons.email),
-                   const SizedBox(height: 24),
-                   
-                   SwitchListTile(title: const Text("Admin Access"), value: isStaff, onChanged: (v) => setState(() => isStaff = v)),
-
-                   
-                   const SizedBox(height: 16),
-                   DropdownButtonFormField<String>(
-                     decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Membership Tier"),
-                     value: currentTier, // "FREE", "STANDARD", "PREMIUM"
-                     items: const [
-                       DropdownMenuItem(value: 'FREE', child: Text("Free")),
-                       DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),
-                       DropdownMenuItem(value: 'PREMIUM', child: Text("Premium")),
-                     ], 
-                     onChanged: (val) {
-                       if (val != null) setState(() => currentTier = val);
-                     }
-                   ),
-                   
-                   const SizedBox(height: 24),
-                   OutlinedButton.icon(
-                     icon: const Icon(Icons.lock_reset, size: 18),
-                     label: const Text("Reset Password"),
-                     onPressed: () {
-                        // Generate random password
-                        final newPass = _generatePassword();
-                        _resetPassword(user['id'], newPass);
-                        // Show dialog with new pass
-                        showDialog(context: context, builder: (_) => AlertDialog(
-                          title: const Text("Password Reset"),
-                          content: SelectableText("New Password for ${user['username']}:\n\n$newPass"),
-                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-                        ));
-                     },
-                   ),
-                   const SizedBox(height: 24),
-                   ElevatedButton(
-                     onPressed: () => _updateUser(user['id'], {
-                       'username': userController.text,
-                       'email': emailController.text,
-                       'first_name': fNameController.text,
-                       'last_name': lNameController.text,
-                       'is_staff': isStaff,
-
-                       'profile': {'tier': currentTier} // Send structured profile update
-                     }), 
-                     style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.pureBlack, foregroundColor: FfigTheme.primaryBrown, padding: const EdgeInsets.all(16)),
-                     child: const Text("SAVE CHANGES"),
-                   ),
-                ],
-              ),
-            ),
-          );
-        }
-      ),
-    );
-  }
-  
-  String _generatePassword() {
-     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
-     return List.generate(10, (index) => chars[Random().nextInt(chars.length)]).join();
-  }
-  
   Future<void> _deleteUser(int userId) async {
-     // ... (Existing delete logic if needed, or use simple call)
      try {
        final token = await const FlutterSecureStorage().read(key: 'access_token');
-       await http.delete(Uri.parse('${baseUrl}admin/users/$userId/'), headers: {'Authorization': 'Bearer $token'});
-       _fetchUsers();
-     } catch (e) {}
+       final response = await http.delete(Uri.parse('${baseUrl}admin/users/$userId/'), headers: {'Authorization': 'Bearer $token'});
+       if (response.statusCode == 204 || response.statusCode == 200) {
+           _fetchUsers();
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User deleted")));
+       } else {
+           if (mounted) DialogUtils.showError(context, "Error", "Failed to delete user: ${response.body}");
+       }
+     } catch (e) {
+       if (mounted) DialogUtils.showError(context, "Error", "Network error: $e");
+     }
   }
 
-  Widget _buildField(TextEditingController controller, String label, IconData icon, {bool obscure = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-      ),
-    );
-  }
+  // No Dialog helpers needed.
+
+  // No Dialog helpers needed.
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("User Management")),
-      floatingActionButton: FloatingActionButton(onPressed: _showCreateDialog, child: const Icon(Icons.add)),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+           await Navigator.push(context, MaterialPageRoute(builder: (_) => const EditUserScreen()));
+           _fetchUsers();
+        }, 
+        child: const Icon(Icons.add)
+      ),
       body: Column(
         children: [
           // Search Bar
@@ -424,7 +226,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                           IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditDialog(user)),
+                           IconButton(
+                             icon: const Icon(Icons.edit, color: Colors.blue), 
+                             onPressed: () async {
+                               await Navigator.push(context, MaterialPageRoute(builder: (_) => EditUserScreen(user: user)));
+                               _fetchUsers();
+                             }
+                           ),
                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user['id'])),
                         ],
                       ),

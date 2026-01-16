@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class EditEventScreen extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -22,6 +23,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
   bool _isVirtual = false;
 
   bool _isLoading = false;
+
+  // Local state for creation flow
+  final List<Map<String, dynamic>> _localTiers = [];
+  final List<Map<String, dynamic>> _localSpeakers = [];
+  final List<Map<String, dynamic>> _localAgenda = [];
+  final List<Map<String, dynamic>> _localFaqs = [];
 
   @override
   void initState() {
@@ -69,11 +76,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
       
       final api = AdminApiService();
       if (widget.event == null) {
-        await api.createEvent(data);
+        await _createWithSubItems(data);
       } else {
         await api.updateEvent(widget.event!['id'], data);
+        if (mounted) Navigator.pop(context);
       }
-      if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
@@ -81,14 +88,55 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
 
+  Future<void> _createWithSubItems(Map<String, dynamic> eventData) async {
+      final api = AdminApiService();
+      // 1. Create Event
+      final newEvent = await api.createEvent(eventData);
+      final eventId = newEvent['id'];
+
+      // 2. Create Sub-items
+      try {
+        for (var t in _localTiers) {
+           await api.createTicketTier({...t, 'event': eventId});
+        }
+        for (var s in _localSpeakers) {
+           await api.createEventSpeaker({...s, 'event': eventId});
+        }
+        for (var a in _localAgenda) {
+           await api.createAgendaItem({...a, 'event': eventId});
+        }
+        for (var f in _localFaqs) {
+           await api.createEventFAQ({...f, 'event': eventId});
+        }
+        
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event & Details Created!")));
+           Navigator.pop(context);
+        }
+      } catch (e) {
+         if (mounted) DialogUtils.showError(context, "Partial Error", "Event created but some details failed: $e");
+      }
+  }
+
   // --- Sub-Item logic ---
-  Future<void> _deleteItem(String type, int id) async {
+  Future<void> _deleteItem(String type, int indexOrId) async {
+    if (widget.event == null) {
+       // Local delete
+       setState(() {
+         if (type == 'tier') _localTiers.removeAt(indexOrId);
+         if (type == 'speaker') _localSpeakers.removeAt(indexOrId);
+         if (type == 'agenda') _localAgenda.removeAt(indexOrId);
+         if (type == 'faq') _localFaqs.removeAt(indexOrId);
+       });
+       return;
+    }
+    // API delete
     try {
       final api = AdminApiService();
-      if (type == 'tier') await api.deleteTicketTier(id);
-      if (type == 'speaker') await api.deleteEventSpeaker(id);
-      if (type == 'agenda') await api.deleteAgendaItem(id);
-      if (type == 'faq') await api.deleteEventFAQ(id);
+      if (type == 'tier') await api.deleteTicketTier(indexOrId);
+      if (type == 'speaker') await api.deleteEventSpeaker(indexOrId);
+      if (type == 'agenda') await api.deleteAgendaItem(indexOrId);
+      if (type == 'faq') await api.deleteEventFAQ(indexOrId);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deleted. Re-open to refresh.")));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -113,13 +161,17 @@ class _EditEventScreenState extends State<EditEventScreen> {
       TextField(controller: price, decoration: const InputDecoration(labelText: "Price"), keyboardType: TextInputType.number),
       TextField(controller: cap, decoration: const InputDecoration(labelText: "Capacity"), keyboardType: TextInputType.number),
     ], () async {
-       await AdminApiService().createTicketTier({
-         'event': widget.event!['id'],
+       final data = {
          'name': name.text,
          'price': double.tryParse(price.text) ?? 0,
          'capacity': int.tryParse(cap.text) ?? 100,
          'available': int.tryParse(cap.text) ?? 100
-       });
+       };
+       if (widget.event == null) {
+          setState(() => _localTiers.add(data));
+       } else {
+          await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+       }
     });
   }
 
@@ -132,12 +184,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
       TextField(controller: role, decoration: const InputDecoration(labelText: "Role")),
       TextField(controller: photo, decoration: const InputDecoration(labelText: "Photo URL")),
     ], () async {
-       await AdminApiService().createEventSpeaker({
-         'event': widget.event!['id'],
+       final data = {
          'name': name.text,
          'role': role.text,
          'photo_url': photo.text,
-       });
+       };
+       if (widget.event == null) {
+          setState(() => _localSpeakers.add(data));
+       } else {
+          await AdminApiService().createEventSpeaker({...data, 'event': widget.event!['id']});
+       }
     });
   }
 
@@ -152,13 +208,17 @@ class _EditEventScreenState extends State<EditEventScreen> {
       TextField(controller: end, decoration: const InputDecoration(labelText: "End (HH:MM)")),
       TextField(controller: desc, decoration: const InputDecoration(labelText: "Description")),
     ], () async {
-       await AdminApiService().createAgendaItem({
-         'event': widget.event!['id'],
+       final data = {
          'title': title.text,
          'start_time': start.text,
          'end_time': end.text,
          'description': desc.text,
-       });
+       };
+       if (widget.event == null) {
+          setState(() => _localAgenda.add(data));
+       } else {
+          await AdminApiService().createAgendaItem({...data, 'event': widget.event!['id']});
+       }
     });
   }
 
@@ -169,11 +229,15 @@ class _EditEventScreenState extends State<EditEventScreen> {
       TextField(controller: q, decoration: const InputDecoration(labelText: "Question")),
       TextField(controller: a, decoration: const InputDecoration(labelText: "Answer"), maxLines: 3),
     ], () async {
-       await AdminApiService().createEventFAQ({
-         'event': widget.event!['id'],
+       final data = {
          'question': q.text,
          'answer': a.text,
-       });
+       };
+       if (widget.event == null) {
+          setState(() => _localFaqs.add(data));
+       } else {
+          await AdminApiService().createEventFAQ({...data, 'event': widget.event!['id']});
+       }
     });
   }
 
@@ -185,9 +249,15 @@ class _EditEventScreenState extends State<EditEventScreen> {
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
         ElevatedButton(onPressed: () async {
           try {
-            await onSave();
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Added! Re-open to refresh.")));
+            if (widget.event != null) {
+               await onSave(); 
+               Navigator.pop(ctx);
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Added! Re-open to refresh.")));
+            } else {
+               // Local add
+               await onSave();
+               Navigator.pop(ctx);
+            }
           } catch(e) {
              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
           }
@@ -245,14 +315,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  if (_isVirtual) TextFormField(controller: _virtualLinkController, decoration: const InputDecoration(labelText: "Virtual Link")),
               ]),
               
-              if (widget.event != null) ...[
-                const SizedBox(height: 24),
-                _buildListSection("Ticket Tiers", 'tier', widget.event!['ticket_tiers'], (i) => "${i['name']} (\$${i['price']})"),
-                _buildListSection("Speakers", 'speaker', widget.event!['speakers'], (i) => "${i['name']} (${i['role']})"),
-                _buildListSection("Agenda", 'agenda', widget.event!['agenda'], (i) => "${i['start_time']} - ${i['title']}"),
-                _buildListSection("FAQ", 'faq', widget.event!['faqs'], (i) => i['question']),
-              ] else 
-                const Padding(padding: EdgeInsets.all(16), child: Text("Save event to add sub-items.", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic), textAlign: TextAlign.center)),
+              const SizedBox(height: 24),
+              _buildListSection("Ticket Tiers", 'tier', widget.event != null ? widget.event!['ticket_tiers'] : _localTiers, (i) => "${i['name']} (\$${i['price']})"),
+              _buildListSection("Speakers", 'speaker', widget.event != null ? widget.event!['speakers'] : _localSpeakers, (i) => "${i['name']} (${i['role']})"),
+              _buildListSection("Agenda", 'agenda', widget.event != null ? widget.event!['agenda'] : _localAgenda, (i) => "${i['start_time']} - ${i['title']}"),
+              _buildListSection("FAQ", 'faq', widget.event != null ? widget.event!['faqs'] : _localFaqs, (i) => i['question']),
 
                const SizedBox(height: 100),
                // ElevatedButton(
@@ -317,11 +384,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
                IconButton(icon: const Icon(Icons.add_circle, color: Colors.blue), onPressed: () => _showAddDialog(type))
              ]),
              if (items == null || items.isEmpty) const Text("No items.", style: TextStyle(color: Colors.grey)),
-             ...(items ?? []).map((i) => ListTile(
-               title: Text(label(i)),
-               trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => _deleteItem(type, i['id'])),
-               dense: true,
-             )).toList()
+             ...(items ?? []).asMap().entries.map((entry) {
+                final i = entry.value;
+                final index = entry.key;
+                final id = i['id'] ?? index; // Use ID if valid, else index for local
+                return ListTile(
+                  title: Text(label(i)),
+                  trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => _deleteItem(type, id)),
+                  dense: true,
+                );
+             }).toList()
           ],
         ),
       ),

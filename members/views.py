@@ -11,8 +11,10 @@ from rest_framework.permissions import IsAdminUser
 from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
 from .serializers import (
     ProfileSerializer, BusinessProfileSerializer, AdminBusinessProfileSerializer,
-    MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer
+    MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer,
+    NotificationSerializer
 )
+from .models import Notification
 
 @api_view(['GET'])
 @permission_classes([IsPremiumUser])
@@ -291,6 +293,11 @@ class AdminModerationActionView(APIView):
             
         target_user = get_object_or_404(User, id=target_user_id)
         
+        # Ensure profile exists
+        if not hasattr(target_user, 'profile'):
+            Profile.objects.create(user=target_user)
+
+        
         if action == 'WARN':
             # Set the notice on the profile
             target_user.profile.admin_notice = reason
@@ -333,8 +340,7 @@ class AdminModerationActionView(APIView):
         return Response({'error': 'Invalid action'}, status=400)
 
 # --- NOTIFICATIONS (Admin Only for now) ---
-from .serializers import NotificationSerializer
-from .models import Notification
+
 
 class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]

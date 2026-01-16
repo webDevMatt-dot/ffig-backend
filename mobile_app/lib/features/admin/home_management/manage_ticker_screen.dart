@@ -119,16 +119,18 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                       const SizedBox(width: 8),
                       // Toggle Active
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: OutlinedButton(
                           onPressed: () {
                              Navigator.pop(ctx);
                              _toggleActive(item!);
                           },
-                          icon: Icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Icon(
                             (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
                             color: (item['is_active'] ?? true) ? Colors.grey : Colors.green
                           ),
-                          label: Text((item['is_active'] ?? true) ? "Deactivate" : "Activate"),
                         ),
                       ),
                       const SizedBox(width: 8),

@@ -99,7 +99,7 @@ class AdminApiService {
     }
   }
 
-  Future<void> createEvent(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> data) async {
     final token = await _getToken();
      final response = await http.post(
       Uri.parse('$_eventsBaseUrl/'),
@@ -107,6 +107,7 @@ class AdminApiService {
       body: jsonEncode(data)
     );
      if (response.statusCode != 201) throw Exception('Failed to create event: ${response.body}');
+     return jsonDecode(response.body);
   }
 
   Future<void> updateEvent(int id, Map<String, dynamic> data) async {

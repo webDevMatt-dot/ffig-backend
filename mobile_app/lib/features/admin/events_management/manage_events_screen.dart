@@ -172,16 +172,18 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
                                  _toggleEventActive(event!);
                               },
-                              icon: Icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: Icon(
                                 (event!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
                                 color: (event['is_active'] ?? true) ? Colors.grey : Colors.green
                               ),
-                              label: Text((event['is_active'] ?? true) ? "Deactivate" : "Activate"),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -326,7 +328,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const EditEventScreen(event: null))),
                             icon: const Icon(Icons.add),
                             label: const Text("Add New"),
                             style: ElevatedButton.styleFrom(

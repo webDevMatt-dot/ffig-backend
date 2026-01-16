@@ -27,8 +27,9 @@ class EventListView(generics.ListCreateAPIView):
         return Event.objects.filter(is_active=True).order_by('date')
 
 # 2. Get Single Event Details
-class EventDetailView(generics.RetrieveAPIView):
-    permission_classes = [permissions.AllowAny]
+# 2. Get Single Event Details (Retrieve & Update)
+class EventDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = EventSerializer
     queryset = Event.objects.all()
 
