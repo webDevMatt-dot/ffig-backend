@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // Required for Timer
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
 import '../../core/api/constants.dart';
@@ -195,20 +194,22 @@ class _InboxScreenState extends State<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Light BG
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          "MESSAGES", 
-          style: GoogleFonts.playfairDisplay(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            color: FfigTheme.primaryBrown
-          )
-        ),
+          title: Text(
+            "MESSAGES", 
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            )
+          ),
       ),
       body: Column(
         children: [
@@ -217,17 +218,19 @@ class _InboxScreenState extends State<InboxScreen> {
              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
              child: Container(
                decoration: BoxDecoration(
-                 color: Colors.white,
+                 color: theme.cardColor,
                  borderRadius: BorderRadius.circular(30),
-                 boxShadow: [
+                 boxShadow: isDark ? null : [
                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
-                 ]
+                 ],
+                 border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
                ),
                child: TextField(
                  controller: _searchController,
+                 style: theme.textTheme.bodyLarge,
                  decoration: InputDecoration(
                      hintText: "Search messages...",
-                     hintStyle: TextStyle(color: Colors.grey[400]),
+                     hintStyle: TextStyle(color: theme.hintColor),
                      prefixIcon: Icon(Icons.search, color: FfigTheme.primaryBrown.withOpacity(0.5)),
                      border: InputBorder.none,
                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
@@ -276,7 +279,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       child: Icon(Icons.mail_outline, size: 48, color: FfigTheme.primaryBrown.withOpacity(0.5))
                     ),
                     const SizedBox(height: 16),
-                    Text("No messages yet.", style: GoogleFonts.playfairDisplay(fontSize: 18, color: Colors.grey[600])),
+                    Text("No messages yet.", style: theme.textTheme.bodyLarge?.copyWith(fontSize: 18, color: theme.textTheme.bodyMedium?.color)),
                   ],
                 ),
               )
@@ -300,8 +303,8 @@ class _InboxScreenState extends State<InboxScreen> {
 
                   return Container(
                     decoration: BoxDecoration(
-                      color: isUnread ? Colors.white : Colors.transparent, // Highlight unread
-                      border: Border(bottom: BorderSide(color: Colors.grey[100]!))
+                      color: isUnread ? (isDark ? Colors.white.withOpacity(0.05) : Colors.white) : Colors.transparent, // Highlight unread
+                      border: Border(bottom: BorderSide(color: theme.dividerColor))
                     ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -334,10 +337,10 @@ class _InboxScreenState extends State<InboxScreen> {
                       ),
                       title: Text(
                         title, 
-                        style: GoogleFonts.montserrat(
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
                           fontSize: 16,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       subtitle: Padding(
@@ -347,7 +350,7 @@ class _InboxScreenState extends State<InboxScreen> {
                           maxLines: 1, 
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: isUnread ? Colors.black87 : Colors.grey[600],
+                            color: isUnread ? theme.colorScheme.onSurface : theme.textTheme.bodyMedium?.color,
                             fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
@@ -358,7 +361,7 @@ class _InboxScreenState extends State<InboxScreen> {
                         children: [
                           Text(
                             _formatTimestamp(chat['last_message']?['created_at']),
-                            style: TextStyle(fontSize: 12, color: isUnread ? FfigTheme.primaryBrown : Colors.grey[500], fontWeight: isUnread ? FontWeight.bold : FontWeight.normal),
+                            style: TextStyle(fontSize: 12, color: isUnread ? FfigTheme.primaryBrown : theme.disabledColor, fontWeight: isUnread ? FontWeight.bold : FontWeight.normal),
                           ),
                           const SizedBox(height: 8),
                           if (unreadCount > 0)
@@ -401,6 +404,7 @@ class _InboxScreenState extends State<InboxScreen> {
   Widget _buildSearchResults() {
       final users = _searchResults['users'] as List;
       final messages = _searchResults['messages'] as List;
+      final theme = Theme.of(context);
 
       return ListView(
           padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
@@ -408,12 +412,12 @@ class _InboxScreenState extends State<InboxScreen> {
               if (users.isNotEmpty) ...[
                   Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text("USERS", style: GoogleFonts.oswald(fontSize: 16, color: Colors.grey)),
+                      child: Text("USERS", style: theme.textTheme.labelLarge?.copyWith(fontSize: 16, color: theme.hintColor)),
                   ),
                   ...users.where((u) => u['username'] != _myUsername).map((u) => Card(
                     elevation: 0,
                     margin: const EdgeInsets.only(bottom: 8),
-                    color: Colors.white,
+                    color: theme.cardColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
                         leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
@@ -433,7 +437,7 @@ class _InboxScreenState extends State<InboxScreen> {
               if (messages.isNotEmpty) ...[
                    Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text("MESSAGES", style: GoogleFonts.oswald(fontSize: 16, color: Colors.grey)),
+                      child: Text("MESSAGES", style: theme.textTheme.labelLarge?.copyWith(fontSize: 16, color: theme.hintColor)),
                   ),
                   ...messages.map((m) {
                        final isMe = m['is_me'] == true;
@@ -441,7 +445,7 @@ class _InboxScreenState extends State<InboxScreen> {
                        return Card(
                          elevation: 0,
                          margin: const EdgeInsets.only(bottom: 8),
-                         color: Colors.white,
+                         color: theme.cardColor,
                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                          child: ListTile(
                             leading: UserAvatar(radius: 20, username: senderName), // Show Sender pic
@@ -450,9 +454,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 text: TextSpan(
-                                    style: const TextStyle(color: Colors.black87),
+                                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                                     children: [
-                                        TextSpan(text: "$senderName: ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                        TextSpan(text: "$senderName: ", style: TextStyle(fontWeight: FontWeight.bold, color: theme.hintColor)),
                                         TextSpan(text: m['text']),
                                     ]
                                 ),
@@ -461,8 +465,6 @@ class _InboxScreenState extends State<InboxScreen> {
                                 Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
                                      conversationId: m['conversation_id'],
                                      recipientName: m['chat_title'] ?? "Chat",
-                                     // Note: We can't easily jump to message yet without implementing scroll-to-index in ID
-                                     // But opening the chat is good enough for now.
                                 )));
                             },
                          ),
@@ -473,7 +475,7 @@ class _InboxScreenState extends State<InboxScreen> {
               if (users.isEmpty && messages.isEmpty)
                   Padding(
                       padding: const EdgeInsets.only(top: 40),
-                      child: Center(child: Text("No results found.", style: GoogleFonts.playfairDisplay(color: Colors.grey, fontSize: 16))),
+                      child: Center(child: Text("No results found.", style: theme.textTheme.bodyMedium?.copyWith(fontSize: 16, color: theme.hintColor))),
                   )
           ],
       );
@@ -520,6 +522,8 @@ class _InboxScreenState extends State<InboxScreen> {
   }
   Widget _buildFilterChip(String label, String value) {
       final isSelected = _selectedFilter == value;
+      final theme = Theme.of(context);
+
       return InkWell(
         onTap: () {
             if (_selectedFilter != value) {
@@ -534,10 +538,10 @@ class _InboxScreenState extends State<InboxScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? FfigTheme.primaryBrown : Colors.white,
+            color: isSelected ? FfigTheme.primaryBrown : theme.cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? FfigTheme.primaryBrown : Colors.grey[300]!,
+              color: isSelected ? FfigTheme.primaryBrown : theme.dividerColor,
             ),
              boxShadow: isSelected 
              ? [BoxShadow(color: FfigTheme.primaryBrown.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))]
@@ -546,7 +550,7 @@ class _InboxScreenState extends State<InboxScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.grey[700],
+              color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               fontSize: 12
             ),

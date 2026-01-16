@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
@@ -75,21 +75,23 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Light background for contrast
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         centerTitle: true,
         title: Text(
           "RESOURCE VAULT", 
-          style: GoogleFonts.playfairDisplay(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
-            color: FfigTheme.primaryBrown
           )
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: FfigTheme.primaryBrown),
+        iconTheme: IconThemeData(color: theme.iconTheme.color),
       ),
       body: Column(
         children: [
@@ -121,9 +123,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.library_books_outlined, size: 64, color: Colors.grey[300]),
+                          Icon(Icons.library_books_outlined, size: 64, color: theme.colorScheme.onSurface.withOpacity(0.3)),
                           const SizedBox(height: 16),
-                          Text("No resources found.", style: TextStyle(color: Colors.grey[600])),
+                          Text("No resources found.", style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6))),
                         ],
                       ),
                     )
@@ -143,6 +145,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedFilter == value;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return InkWell(
       onTap: () {
@@ -155,10 +159,10 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? FfigTheme.primaryBrown : Colors.white,
+          color: isSelected ? FfigTheme.primaryBrown : theme.cardColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSelected ? FfigTheme.primaryBrown : Colors.grey[300]!,
+            color: isSelected ? FfigTheme.primaryBrown : theme.dividerColor,
           ),
           boxShadow: isSelected 
              ? [BoxShadow(color: FfigTheme.primaryBrown.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))]
@@ -167,7 +171,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[700],
+            color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 13
           ),
@@ -177,12 +181,16 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   }
 
   Widget _buildResourceCard(dynamic res) {
+     final theme = Theme.of(context);
+     final isDark = theme.brightness == Brightness.dark;
+
      return Container(
        margin: const EdgeInsets.only(bottom: 20),
        decoration: BoxDecoration(
-         color: Colors.white,
+         color: theme.cardColor,
          borderRadius: BorderRadius.circular(16),
-         boxShadow: [
+         border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
+         boxShadow: isDark ? null : [
            BoxShadow(
              color: Colors.black.withOpacity(0.06),
              blurRadius: 10,
@@ -209,8 +217,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                          fit: BoxFit.cover,
                          errorBuilder: (context, error, stackTrace) => Container(
                            height: 180, 
-                           color: Colors.grey[200],
-                           child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                           color: theme.colorScheme.surfaceVariant,
+                           child: Center(child: Icon(Icons.image_not_supported, color: theme.disabledColor)),
                          ),
                        )
                      : Container(
@@ -249,10 +257,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                  children: [
                    Text(
                      res['title'],
-                     style: GoogleFonts.playfairDisplay(
+                     style: theme.textTheme.titleMedium?.copyWith(
                        fontSize: 18,
                        fontWeight: FontWeight.bold,
-                       color: Colors.black87
                      ),
                    ),
                    const SizedBox(height: 8),
@@ -260,10 +267,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                      res['description'],
                      maxLines: 2,
                      overflow: TextOverflow.ellipsis,
-                     style: TextStyle(
-                       color: Colors.grey[600],
+                     style: theme.textTheme.bodyMedium?.copyWith(
                        height: 1.4,
-                       fontSize: 14
                      ),
                    ),
                    const SizedBox(height: 16),
@@ -279,7 +284,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                          )
                        ),
                        const SizedBox(width: 4),
-                       Icon(Icons.arrow_forward, size: 14, color: FfigTheme.primaryBrown)
+                       const Icon(Icons.arrow_forward, size: 14, color: FfigTheme.primaryBrown)
                      ],
                    )
                  ],
