@@ -568,7 +568,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     } else {
                         return [
                             const PopupMenuItem(value: 'search', child: Text("Search")),
-                            const PopupMenuItem(value: 'favorite', child: Text("Favourite User")),
+                            const PopupMenuItem(value: 'favorite', child: Text("Star User")),
                             const PopupMenuItem(value: 'mute', child: Text("Mute Chat")),
                             const PopupMenuItem(value: 'clear', child: Text("Clear Chat")),
                             const PopupMenuItem(value: 'block', child: Text("Block User")),

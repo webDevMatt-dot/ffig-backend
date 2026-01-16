@@ -49,17 +49,23 @@ class EventDetailScreen extends StatelessWidget {
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                expandedHeight: 250.0,
+                expandedHeight: 350.0,
                 pinned: true,
-                floating: true,
+                floating: false,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(event['title'], 
-                      style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, shadows: [const Shadow(color: Colors.black, blurRadius: 4)])),
+                  centerTitle: false,
+                  titlePadding: const EdgeInsets.only(left: 16, bottom: 60, right: 16),
+                  title: Text(
+                      event['title'], 
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, shadows: [const Shadow(color: Colors.black, blurRadius: 4)])
+                  ),
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
                        Image.network(event['image_url'], fit: BoxFit.cover, errorBuilder: (_,__,___)=> Container(color: Colors.grey)),
-                       const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]))),
+                       const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]))),
                     ],
                   ),
                 ),

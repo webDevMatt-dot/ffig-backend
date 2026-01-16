@@ -987,31 +987,23 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Row(
-                                          children: [
-                                              Text(
-                                                _founderProfile!.businessName.toUpperCase(),
-                                                style: GoogleFonts.inter(
-                                                  color: const Color(0xFFD4AF37), // Gold
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.5
-                                                ),
-                                              ),
-                                              Container(
-                                                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                                                  width: 4, height: 4, 
-                                                  decoration: const BoxDecoration(color: Colors.white54, shape: BoxShape.circle)
-                                              ),
-                                              Text(
-                                                _founderProfile!.country,
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white70,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                          ],
-                                      )
+                                      Text(
+                                        _founderProfile!.businessName.toUpperCase(),
+                                        style: GoogleFonts.inter(
+                                          color: const Color(0xFFD4AF37), // Gold
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _founderProfile!.country,
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 )

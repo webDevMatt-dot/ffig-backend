@@ -414,7 +414,7 @@ class _ActionButton extends StatelessWidget {
 
 class _CommentsSheet extends StatefulWidget {
     final int requestId;
-    const _CommentsSheet({required this.requestId});
+    const _CommentsSheet({super.key, required this.requestId});
     @override
     State<_CommentsSheet> createState() => _CommentsSheetState();
 }
@@ -436,6 +436,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             final data = await _api.fetchMarketingComments(widget.requestId);
             if (mounted) setState(() { _comments = data; _loading = false; });
         } catch (e) {
+            debugPrint("Error loading comments: $e");
             if (mounted) setState(() => _loading = false);
         }
     }
@@ -444,7 +445,6 @@ class _CommentsSheetState extends State<_CommentsSheet> {
         if (_controller.text.trim().isEmpty) return;
         final content = _controller.text;
         _controller.clear(); 
-        // optimistic update?
         try {
             await _api.postMarketingComment(widget.requestId, content);
             _load(); // reload
@@ -455,37 +455,56 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
     @override
     Widget build(BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+        final textColor = isDark ? Colors.white : Colors.black;
+        final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+        final inputFill = isDark ? Colors.grey[800] : Colors.grey[100];
+
         return Container(
             height: MediaQuery.of(context).size.height * 0.7,
-            decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+            decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20))
             ),
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: Column(
                 children: [
                     const SizedBox(height: 10),
                     Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-                    const Padding(padding: EdgeInsets.all(16), child: Text("Comments", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                    Padding(padding: const EdgeInsets.all(16), child: Text("Comments", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor))),
                     Expanded(
                         child: _loading 
                          ? const Center(child: CircularProgressIndicator()) 
-                         : ListView.builder(
+                         : _comments.isEmpty
+                            ? Center(child: Text("No comments yet.", style: TextStyle(color: subTextColor)))
+                            : ListView.builder(
                              itemCount: _comments.length,
                              itemBuilder: (c, i) {
                                  final com = _comments[i];
                                  var photoUrl = com['photo_url'];
-                                 if (photoUrl != null && photoUrl.toString().startsWith('/')) {
-                                     final domain = baseUrl.replaceAll('/api/', '');
-                                     photoUrl = '$domain$photoUrl';
+                                 if (photoUrl != null) {
+                                    String urlString = photoUrl.toString();
+                                    if (urlString.startsWith('/')) {
+                                        final domain = baseUrl.replaceAll('/api/', '');
+                                        photoUrl = '$domain$urlString';
+                                    } else if (baseUrl.contains('onrender')) {
+                                       final domain = baseUrl.replaceAll('/api/', '');
+                                       if (urlString.contains('localhost')) {
+                                          photoUrl = urlString.replaceAll(RegExp(r'http://localhost:\d+'), domain);
+                                       } else if (urlString.contains('127.0.0.1')) {
+                                          photoUrl = urlString.replaceAll(RegExp(r'http://127.0.0.1:\d+'), domain);
+                                       }
+                                    }
                                  }
+
                                  return ListTile(
                                      leading: CircleAvatar(
-                                         backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                                         child: photoUrl == null || photoUrl.isEmpty ? Text(com['username'][0].toUpperCase()) : null,
+                                         backgroundImage: photoUrl != null && photoUrl.toString().isNotEmpty ? NetworkImage(photoUrl) : null,
+                                         child: photoUrl == null || photoUrl.toString().isEmpty ? Text(com['username'][0].toUpperCase()) : null,
                                      ),
-                                     title: Text(com['username'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                     subtitle: Text(com['content']),
+                                     title: Text(com['username'], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor)),
+                                     subtitle: Text(com['content'], style: TextStyle(color: subTextColor)),
                                  );
                              },
                          )
@@ -496,9 +515,13 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                             children: [
                                 Expanded(child: TextField(
                                     controller: _controller,
+                                    style: TextStyle(color: textColor),
                                     decoration: InputDecoration(
                                         hintText: "Add a comment...",
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                                        hintStyle: TextStyle(color: subTextColor),
+                                        filled: true,
+                                        fillColor: inputFill,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 16)
                                     ),
                                 )),
