@@ -182,15 +182,14 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Enable Whitenoise to compress files (But NO Manifest hashing, so filename stays same)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# Enable Whitenoise to compress files (But NO Manifest hashing, so filename stays same)
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  <-- Removed to avoid conflict
 
 # Media Files (User Uploads)
-# Media Files (User Uploads)
-# Use S3 for storage if AWS keys are present, otherwise fallback to local
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'eu-north-1')
 
 if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
     STORAGES = {
@@ -212,6 +211,15 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
     }
     MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
 else:
+    # Local Storage fallback
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
