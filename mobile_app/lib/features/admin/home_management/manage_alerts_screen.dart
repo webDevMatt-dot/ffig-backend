@@ -263,7 +263,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                 
                 ListTile(
                   title: const Text("Expiry Time"),
-                  subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(
+                  subtitle: Text(DateFormat('dd-MM-yyyy HH:mm').format(
                      DateTime(
                         _selectedDate.year, _selectedDate.month, _selectedDate.day, 
                         _selectedTime.hour, _selectedTime.minute
@@ -351,7 +351,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                   child: ListTile(
                     leading: Icon(Icons.notifications_active, color: isExpired ? Colors.grey : Colors.amber),
                     title: Text(item['title'] ?? 'No Title'),
-                    subtitle: Text("${item['message']}\nExpires: ${DateFormat('MM/dd HH:mm').format(expiry.toLocal())}"),
+                    subtitle: Text("${item['message']}\nExpires: ${DateFormat('dd-MM-yyyy HH:mm').format(expiry.toLocal())}"),
                     isThreeLine: true,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,

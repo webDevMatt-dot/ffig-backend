@@ -123,7 +123,20 @@ class EventDetailScreen extends StatelessWidget {
              children: [
                const Icon(Icons.calendar_month, color: Colors.grey),
                const SizedBox(width: 8),
-               Expanded(child: Text("${event['date']}", style: const TextStyle(fontWeight: FontWeight.bold))),
+               Expanded(
+                   child: Text(
+                       () {
+                          try {
+                              final dt = DateTime.parse(event['date']);
+                              return "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+                          } catch (_) {
+                              // If already formatted or raw text
+                              return "${event['date']}";
+                          }
+                       }(), 
+                       style: const TextStyle(fontWeight: FontWeight.bold)
+                   )
+               ),
              ],
            ),
            const SizedBox(height: 12),

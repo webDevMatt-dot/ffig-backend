@@ -300,15 +300,50 @@ class _ChatScreenState extends State<ChatScreen> {
       }
   }
 
-  void _clearChat() {
-    setState(() {
-      _messages.clear();
-      _groupedMessages.clear();
-    });
+  Future<void> _clearChat() async {
+    try {
+        final token = await const FlutterSecureStorage().read(key: 'access_token');
+        final response = await http.post(
+            Uri.parse('${baseUrl}chat/conversations/$_activeConversationId/clear/'),
+            headers: {'Authorization': 'Bearer $token'}
+        );
+        
+        if (response.statusCode == 200) {
+            setState(() {
+                _messages.clear();
+                _groupedMessages.clear();
+            });
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chat cleared.")));
+        } else {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to clear chat.")));
+        }
+    } catch (e) {
+        // Fallback to local clear if offline or error, though data will return on reload
+        setState(() {
+            _messages.clear();
+            _groupedMessages.clear();
+        });
+    }
   }
 
-  void _muteChat() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chat muted.")));
+  Future<void> _muteChat() async {
+    try {
+        final token = await const FlutterSecureStorage().read(key: 'access_token');
+        final response = await http.post(
+            Uri.parse('${baseUrl}chat/conversations/$_activeConversationId/mute/'),
+            headers: {'Authorization': 'Bearer $token'}
+        );
+        
+        if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final isMuted = data['is_muted'];
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isMuted ? "Chat muted." : "Chat unmuted.")));
+        } else {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to mute/unmute chat.")));
+        }
+    } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error muting chat.")));
+    }
   }
 
   Future<void> _blockUser() async {

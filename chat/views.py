@@ -16,6 +16,12 @@ class ConversationListView(generics.ListAPIView):
         from django.db.models import Q
         user = self.request.user
         queryset = user.conversations.all().order_by('-updated_at')
+        
+        # 0. Exclude Blocked Users (Hide chats with people I blocked)
+        if hasattr(user, 'profile'):
+            blocked_users = user.profile.blocked_users.all()
+            if blocked_users.exists():
+                queryset = queryset.exclude(participants__in=blocked_users)
 
         # 1. Critical: Filter by Recipient ID (Fixes Chat Bleed)
         recipient_id = self.request.query_params.get('recipient_id')
@@ -62,11 +68,29 @@ class MessageListView(generics.ListAPIView):
             'reply_to', 
             'reply_to__sender', 
             'reply_to__sender__profile'
-        ).order_by('created_at')
+        )
+
+        # 1.5 Filter out messages configured "cleared" by user
+        from .models import ConversationClearStatus
+        clear_status = ConversationClearStatus.objects.filter(
+            user=self.request.user, 
+            conversation__id=conversation_id
+        ).last()
+        
+        if clear_status and clear_status.cleared_at:
+             messages = messages.filter(created_at__gt=clear_status.cleared_at)
+
+        messages = messages.order_by('created_at')
 
         # 2. MARK AS READ (Magic!)
         # Only mark messages sent by the *other* person as read
-        messages.exclude(sender=self.request.user).update(is_read=True)
+        # AND only if the current user has Read Receipts enabled
+        should_mark_read = True
+        if hasattr(self.request.user, 'profile'):
+             should_mark_read = self.request.user.profile.read_receipts_enabled
+
+        if should_mark_read:
+             messages.exclude(sender=self.request.user).update(is_read=True)
 
         return messages
 
@@ -202,3 +226,43 @@ class ChatSearchView(APIView):
             "users": users_data,
             "messages": messages_data
         })
+
+# 6. Clear Chat View
+class ClearChatView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from .models import ConversationClearStatus
+        conversation = get_object_or_404(Conversation, id=pk)
+        
+        # Security: Only participants can clear
+        if not conversation.is_public and request.user not in conversation.participants.all():
+            return Response({"error": "Not a participant"}, status=403)
+
+        # Create or update clear status (cleared_at = now())
+        ConversationClearStatus.objects.update_or_create(
+            user=request.user, 
+            conversation=conversation, 
+            defaults={} # Auto-updates 'cleared_at' due to auto_now=True
+        )
+
+        return Response({"status": "Chat cleared"})
+
+# 7. Mute Chat View
+class MuteChatView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from .models import ConversationMuteStatus
+        conversation = get_object_or_404(Conversation, id=pk)
+        
+        if not conversation.is_public and request.user not in conversation.participants.all():
+            return Response({"error": "Not a participant"}, status=403)
+
+        # Toggle Mute
+        status, created = ConversationMuteStatus.objects.get_or_create(user=request.user, conversation=conversation)
+        if not created:
+            status.is_muted = not status.is_muted
+            status.save()
+        
+        return Response({"status": "muted" if status.is_muted else "unmuted", "is_muted": status.is_muted})

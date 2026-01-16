@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'event_detail_screen.dart';
 import '../../core/api/constants.dart'; // Import the details screen
 
+import 'package:intl/intl.dart';
+
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
 
@@ -61,6 +63,18 @@ class _EventsScreenState extends State<EventsScreen> {
               itemCount: _events.length,
               itemBuilder: (context, index) {
                 final event = _events[index];
+                
+                // Parse date
+                DateTime date;
+                try {
+                    date = DateTime.parse(event['date']);
+                } catch (_) {
+                    date = DateTime.now(); // Fallback to current date if parsing fails
+                }
+                final day = DateFormat('dd').format(date);
+                final month = DateFormat('MM').format(date);
+                final year = DateFormat('yyyy').format(date);
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 20),
                   clipBehavior: Clip.antiAlias,
@@ -100,7 +114,8 @@ class _EventsScreenState extends State<EventsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  event['date'].split('T')[0],
+                                  // DISPLAY FORMAT: dd-MM-yyyy
+                                  "$day-$month-$year",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,

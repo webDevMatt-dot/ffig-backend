@@ -28,7 +28,14 @@ class _EditEventScreenState extends State<EditEventScreen> {
     super.initState();
     if (widget.event != null) {
       _titleController.text = widget.event!['title'] ?? '';
-      _dateController.text = widget.event!['date'] ?? '';
+      
+      final rawDate = widget.event!['date'] ?? '';
+      try {
+          final dt = DateTime.parse(rawDate);
+          _dateController.text = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+      } catch (_) {
+          _dateController.text = rawDate;
+      }
       _locationController.text = widget.event!['location'] ?? '';
       _priceLabelController.text = widget.event!['price_label'] ?? '';
       _descriptionController.text = widget.event!['description'] ?? '';
@@ -45,7 +52,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
     try {
       final data = {
         'title': _titleController.text,
-        'date': _dateController.text,
+        'date': () {
+             final parts = _dateController.text.split('-');
+             if (parts.length == 3) {
+                 return "${parts[2]}-${parts[1]}-${parts[0]}";
+             }
+             return _dateController.text;
+         }(),
         'location': _locationController.text,
         'price_label': _priceLabelController.text,
         'description': _descriptionController.text,
@@ -214,7 +227,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                      if (picked != null) {
                        // Format: YYYY-MM-DD
                        setState(() {
-                         _dateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                       _dateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
                        });
                      }
                    },

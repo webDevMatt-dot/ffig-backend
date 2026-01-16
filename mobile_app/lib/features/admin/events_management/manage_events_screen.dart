@@ -64,7 +64,18 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
       _editingId = e['id'].toString();
       _titleController.text = e['title'] ?? '';
       _locController.text = e['location'] ?? '';
-      _dateController.text = e['date'] ?? '';
+      // Default from backend is yyyy-mm-dd
+      final rawDate = e['date'] ?? '';
+      if (rawDate.isNotEmpty) {
+          try {
+             final dt = DateTime.parse(rawDate);
+             _dateController.text = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+          } catch (_) {
+             _dateController.text = rawDate;
+          }
+      } else {
+         _dateController.text = '';
+      }
       _imgController.text = e['image_url'] ?? '';
     });
   }
@@ -87,7 +98,14 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
        final data = {
          'title': _titleController.text,
          'location': _locController.text,
-         'date': _dateController.text, // Backend expects YYYY-MM-DD usually
+         'date': () {
+             // Convert dd-mm-yyyy back to yyyy-mm-dd for backend
+             final parts = _dateController.text.split('-');
+             if (parts.length == 3) {
+                 return "${parts[2]}-${parts[1]}-${parts[0]}";
+             }
+             return _dateController.text;
+         }(),
          'image_url': _imgController.text.isNotEmpty ? _imgController.text : "https://images.unsplash.com/photo-1542744173-8e7e53415bb0"
        };
        
@@ -216,11 +234,12 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                      firstDate: DateTime(2000),
                      lastDate: DateTime(2100),
                    );
-                   if (picked != null) {
-                     setState(() {
-                       _dateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-                     });
-                   }
+                     if (picked != null) {
+                       setState(() {
+                         // Format: dd-MM-yyyy
+                         _dateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
+                       });
+                     }
                 },
                 validator: (v) => v!.isEmpty ? "Required" : null,
               ),
@@ -284,7 +303,16 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                    child: ListTile(
                      leading: CircleAvatar(backgroundImage: NetworkImage(e['image_url'] ?? ''), child: e['image_url'] == null ? const Icon(Icons.event) : null),
                      title: Text(e['title']),
-                     subtitle: Text("${e['date']} • ${e['location']}"),
+                     subtitle: Text(() {
+                        if (e['date'] == null) return e['location'] ?? '';
+                        try {
+                           final dt = DateTime.parse(e['date']);
+                           final formatted = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+                           return "$formatted • ${e['location']}";
+                        } catch (_) {
+                           return "${e['date']} • ${e['location']}";
+                        }
+                     }()),
                      trailing: Row(
                        mainAxisSize: MainAxisSize.min,
                        children: [

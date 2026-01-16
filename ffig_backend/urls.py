@@ -48,7 +48,7 @@ from members.views import (
     MarketingLikeView, MarketingCommentView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
-from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView
+from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
 from home.views import download_latest_apk
 
 urlpatterns = [
@@ -116,6 +116,8 @@ urlpatterns = [
 
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
+    path('api/chat/conversations/<int:pk>/mute/', MuteChatView.as_view(), name='mute-chat'),
+    path('api/chat/conversations/<int:pk>/clear/', ClearChatView.as_view(), name='clear-chat'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),

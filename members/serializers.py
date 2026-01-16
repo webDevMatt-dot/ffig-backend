@@ -84,7 +84,7 @@ class MarketingLikeSerializer(serializers.ModelSerializer):
 
 class MarketingCommentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    photo_url = serializers.CharField(source='user.profile.photo_url', read_only=True)
+    photo_url = serializers.SerializerMethodField()
     
     class Meta:
         from .models import MarketingComment
@@ -92,12 +92,18 @@ class MarketingCommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'username', 'photo_url', 'content', 'created_at']
         read_only_fields = ['user', 'created_at']
 
+    def get_photo_url(self, obj):
+        try:
+            return obj.user.profile.photo_url
+        except:
+            return None
+
 class MarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     username = serializers.CharField(source='user.username', read_only=True)
-    user_photo = serializers.CharField(source='user.profile.photo_url', read_only=True)
+    user_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = MarketingRequest
@@ -115,6 +121,12 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
         return False
+
+    def get_user_photo(self, obj):
+        try:
+            return obj.user.profile.photo_url
+        except:
+            return None
 
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
