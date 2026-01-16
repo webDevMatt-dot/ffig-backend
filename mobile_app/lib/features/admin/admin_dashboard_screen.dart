@@ -49,11 +49,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       try {
         final biz = await api.fetchBusinessApprovals();
         final mkt = await api.fetchMarketingApprovals();
-        final count = biz.length + mkt.length; // These endpoints return pending only typically?
-        // AdminApiService _fetchApprovals uses "admin/approvals/$type/".
-        // Assuming backend returns only pending or we filter. The endpoint name implies list.
-        // Let's assume list and filter if needed, but usually approvals lists are pending.
-        if (mounted) setState(() => _approvalsCount = count);
+        
+        final pendingBiz = biz.where((item) => item['status'] == 'PENDING').length;
+        final pendingMkt = mkt.where((item) => item['status'] == 'PENDING').length;
+        
+        if (mounted) setState(() => _approvalsCount = pendingBiz + pendingMkt);
       } catch (e) {
         debugPrint("Error fetching approvals count: $e");
       }

@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async'; // Required for Timer
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'chat_screen.dart'; 
 import '../../core/api/constants.dart';
@@ -195,30 +196,51 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("MESSAGES")),
+      backgroundColor: Colors.grey[50], // Light BG
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          "MESSAGES", 
+          style: GoogleFonts.playfairDisplay(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: FfigTheme.primaryBrown
+          )
+        ),
+      ),
       body: Column(
         children: [
            // Search Bar
            Padding(
-             padding: const EdgeInsets.all(12.0),
-             child: TextField(
-               controller: _searchController,
-               decoration: InputDecoration(
-                   hintText: "Search messages...",
-                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                   filled: true,
-                   fillColor: Colors.grey[200],
-                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0)
+             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+             child: Container(
+               decoration: BoxDecoration(
+                 color: Colors.white,
+                 borderRadius: BorderRadius.circular(30),
+                 boxShadow: [
+                   BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+                 ]
                ),
-               onChanged: (val) {
-                   if (_debounce?.isActive ?? false) _debounce!.cancel();
-                   _debounce = Timer(const Duration(milliseconds: 500), () {
-                       _performSearch(val);
-                   });
-                   // Force rebuild to switch view
-                   setState(() {});
-               },
+               child: TextField(
+                 controller: _searchController,
+                 decoration: InputDecoration(
+                     hintText: "Search messages...",
+                     hintStyle: TextStyle(color: Colors.grey[400]),
+                     prefixIcon: Icon(Icons.search, color: FfigTheme.primaryBrown.withOpacity(0.5)),
+                     border: InputBorder.none,
+                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                 ),
+                 onChanged: (val) {
+                     if (_debounce?.isActive ?? false) _debounce!.cancel();
+                     _debounce = Timer(const Duration(milliseconds: 500), () {
+                         _performSearch(val);
+                     });
+                     // Force rebuild to switch view
+                     setState(() {});
+                 },
+               ),
              ),
            ),
            
@@ -248,16 +270,19 @@ class _InboxScreenState extends State<InboxScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[300]),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(color: FfigTheme.primaryBrown.withOpacity(0.1), shape: BoxShape.circle),
+                      child: Icon(Icons.mail_outline, size: 48, color: FfigTheme.primaryBrown.withOpacity(0.5))
+                    ),
                     const SizedBox(height: 16),
-                    Text("No messages found.", style: TextStyle(color: Colors.grey[600])),
+                    Text("No messages yet.", style: GoogleFonts.playfairDisplay(fontSize: 18, color: Colors.grey[600])),
                   ],
                 ),
               )
-            : ListView.separated(
-                padding: const EdgeInsets.only(bottom: 120),
+            : ListView.builder(
+                padding: const EdgeInsets.only(top: 8, bottom: 120),
                 itemCount: _conversations.length,
-                separatorBuilder: (c, i) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final chat = _conversations[index];
                   final participants = chat['participants'] as List;
@@ -271,91 +296,102 @@ class _InboxScreenState extends State<InboxScreen> {
                       : "Start chatting...";
                   
                   final int unreadCount = chat['unread_count'] ?? 0; 
+                  final bool isUnread = unreadCount > 0;
 
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: InkWell(
-                        onTap: () {
-                             // Show Mini Profile
-                             final targetUser = others.isNotEmpty ? others.first : null;
-                             if (targetUser != null) {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) => MiniProfileCard(
-                                          username: targetUser['username'],
-                                          photoUrl: targetUser['photo'] ?? targetUser['photo_url'], 
-                                          tier: targetUser['tier'],
-                                          onViewProfile: () {
-                                              Navigator.pop(context); // Close dialog
-                                              Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
-                                                  userId: targetUser['id'],
-                                                  username: targetUser['username'],
-                                              )));
-                                          }
-                                      )
-                                  );
-                             }
-                        },
-                        child: UserAvatar(
-                          radius: 24, 
-                          username: title,
-                        ),
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isUnread ? Colors.white : Colors.transparent, // Highlight unread
+                      border: Border(bottom: BorderSide(color: Colors.grey[100]!))
                     ),
-                    title: Text(
-                      title, 
-                      style: TextStyle(
-                        fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      lastMsg, 
-                      maxLines: 1, 
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: unreadCount > 0 ? Theme.of(context).colorScheme.onSurface : Colors.grey,
-                        fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _formatTimestamp(chat['last_message']?['created_at']),
-                          style: TextStyle(fontSize: 12, color: unreadCount > 0 ? FfigTheme.primaryBrown : Colors.grey[600], fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal),
-                        ),
-                        const SizedBox(height: 6),
-                        if (unreadCount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: FfigTheme.primaryBrown,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              unreadCount.toString(),
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      leading: InkWell(
+                          onTap: () {
+                               // Show Mini Profile
+                               final targetUser = others.isNotEmpty ? others.first : null;
+                               if (targetUser != null) {
+                                    showDialog(
+                                        context: context,
+                                        builder: (context) => MiniProfileCard(
+                                            username: targetUser['username'],
+                                            photoUrl: targetUser['photo'] ?? targetUser['photo_url'], 
+                                            tier: targetUser['tier'],
+                                            onViewProfile: () {
+                                                Navigator.pop(context); // Close dialog
+                                                Navigator.push(context, MaterialPageRoute(builder: (c) => PublicProfileScreen(
+                                                    userId: targetUser['id'],
+                                                    username: targetUser['username'],
+                                                )));
+                                            }
+                                        )
+                                    );
+                               }
+                          },
+                          child: UserAvatar(
+                            radius: 28, 
+                            username: title,
                           ),
-                      ],
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                            conversationId: chat['id'],
-                            recipientId: others.isNotEmpty ? others.first['id'] : null,
-                            recipientName: title,
+                      ),
+                      title: Text(
+                        title, 
+                        style: GoogleFonts.montserrat(
+                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          lastMsg, 
+                          maxLines: 1, 
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isUnread ? Colors.black87 : Colors.grey[600],
+                            fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
-                      ).then((_) => _fetchCurrentUserAndConversations(silent: true)); // Refresh on return
-                    },
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            _formatTimestamp(chat['last_message']?['created_at']),
+                            style: TextStyle(fontSize: 12, color: isUnread ? FfigTheme.primaryBrown : Colors.grey[500], fontWeight: isUnread ? FontWeight.bold : FontWeight.normal),
+                          ),
+                          const SizedBox(height: 8),
+                          if (unreadCount > 0)
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: FfigTheme.primaryBrown,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                unreadCount > 9 ? "9+" : unreadCount.toString(),
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              conversationId: chat['id'],
+                              recipientId: others.isNotEmpty ? others.first['id'] : null,
+                              recipientName: title,
+                            ),
+                          ),
+                        ).then((_) => _fetchCurrentUserAndConversations(silent: true)); // Refresh on return
+                      },
+                    ),
                   );
                 },
               ),
-            ),
+           ),
         ],
       ),
     );
@@ -370,64 +406,74 @@ class _InboxScreenState extends State<InboxScreen> {
           padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
           children: [
               if (users.isNotEmpty) ...[
-                  const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: Text("Users", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text("USERS", style: GoogleFonts.oswald(fontSize: 16, color: Colors.grey)),
                   ),
-                  ...users.where((u) => u['username'] != _myUsername).map((u) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
-                      title: Text(u['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                      trailing: const Icon(Icons.chat_bubble_outline, color: FfigTheme.primaryBrown),
-                      onTap: () {
-                           Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
-                               recipientId: u['id'],
-                               recipientName: u['username'],
-                           )));
-                      },
+                  ...users.where((u) => u['username'] != _myUsername).map((u) => Card(
+                    elevation: 0,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                        leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
+                        title: Text(u['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        trailing: const Icon(Icons.chat_bubble_outline, color: FfigTheme.primaryBrown),
+                        onTap: () {
+                             Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
+                                 recipientId: u['id'],
+                                 recipientName: u['username'],
+                             )));
+                        },
+                    ),
                   )),
                   const Divider(height: 32),
               ],
               
               if (messages.isNotEmpty) ...[
-                  const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: Text("Messages", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                   Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text("MESSAGES", style: GoogleFonts.oswald(fontSize: 16, color: Colors.grey)),
                   ),
                   ...messages.map((m) {
                        final isMe = m['is_me'] == true;
                        final senderName = m['sender']['username'];
-                       return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: UserAvatar(radius: 20, username: senderName), // Show Sender pic
-                          title: Text(m['chat_title'] ?? "Chat", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: RichText(
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              text: TextSpan(
-                                  style: const TextStyle(color: Colors.black87),
-                                  children: [
-                                      TextSpan(text: "$senderName: ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                      TextSpan(text: m['text']),
-                                  ]
-                              ),
-                          ),
-                          onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
-                                   conversationId: m['conversation_id'],
-                                   recipientName: m['chat_title'] ?? "Chat",
-                                   // Note: We can't easily jump to message yet without implementing scroll-to-index in ID
-                                   // But opening the chat is good enough for now.
-                              )));
-                          },
+                       return Card(
+                         elevation: 0,
+                         margin: const EdgeInsets.only(bottom: 8),
+                         color: Colors.white,
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                         child: ListTile(
+                            leading: UserAvatar(radius: 20, username: senderName), // Show Sender pic
+                            title: Text(m['chat_title'] ?? "Chat", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            subtitle: RichText(
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                    style: const TextStyle(color: Colors.black87),
+                                    children: [
+                                        TextSpan(text: "$senderName: ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                        TextSpan(text: m['text']),
+                                    ]
+                                ),
+                            ),
+                            onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
+                                     conversationId: m['conversation_id'],
+                                     recipientName: m['chat_title'] ?? "Chat",
+                                     // Note: We can't easily jump to message yet without implementing scroll-to-index in ID
+                                     // But opening the chat is good enough for now.
+                                )));
+                            },
+                         ),
                        );
                   }),
               ],
               
               if (users.isEmpty && messages.isEmpty)
-                  const Padding(
-                      padding: EdgeInsets.only(top: 20),
-                      child: Center(child: Text("No results found.", style: TextStyle(color: Colors.grey))),
+                  Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Center(child: Text("No results found.", style: GoogleFonts.playfairDisplay(color: Colors.grey, fontSize: 16))),
                   )
           ],
       );
@@ -474,26 +520,37 @@ class _InboxScreenState extends State<InboxScreen> {
   }
   Widget _buildFilterChip(String label, String value) {
       final isSelected = _selectedFilter == value;
-      return FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (bool selected) {
-            setState(() {
-                _selectedFilter = value;
-                _isLoading = true;
-            });
-            _fetchCurrentUserAndConversations();
+      return InkWell(
+        onTap: () {
+            if (_selectedFilter != value) {
+                setState(() {
+                    _selectedFilter = value;
+                    _isLoading = true;
+                });
+                _fetchCurrentUserAndConversations();
+            }
         },
-        backgroundColor: Colors.grey[200],
-        selectedColor: FfigTheme.primaryBrown.withOpacity(0.2),
-        labelStyle: TextStyle(
-            color: isSelected ? FfigTheme.primaryBrown : Colors.black,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-        ),
-        showCheckmark: false,
-        shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? FfigTheme.primaryBrown : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            side: isSelected ? const BorderSide(color: FfigTheme.primaryBrown) : BorderSide.none
+            border: Border.all(
+              color: isSelected ? FfigTheme.primaryBrown : Colors.grey[300]!,
+            ),
+             boxShadow: isSelected 
+             ? [BoxShadow(color: FfigTheme.primaryBrown.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))]
+             : null
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey[700],
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              fontSize: 12
+            ),
+          ),
         ),
       );
   }

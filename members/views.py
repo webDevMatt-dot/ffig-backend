@@ -52,6 +52,13 @@ class MemberListView(generics.ListAPIView):
         
         if industry_query:
             queryset = queryset.filter(industry=industry_query)
+        
+        # 3. STATUS FILTER: Suspended or Blocked
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter == 'suspended':
+             queryset = queryset.filter(suspension_expiry__gt=timezone.now())
+        elif status_filter == 'blocked':
+             queryset = queryset.filter(is_blocked=True)
 
         return queryset
 
@@ -204,6 +211,38 @@ class ContentReportCreateView(generics.CreateAPIView):
                 title="New Content Report Filed",
                 message=f"{self.request.user.username} reported a {report.get_reported_item_type_display()}: {report.reason}",
             )
+            
+        # AUTO-SUSPENSION LOGIC
+        # If user has > 3 OPEN reports against them, suspend them automatically.
+        if report.reported_item_type == 'USER':
+             target_user_id = report.reported_item_id
+             # Count open reports against this user
+             count = ContentReport.objects.filter(
+                 reported_item_type='USER', 
+                 reported_item_id=target_user_id,
+                 status='OPEN'
+             ).count()
+             
+             if count > 3:
+                 from django.contrib.auth.models import User
+                 from django.utils import timezone
+                 from datetime import timedelta
+                 try:
+                     target_user = User.objects.get(id=target_user_id)
+                     if hasattr(target_user, 'profile'):
+                         # Auto-suspend for 7 days
+                         target_user.profile.suspension_expiry = timezone.now() + timedelta(days=7)
+                         target_user.profile.admin_notice = "Account automatically suspended due to multiple reports."
+                         target_user.profile.save()
+                         
+                         # Notify
+                         Notification.objects.create(
+                            recipient=target_user,
+                            title="Account Suspended",
+                            message="Your account has been automatically suspended for 7 days due to multiple user reports."
+                         )
+                 except User.DoesNotExist:
+                     pass
 
 # --- ADMIN DASHBOARD API ---
 

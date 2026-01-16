@@ -3,8 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../core/api/constants.dart';
+import '../../core/theme/ffig_theme.dart';
 
 class ResourcesScreen extends StatefulWidget {
   const ResourcesScreen({super.key});
@@ -51,10 +53,10 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
       );
 
       if (response.statusCode == 200) {
-        setState(() => _resources = jsonDecode(response.body));
+        if (mounted) setState(() => _resources = jsonDecode(response.body));
       }
     } catch (e) {
-      print(e);
+      if (kDebugMode) print(e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -74,13 +76,27 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("RESOURCE VAULT")),
+      backgroundColor: Colors.grey[50], // Light background for contrast
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(
+          "RESOURCE VAULT", 
+          style: GoogleFonts.playfairDisplay(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: FfigTheme.primaryBrown
+          )
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: FfigTheme.primaryBrown),
+      ),
       body: Column(
         children: [
           // Filter Bar
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 _buildFilterChip("All", "ALL"),
@@ -101,55 +117,22 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator()) 
               : _resources.isEmpty 
-                  ? const Center(child: Text("No resources found."))
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.library_books_outlined, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text("No resources found.", style: TextStyle(color: Colors.grey[600])),
+                        ],
+                      ),
+                    )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       itemCount: _resources.length,
                       itemBuilder: (context, index) {
                         final res = _resources[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: () => _launchURL(res['url']),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Thumbnail
-                                Image.network(
-                                  res['thumbnail_url'],
-                                  height: 150,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _categoryLabels[res['category']] ?? 'Resource', 
-                                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12)
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        res['title'],
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        res['description'],
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(color: Colors.grey[600]),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        );
+                        return _buildResourceCard(res);
                       },
                     ),
           ),
@@ -160,19 +143,151 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedFilter == value;
-    final primary = Theme.of(context).colorScheme.primary;
     
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (bool selected) {
-        if (selected) {
+    return InkWell(
+      onTap: () {
+        if (!isSelected) {
           setState(() => _selectedFilter = value);
           _fetchResources();
         }
       },
-      selectedColor: primary,
-      labelStyle: TextStyle(color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? FfigTheme.primaryBrown : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? FfigTheme.primaryBrown : Colors.grey[300]!,
+          ),
+          boxShadow: isSelected 
+             ? [BoxShadow(color: FfigTheme.primaryBrown.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))]
+             : null
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13
+          ),
+        ),
+      ),
     );
+  }
+
+  Widget _buildResourceCard(dynamic res) {
+     return Container(
+       margin: const EdgeInsets.only(bottom: 20),
+       decoration: BoxDecoration(
+         color: Colors.white,
+         borderRadius: BorderRadius.circular(16),
+         boxShadow: [
+           BoxShadow(
+             color: Colors.black.withOpacity(0.06),
+             blurRadius: 10,
+             offset: const Offset(0, 4)
+           ) 
+         ]
+       ),
+       child: InkWell(
+         onTap: () => _launchURL(res['url']),
+         borderRadius: BorderRadius.circular(16),
+         child: Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             // Image Container with Aspect Ratio
+             ClipRRect(
+               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+               child: Stack(
+                 children: [
+                   res['thumbnail_url'] != null && res['thumbnail_url'].isNotEmpty
+                     ? Image.network(
+                         res['thumbnail_url'],
+                         height: 180,
+                         width: double.infinity,
+                         fit: BoxFit.cover,
+                         errorBuilder: (context, error, stackTrace) => Container(
+                           height: 180, 
+                           color: Colors.grey[200],
+                           child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                         ),
+                       )
+                     : Container(
+                       height: 180,
+                       width: double.infinity,
+                       color: FfigTheme.primaryBrown.withOpacity(0.1),
+                       child: Icon(Icons.article_outlined, size: 64, color: FfigTheme.primaryBrown.withOpacity(0.5)),
+                     ),
+                   
+                   // Category Badge
+                   Positioned(
+                     top: 12,
+                     left: 12,
+                     child: Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                       decoration: BoxDecoration(
+                         color: Colors.black.withOpacity(0.7),
+                         borderRadius: BorderRadius.circular(8),
+                         border: Border.all(color: Colors.white.withOpacity(0.2))
+                       ),
+                       child: Text(
+                         (_categoryLabels[res['category']] ?? 'Resource').toUpperCase(),
+                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                       ),
+                     ),
+                   )
+                 ],
+               ),
+             ),
+             
+             // Content
+             Padding(
+               padding: const EdgeInsets.all(16),
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Text(
+                     res['title'],
+                     style: GoogleFonts.playfairDisplay(
+                       fontSize: 18,
+                       fontWeight: FontWeight.bold,
+                       color: Colors.black87
+                     ),
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
+                     res['description'],
+                     maxLines: 2,
+                     overflow: TextOverflow.ellipsis,
+                     style: TextStyle(
+                       color: Colors.grey[600],
+                       height: 1.4,
+                       fontSize: 14
+                     ),
+                   ),
+                   const SizedBox(height: 16),
+                   Row(
+                     children: [
+                       Text(
+                         "READ MORE", 
+                         style: TextStyle(
+                           color: FfigTheme.primaryBrown, 
+                           fontWeight: FontWeight.bold, 
+                           fontSize: 12,
+                           letterSpacing: 1.0
+                         )
+                       ),
+                       const SizedBox(width: 4),
+                       Icon(Icons.arrow_forward, size: 14, color: FfigTheme.primaryBrown)
+                     ],
+                   )
+                 ],
+               ),
+             )
+           ],
+         ),
+       ),
+     );
   }
 }

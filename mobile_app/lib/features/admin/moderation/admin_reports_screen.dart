@@ -50,44 +50,68 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Content Reports")),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
-        : _reports.isEmpty 
-            ? const Center(child: Text("No reports found."))
-            : ListView.separated(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120), // Added padding for nav bar
-                itemCount: _reports.length,
-                separatorBuilder: (c, i) => const Divider(),
-                itemBuilder: (context, index) {
-                   final report = _reports[index];
-                   final status = report['status'];
-                   final isResolved = status == 'RESOLVED';
-                   
-                   return ListTile(
-                     title: Text("Reason: ${report['reason']}", maxLines: 1, overflow: TextOverflow.ellipsis),
-                     subtitle: RichText(
-                         text: TextSpan(
-                             style: DefaultTextStyle.of(context).style,
-                             children: [
-                                 TextSpan(text: "Reported by: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
-                                 TextSpan(text: "${report['reporter_username'] ?? 'Unknown'}\n"),
-                                 TextSpan(text: "Reported User: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
-                                 TextSpan(text: "${report['reported_user'] ?? 'Unknown'}"),
-                                 TextSpan(text: "\nStatus: $status", style: TextStyle(color: isResolved ? Colors.green : Colors.orange)),
-                             ],
-                         ),
-                     ),
-                     trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                     tileColor: isResolved ? null : Colors.red.withOpacity(0.05),
-                     onTap: () async {
-                         await Navigator.push(context, MaterialPageRoute(builder: (context) => ReportDetailScreen(report: report)));
-                         _fetchReports(); // Refresh on return
-                     },
-                   );
-                },
-              ),
+    // Filter Lists
+    final openReports = _reports.where((r) => r['status'] != 'RESOLVED').toList();
+    final resolvedReports = _reports.where((r) => r['status'] == 'RESOLVED').toList();
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Content Reports"),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Open Reports"),
+              Tab(text: "Resolved Reports"),
+            ],
+          ),
+        ),
+        body: _isLoading 
+          ? const Center(child: CircularProgressIndicator()) 
+          : TabBarView(
+              children: [
+                _buildReportList(openReports, "No open reports."),
+                _buildReportList(resolvedReports, "No resolved reports."),
+              ],
+            ),
+      ),
+    );
+  }
+
+  Widget _buildReportList(List<dynamic> items, String emptyMsg) {
+    if (items.isEmpty) return Center(child: Text(emptyMsg));
+    
+    return ListView.separated(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
+      itemCount: items.length,
+      separatorBuilder: (c, i) => const Divider(),
+      itemBuilder: (context, index) {
+          final report = items[index];
+          final status = report['status'];
+          final isResolved = status == 'RESOLVED';
+          
+          return ListTile(
+            title: Text("Reason: ${report['reason']}", maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: RichText(
+                text: TextSpan(
+                    style: DefaultTextStyle.of(context).style,
+                    children: [
+                        TextSpan(text: "Reported by: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                        TextSpan(text: "${report['reporter_username'] ?? 'Unknown'}\n"),
+                        TextSpan(text: "Reported User: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                        TextSpan(text: "${report['reported_user'] ?? 'Unknown'}"),
+                        TextSpan(text: "\nStatus: $status", style: TextStyle(color: isResolved ? Colors.green : Colors.orange)),
+                    ],
+                ),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            tileColor: isResolved ? null : Colors.red.withOpacity(0.05),
+            onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (context) => ReportDetailScreen(report: report)));
+                _fetchReports(); // Refresh on return
+            },
+          );
+      },
     );
   }
 }

@@ -38,9 +38,10 @@ class _BusinessApprovalsList extends StatefulWidget {
 }
 
 class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
-    final _api = AdminApiService(); // Ensure this is imported via admin_api_service.dart
+    final _api = AdminApiService(); 
     List<dynamic> _items = [];
     bool _isLoading = true;
+    String _searchQuery = "";
 
     @override 
     void initState() { super.initState(); _load(); }
@@ -57,34 +58,67 @@ class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
     }
 
     Future<void> _decide(int id, String status) async {
-        await _api.updateBusinessStatus(id, status); // Need to ensure this exists or add it
+        await _api.updateBusinessStatus(id, status); 
         _load();
     }
 
     @override
     Widget build(BuildContext context) {
         if (_isLoading) return const Center(child: CircularProgressIndicator());
+        
+        // Filter based on search query
+        final filteredItems = _items.where((item) {
+            if (_searchQuery.isEmpty) return true;
+            final name = (item['company_name'] ?? '').toString().toLowerCase();
+            final desc = (item['description'] ?? '').toString().toLowerCase();
+            final q = _searchQuery.toLowerCase();
+            return name.contains(q) || desc.contains(q);
+        }).toList();
+
         if (_items.isEmpty) return const Center(child: Text("No pending business profiles."));
         
-        return ListView.builder(
-            itemCount: _items.length,
-            itemBuilder: (context, index) {
-                final item = _items[index];
-                return Card(
-                    margin: const EdgeInsets.all(8),
-                    child: ListTile(
-                        title: Text(item['company_name'] ?? 'Unknown'),
-                        subtitle: Text(item['description'] ?? ''),
-                        trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                                IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _decide(item['id'], 'APPROVED')),
-                                IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _decide(item['id'], 'REJECTED')),
-                            ],
-                        ),
-                    ),
-                );
-            }
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: "Search businesses...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16)
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              ),
+            ),
+            Expanded(
+              child: filteredItems.isEmpty 
+                  ? const Center(child: Text("No matches found."))
+                  : ListView.builder(
+                    itemCount: filteredItems.length,
+                    padding: const EdgeInsets.only(bottom: 100),
+                    itemBuilder: (context, index) {
+                        final item = filteredItems[index];
+                        return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ListTile(
+                                title: Text(item['company_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(item['description'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                                trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                        IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _decide(item['id'], 'APPROVED')),
+                                        IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _decide(item['id'], 'REJECTED')),
+                                    ],
+                                ),
+                            ),
+                        );
+                    }
+                ),
+            ),
+          ],
         );
     }
 }
@@ -99,6 +133,7 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
     final _api = AdminApiService();
     List<dynamic> _items = [];
     bool _isLoading = true;
+    String _searchQuery = "";
 
     @override 
     void initState() { super.initState(); _load(); }
@@ -106,13 +141,11 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
     Future<void> _load() async {
         try {
             final data = await _api.fetchMarketingApprovals();
-            // Filter locally
-            // final pending = data.where((i) => i['status'] == 'PENDING').toList();
             // Show ALL, but maybe sort PENDING first
             data.sort((a,b) {
                 if (a['status'] == 'PENDING' && b['status'] != 'PENDING') return -1;
                 if (a['status'] != 'PENDING' && b['status'] == 'PENDING') return 1;
-                return 0; // Keep original order otherwise (usually date desc)
+                return 0; 
             });
             if (mounted) setState(() { _items = data; _isLoading = false; });
         } catch (e) {
@@ -174,56 +207,89 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
     @override
     Widget build(BuildContext context) {
         if (_isLoading) return const Center(child: CircularProgressIndicator());
+        
+        // Filter
+        final filteredItems = _items.where((item) {
+            if (_searchQuery.isEmpty) return true;
+            final title = (item['title'] ?? '').toString().toLowerCase();
+            final link = (item['link'] ?? '').toString().toLowerCase();
+            final q = _searchQuery.toLowerCase();
+            return title.contains(q) || link.contains(q);
+        }).toList();
+
         if (_items.isEmpty) return const Center(child: Text("No pending marketing requests."));
         
-        return ListView.builder(
-            itemCount: _items.length,
-            itemBuilder: (context, index) {
-                final item = _items[index];
-                return Card(
-                    margin: const EdgeInsets.all(8),
-                    child: Column(
-                        children: [
-                            ListTile(
-                                leading: item['type'] == 'AD' ? const Icon(Icons.star, color: Colors.amber) : const Icon(Icons.campaign, color: Colors.blue),
-                                title: Text(item['title'] ?? 'Untitled'),
-                                subtitle: Text(item['link'] ?? 'No link'),
-                            ),
-                            if (item['image'] != null)
-                                Builder(builder: (c) {
-                                  var url = item['image'].toString();
-                                  if (url.startsWith('/')) {
-                                      final domain = baseUrl.replaceAll('/api/', '');
-                                      url = '$domain$url';
-                                  }
-                                  return SizedBox(height: 100, child: Image.network(url));
-                                }),
-                             if (item['video'] != null)
-                                const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
-                            
-                            
-                            ButtonBar(
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: "Search marketing...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16)
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              ),
+            ),
+            Expanded(
+              child: filteredItems.isEmpty 
+                  ? const Center(child: Text("No matches found."))
+                  : ListView.builder(
+                    itemCount: filteredItems.length,
+                    padding: const EdgeInsets.only(bottom: 100),
+                    itemBuilder: (context, index) {
+                        final item = filteredItems[index];
+                        return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Column(
                                 children: [
-                                    if (item['status'] == 'PENDING') ...[
-                                       TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),
-                                       ElevatedButton(onPressed: () => _decide(item['id'], 'APPROVED'), child: const Text("Approve")),
-                                    ] else ...[
-                                        // Already decided, show Delete
-                                        IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _delete(item['id']),
-                                        ),
-                                        Text(item['status'], style: TextStyle(
-                                            color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
-                                            fontWeight: FontWeight.bold
-                                        )),
-                                    ]
+                                    ListTile(
+                                        leading: item['type'] == 'AD' ? const Icon(Icons.star, color: Colors.amber) : const Icon(Icons.campaign, color: Colors.blue),
+                                        title: Text(item['title'] ?? 'Untitled'),
+                                        subtitle: Text(item['link'] ?? 'No link'),
+                                    ),
+                                    if (item['image'] != null)
+                                        Builder(builder: (c) {
+                                          var url = item['image'].toString();
+                                          if (url.startsWith('/')) {
+                                              final domain = baseUrl.replaceAll('/api/', '');
+                                              url = '$domain$url';
+                                          }
+                                          return SizedBox(height: 100, child: Image.network(url));
+                                        }),
+                                     if (item['video'] != null)
+                                        const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
+                                    
+                                    
+                                    ButtonBar(
+                                        children: [
+                                            if (item['status'] == 'PENDING') ...[
+                                               TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),
+                                               ElevatedButton(onPressed: () => _decide(item['id'], 'APPROVED'), child: const Text("Approve")),
+                                            ] else ...[
+                                                // Already decided, show Delete
+                                                IconButton(
+                                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                                    onPressed: () => _delete(item['id']),
+                                                ),
+                                                Text(item['status'], style: TextStyle(
+                                                    color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
+                                                    fontWeight: FontWeight.bold
+                                                )),
+                                            ]
+                                        ],
+                                    )
                                 ],
-                            )
-                        ],
-                    ),
-                );
-            }
+                            ),
+                        );
+                    }
+                ),
+            ),
+          ],
         );
     }
 }
