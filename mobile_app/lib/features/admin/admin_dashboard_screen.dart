@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/services/admin_api_service.dart';
 import 'user_management_screen.dart';
 import 'resource_management_screen.dart';
 // Import Management Screens
@@ -7,14 +8,60 @@ import 'home_management/manage_hero_screen.dart';
 import 'home_management/manage_founder_screen.dart';
 import 'home_management/manage_alerts_screen.dart';
 import 'home_management/manage_ticker_screen.dart';
-import 'home_management/manage_ticker_screen.dart';
 import 'events_management/manage_events_screen.dart';
 import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
 import 'moderation/admin_reports_screen.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  int _reportsCount = 0;
+  int _approvalsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotificationCounts();
+  }
+
+  Future<void> _fetchNotificationCounts() async {
+    try {
+      final api = AdminApiService();
+      // Fetch Reports -> Count PENDING
+      try {
+        final reports = await api.fetchItems('moderation/reports');
+        // If the endpoint returns raw list, filter. If it's already filtered, just length.
+        // Assuming endpoint returns all, filter for pending/open statuses if applicable.
+        // AdminReportsScreen logic suggests 'status' field.
+        final pendingReports = reports.where((r) => r['status'] != 'RESOLVED').length;
+        if (mounted) setState(() => _reportsCount = pendingReports);
+      } catch (e) {
+        debugPrint("Error fetching reports count: $e");
+      }
+
+      // Fetch Approvals -> Count Pending Business + Marketing
+      try {
+        final biz = await api.fetchBusinessApprovals();
+        final mkt = await api.fetchMarketingApprovals();
+        final count = biz.length + mkt.length; // These endpoints return pending only typically?
+        // AdminApiService _fetchApprovals uses "admin/approvals/$type/".
+        // Assuming backend returns only pending or we filter. The endpoint name implies list.
+        // Let's assume list and filter if needed, but usually approvals lists are pending.
+        if (mounted) setState(() => _approvalsCount = count);
+      } catch (e) {
+        debugPrint("Error fetching approvals count: $e");
+      }
+
+    } catch (e) {
+       // Silent fail
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,67 +82,27 @@ class AdminDashboardScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
       children: [
-        _buildSectionHeader(context, "General Management"),
-        _buildAdminTile(
-          context,
-          icon: Icons.people_outline,
-          title: "Manage Users",
-          subtitle: "View, edit, and delete users",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserManagementScreen())),
-        ),
-        _buildAdminTile(
-          context,
-          icon: Icons.library_books_outlined,
-          title: "Manage Resources",
-          subtitle: "Magazines, Masterclasses, Newsletters",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourceManagementScreen())),
-        ),
-        _buildAdminTile(
-          context,
-          icon: Icons.event,
-          title: "Manage Events",
-          subtitle: "Create, edit, and ticket events",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
-        ),
-        
-        const SizedBox(height: 24),
-        _buildSectionHeader(context, "Community & Moderation"),
-        
-        _buildAdminTile(
-          context,
-          icon: Icons.flag_outlined, 
-          title: "Reports (Moderation)",
-          subtitle: "Review reported users & content",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen())),
-        ),
-
-        const SizedBox(height: 24),
-        _buildSectionHeader(context, "Approvals & Analytics"),
-
-        _buildAdminTile(
-          context,
-          icon: Icons.rule, 
-          title: "Approvals Center",
-          subtitle: "Review Business Profiles & Ads",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen())),
-        ),
-        _buildAdminTile(
-          context,
-          icon: Icons.analytics_outlined, 
-          title: "Analytics",
-          subtitle: "View platform growth & stats",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen())),
-        ),
-        
-        const SizedBox(height: 24),
         _buildSectionHeader(context, "Homepage Content"),
-        
+         _buildAdminTile(
+          context,
+          icon: Icons.campaign_outlined,
+          title: "Flash Alerts",
+          subtitle: "Create time-sensitive banners",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageAlertsScreen())),
+        ),
         _buildAdminTile(
           context,
           icon: Icons.view_carousel_outlined,
           title: "Hero Carousel",
           subtitle: "Manage rotating hero banners",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageHeroScreen())),
+        ),
+         _buildAdminTile(
+          context,
+          icon: Icons.newspaper_outlined,
+          title: "News Ticker",
+          subtitle: "Update scrolling news items",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageTickerScreen())),
         ),
         _buildAdminTile(
           context,
@@ -106,17 +113,64 @@ class AdminDashboardScreen extends StatelessWidget {
         ),
         _buildAdminTile(
           context,
-          icon: Icons.campaign_outlined,
-          title: "Flash Alerts",
-          subtitle: "Create time-sensitive banners",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageAlertsScreen())),
+          icon: Icons.event,
+          title: "Manage Events",
+          subtitle: "Create, edit, and ticket events",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen())),
         ),
-         _buildAdminTile(
+        _buildAdminTile(
           context,
-          icon: Icons.newspaper_outlined,
-          title: "News Ticker",
-          subtitle: "Update scrolling news items",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageTickerScreen())),
+          icon: Icons.library_books_outlined,
+          title: "Manage Resources",
+          subtitle: "Magazines, Masterclasses, Newsletters",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourceManagementScreen())),
+        ),
+        
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "Community & Moderation"),
+        
+        _buildAdminTile(
+          context,
+          icon: Icons.flag_outlined, 
+          title: "Reports (Moderation)",
+          subtitle: "Review reported users & content",
+          notificationCount: _reportsCount,
+          onTap: () async {
+             await Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen()));
+             _fetchNotificationCounts(); // Refresh on return
+          },
+        ),
+
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "General Management"),
+        _buildAdminTile(
+          context,
+          icon: Icons.people_outline,
+          title: "Manage Users",
+          subtitle: "View, edit, and delete users",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserManagementScreen())),
+        ),
+
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "Approvals & Analytics"),
+
+        _buildAdminTile(
+          context,
+          icon: Icons.rule, 
+          title: "Approvals Center",
+          subtitle: "Review Business Profiles & Ads",
+          notificationCount: _approvalsCount,
+          onTap: () async {
+             await Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen()));
+             _fetchNotificationCounts();
+          },
+        ),
+        _buildAdminTile(
+          context,
+          icon: Icons.analytics_outlined, 
+          title: "Analytics",
+          subtitle: "View platform growth & stats",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen())),
         ),
       ],
     );
@@ -160,13 +214,15 @@ class AdminDashboardScreen extends StatelessWidget {
                    context, 
                    "Reports", 
                    Icons.flag_outlined, 
-                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen()))
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen())),
+                   notificationCount: _reportsCount
                  ),
                  _buildWideTile(
                    context, 
                    "Approvals", 
                    Icons.rule, 
-                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen()))
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalsScreen())),
+                   notificationCount: _approvalsCount
                  ),
                  _buildWideTile(
                    context, 
@@ -213,19 +269,29 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAdminTile(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildAdminTile(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap, int notificationCount = 0}) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-          // Adaptive Icon Color: Primary (Dark) for Light Mode, Secondary (Gold) for Dark Mode
           child: Icon(icon, color: Theme.of(context).brightness == Brightness.dark 
               ? Theme.of(context).colorScheme.secondary 
               : Theme.of(context).primaryColor),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            if (notificationCount > 0)
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                child: Text("$notificationCount", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              )
+          ],
+        ),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
@@ -233,7 +299,7 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWideTile(BuildContext context, String title, IconData icon, VoidCallback onTap) {
+  Widget _buildWideTile(BuildContext context, String title, IconData icon, VoidCallback onTap, {int notificationCount = 0}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -246,14 +312,29 @@ class AdminDashboardScreen extends StatelessWidget {
           ],
           border: Border.all(color: Theme.of(context).dividerColor),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Icon(icon, size: 48, color: Theme.of(context).brightness == Brightness.dark 
-                ? Theme.of(context).colorScheme.secondary 
-                : Theme.of(context).primaryColor),
-            const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 48, color: Theme.of(context).brightness == Brightness.dark 
+                    ? Theme.of(context).colorScheme.secondary 
+                    : Theme.of(context).primaryColor),
+                const SizedBox(height: 16),
+                Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            if (notificationCount > 0)
+              Positioned(
+                 top: 16,
+                 right: 16,
+                 child: Container(
+                   padding: const EdgeInsets.all(6),
+                   decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                   child: Text("$notificationCount", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                 ),
+              )
           ],
         ),
       ),
