@@ -19,9 +19,25 @@ class MessageSerializer(serializers.ModelSerializer):
         queryset=Message.objects.all(), source='reply_to', write_only=True, required=False, allow_null=True
     )
 
+    is_read = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
         fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read']
+
+    def get_is_read(self, obj):
+        # 1. Start with actual DB status
+        status = obj.is_read
+        
+        # 2. If I am the SENDER, check if the RECIPIENT allows me to see it
+        request = self.context.get('request')
+        if request and obj.sender == request.user:
+            # Context injected by MessageListView
+            partner_allows = self.context.get('partner_read_receipts', True) 
+            if not partner_allows:
+                return False
+        
+        return status
 
     def get_reply_to(self, obj):
         if obj.reply_to:

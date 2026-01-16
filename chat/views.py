@@ -49,6 +49,7 @@ class ConversationListView(generics.ListAPIView):
         return queryset
 
 # 2. Get messages for a specific conversation
+# 2. Get messages for a specific conversation
 class MessageListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MessageSerializer
@@ -82,17 +83,31 @@ class MessageListView(generics.ListAPIView):
 
         messages = messages.order_by('created_at')
 
-        # 2. MARK AS READ (Magic!)
-        # Only mark messages sent by the *other* person as read
-        # AND only if the current user has Read Receipts enabled
-        should_mark_read = True
-        if hasattr(self.request.user, 'profile'):
-             should_mark_read = self.request.user.profile.read_receipts_enabled
-
-        if should_mark_read:
-             messages.exclude(sender=self.request.user).update(is_read=True)
+        # 2. MARK AS READ (Fix for Live Count)
+        # Always mark incoming messages as read so the UI badge clears.
+        # Privacy (hiding read status from sender) is now handled in the Serializer.
+        messages.exclude(sender=self.request.user).update(is_read=True)
 
         return messages
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        # Inject Partner Privacy Settings for Serializer to mask 'is_read'
+        try:
+            conversation_id = self.kwargs['pk']
+            # Optimization: We could fetch this cleaner, but this is safe
+            from .models import Conversation
+            c = Conversation.objects.only('id').get(id=conversation_id)
+            # Find the "Other" person
+            others = c.participants.exclude(id=self.request.user.id)
+            if others.exists():
+                partner = others.first()
+                if hasattr(partner, 'profile'):
+                    ctx['partner_read_receipts'] = partner.profile.read_receipts_enabled
+        except Exception:
+            pass # Default to True (or None) if lookup fails
+            
+        return ctx
 
 class UnreadCountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
