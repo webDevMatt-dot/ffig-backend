@@ -171,6 +171,7 @@ class MarketingCommentView(generics.ListCreateAPIView):
     serializer_class = MarketingCommentSerializer
 
     def get_queryset(self):
+        from .models import MarketingComment
         return MarketingComment.objects.filter(marketing_request_id=self.kwargs['pk']).order_by('created_at')
 
     def perform_create(self, serializer):
