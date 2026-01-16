@@ -64,13 +64,13 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
         _filterItems();
       });
     } catch (e) {
-      DialogUtils.showError(context, "Error", e.toString());
+      if (mounted) DialogUtils.showError(context, "Error", e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _selectDateTime(BuildContext context) async {
+  Future<void> _selectDateTime(BuildContext context, StateSetter setModalState) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -84,32 +84,32 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
         initialTime: _selectedTime,
       );
       if (pickedTime != null) {
-        setState(() {
+        setModalState(() {
           _selectedDate = pickedDate;
           _selectedTime = pickedTime;
+        });
+        // Also update parent state to persist if re-rendering
+        setState(() {
+           _selectedDate = pickedDate;
+           _selectedTime = pickedTime;
         });
       }
     }
   }
 
-  void _startEditing(Map<String, dynamic> item) {
-    setState(() {
+  void _showEditor(Map<String, dynamic>? item) {
+    if (item != null) {
       _editingId = item['id'].toString();
       _titleController.text = item['title'] ?? '';
       _messageController.text = item['message'] ?? '';
       _urlController.text = item['action_url'] ?? '';
       _selectedType = item['type'] ?? 'Alert';
-      // Parse expiry
       try {
         final expiry = DateTime.parse(item['expiry_time']);
         _selectedDate = expiry;
         _selectedTime = TimeOfDay.fromDateTime(expiry);
       } catch (_) {}
-    });
-  }
-
-  void _cancelEditing() {
-    setState(() {
+    } else {
       _editingId = null;
       _titleController.clear();
       _messageController.clear();
@@ -117,11 +117,132 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
       _selectedType = 'Alert';
       _selectedDate = DateTime.now().add(const Duration(days: 1));
       _selectedTime = const TimeOfDay(hour: 12, minute: 0);
-    });
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
+              top: 20, left: 20, right: 20
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _editingId != null ? "Edit Alert" : "Create New Alert", 
+                      style: Theme.of(context).textTheme.titleLarge
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                      items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (v) => setModalState(() => _selectedType = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _messageController,
+                      decoration: const InputDecoration(labelText: 'Message', border: OutlineInputBorder()),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    ListTile(
+                      title: const Text("Expiry Time"),
+                      subtitle: Text(DateFormat('dd-MM-yyyy HH:mm').format(
+                         DateTime(
+                            _selectedDate.year, _selectedDate.month, _selectedDate.day, 
+                            _selectedTime.hour, _selectedTime.minute
+                         )
+                      )),
+                      trailing: const Icon(Icons.calendar_today),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Colors.grey)),
+                      onTap: () => _selectDateTime(context, setModalState),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _urlController,
+                      decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    Row(
+                      children: [
+                        if (_editingId != null) ...[
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                               Navigator.pop(ctx);
+                               _confirmDelete(int.parse(_editingId!));
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                 Navigator.pop(ctx);
+                                 _toggleActive(item!);
+                              },
+                              icon: Icon(
+                                (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
+                                color: (item['is_active'] ?? true) ? Colors.grey : Colors.green
+                              ),
+                              label: Text((item['is_active'] ?? true) ? "Deactivate" : "Activate"),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: FfigTheme.primaryBrown,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(_editingId != null ? "UPDATE" : "PUBLISH"),
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      )
+    );
   }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(context);
     setState(() => _isLoading = true);
 
     // Combine Date and Time
@@ -145,20 +266,16 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
     try {
       if (_editingId != null) {
         await _apiService.updateFlashAlert(_editingId!, data);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Updated!')));
-        _cancelEditing();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Updated!')));
       } else {
         await _apiService.createFlashAlert(data);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Created!')));
-        _titleController.clear();
-        _messageController.clear();
-        _urlController.clear();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alert Created!')));
       }
       _fetchItems();
     } catch (e) {
-      DialogUtils.showError(context, "Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Failed", e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -166,23 +283,46 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
     final id = item['id'];
     final isActive = item['is_active'] ?? true;
     final newState = !isActive;
+    setState(() => _isLoading = true);
     
     try {
-      // Use API Service update
       await _apiService.updateFlashAlert(id.toString(), {'is_active': newState});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Alert Activated" : "Alert Deactivated")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Alert Activated" : "Alert Deactivated")));
       _fetchItems();
     } catch (e) {
-      DialogUtils.showError(context, "Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Failed", e.toString());
+      setState(() => _isLoading = false);
     }
   }
 
+  void _confirmDelete(int id) {
+      showDialog(
+          context: context, 
+          builder: (c) => AlertDialog(
+              title: const Text("Delete Alert?"),
+              content: const Text("This action cannot be undone."),
+              actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
+                  TextButton(
+                      onPressed: () {
+                          Navigator.pop(c);
+                          _deleteItem(id);
+                      }, 
+                      child: const Text("Delete", style: TextStyle(color: Colors.red))
+                  )
+              ],
+          )
+      );
+  }
+
   Future<void> _deleteItem(int id) async {
+    setState(() => _isLoading = true);
     try {
       await _apiService.deleteItem('alerts', id);
        _fetchItems();
     } catch (e) {
-       DialogUtils.showError(context, "Delete Failed", e.toString());
+       if (mounted) DialogUtils.showError(context, "Delete Failed", e.toString());
+       setState(() => _isLoading = false);
     }
   }
 
@@ -190,193 +330,96 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Flash Alerts")),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 800;
-          
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 2, child: _buildForm()),
-                Expanded(flex: 3, child: _buildList()),
-              ],
-            );
-          } else {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                   _buildForm(),
-                   const Divider(height: 1),
-                   _buildList(),
-                ],
-              ),
-            );
-          }
-        }
-      ),
-    );
-  }
-
-  Widget _buildForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+            children: [
+                // 1. Search + Add
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_editingId != null ? "Edit Alert" : "Create New Alert", style: Theme.of(context).textTheme.titleLarge),
-                    if (_editingId != null)
-                      TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                DropdownButtonFormField<String>(
-                  value: _selectedType,
-                  decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                  items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => setState(() => _selectedType = v!),
-                ),
-                const SizedBox(height: 16),
-                
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                TextFormField(
-                  controller: _messageController,
-                  decoration: const InputDecoration(labelText: 'Message', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                ListTile(
-                  title: const Text("Expiry Time"),
-                  subtitle: Text(DateFormat('dd-MM-yyyy HH:mm').format(
-                     DateTime(
-                        _selectedDate.year, _selectedDate.month, _selectedDate.day, 
-                        _selectedTime.hour, _selectedTime.minute
-                     )
-                  )),
-                  trailing: const Icon(Icons.calendar_today),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Colors.grey)),
-                  onTap: () => _selectDateTime(context),
+                    children: [
+                        Expanded(
+                            child: TextField(
+                                decoration: InputDecoration(
+                                    hintText: "Search alerts...",
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _searchQuery = val;
+                                    _filterItems();
+                                  });
+                                },
+                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                            onPressed: () => _showEditor(null),
+                            icon: const Icon(Icons.add),
+                            label: const Text("Add New"),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: FfigTheme.primaryBrown,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                            ),
+                        )
+                    ],
                 ),
                 
                 const SizedBox(height: 16),
                 
-                TextFormField(
-                  controller: _urlController,
-                  decoration: const InputDecoration(labelText: 'Action URL', border: OutlineInputBorder()),
+                // 2. List
+                Expanded(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator()) 
+                    : _filteredAlerts.isEmpty 
+                        ? Center(child: Text("No alerts found. Add one above.", style: TextStyle(color: Colors.grey[600])))
+                        : ListView.builder(
+                              itemCount: _filteredAlerts.length,
+                              itemBuilder: (context, index) {
+                                final item = _filteredAlerts[index];
+                                final expiry = DateTime.tryParse(item['expiry_time'] ?? '') ?? DateTime.now();
+                                final isExpired = expiry.isBefore(DateTime.now());
+                                final isActive = item['is_active'] ?? true;
+                                
+                                return Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    color: (isExpired || !isActive) ? Theme.of(context).cardColor.withOpacity(0.6) : null,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    child: ListTile(
+                                        contentPadding: const EdgeInsets.all(12),
+                                        leading: CircleAvatar(
+                                            backgroundColor: isActive && !isExpired ? Colors.amber.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                                            child: Icon(Icons.notifications_active, color: isActive && !isExpired ? Colors.amber : Colors.grey),
+                                        ),
+                                        title: Text(
+                                            item['title'] ?? 'No Title', 
+                                            style: const TextStyle(fontWeight: FontWeight.bold)
+                                        ),
+                                        subtitle: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                                Text(item['message'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                Text(
+                                                    "Expires: ${DateFormat('dd MMM HH:mm').format(expiry.toLocal())}", 
+                                                    style: TextStyle(fontSize: 12, color: isExpired ? Colors.red : Colors.grey)
+                                                ),
+                                            ],
+                                        ),
+                                        isThreeLine: true,
+                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                        onTap: () => _showEditor(item),
+                                    ),
+                                );
+                              },
+                        ),
                 ),
-                const SizedBox(height: 24),
-                
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: FfigTheme.primaryBrown,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "UPDATE ALERT" : "PUBLISH ALERT"),
-                  ),
-                ),
-              ],
-            ),
-          ),
+            ],
         ),
       ),
     );
-  }
-
-  Widget _buildList() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Active Alerts", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          
-          TextField(
-             decoration: const InputDecoration(
-               hintText: "Search Alerts...",
-               prefixIcon: Icon(Icons.search),
-               border: OutlineInputBorder(),
-               isDense: true,
-             ),
-             onChanged: (val) {
-               setState(() {
-                 _searchQuery = val;
-                 _filterItems();
-               });
-             },
-          ),
-          const SizedBox(height: 16),
-
-          if (_isLoading && _alerts.isEmpty)
-            const Center(child: CircularProgressIndicator())
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _filteredAlerts.length,
-              itemBuilder: (context, index) {
-                final item = _filteredAlerts[index];
-                // Check expiry
-                final expiry = DateTime.tryParse(item['expiry_time']) ?? DateTime.now();
-                final isExpired = expiry.isBefore(DateTime.now());
-                
-                // Dark mode friendly expired color
-                final expiredColor = Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.grey.withOpacity(0.2) 
-                    : Colors.grey.shade200;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  color: isExpired ? expiredColor : null,
-                  child: ListTile(
-                    leading: Icon(Icons.notifications_active, color: isExpired ? Colors.grey : Colors.amber),
-                    title: Text(item['title'] ?? 'No Title'),
-                    subtitle: Text("${item['message']}\nExpires: ${DateFormat('dd-MM-yyyy HH:mm').format(expiry.toLocal())}"),
-                    isThreeLine: true,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _startEditing(item),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
-                          onPressed: () => _toggleActive(item),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteItem(item['id']),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-
   }
 }

@@ -22,11 +22,10 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   final _titleController = TextEditingController();
   final _urlController = TextEditingController();
   String _selectedType = 'Announcement';
-  dynamic _selectedImageBytes; // Uint8List or String (URL)
+  dynamic _selectedImageBytes; 
   File? _selectedImageFile;
   
-  String? _editingId; // If null, we are creating. If set, we are updating.
-  
+  String? _editingId; 
   bool _isLoading = false;
   List<dynamic> _heroItems = [];
   List<dynamic> _filteredHeroItems = [];
@@ -66,19 +65,19 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       });
 
     } catch (e) {
-      DialogUtils.showError(context, "Load Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Load Failed", e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(StateSetter setModalState) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
-      setState(() {
+      setModalState(() {
         _selectedImageBytes = bytes;
         if (!kIsWeb) {
             _selectedImageFile = File(pickedFile.path); 
@@ -87,25 +86,172 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     }
   }
 
-  void _startEditing(Map<String, dynamic> item) {
-     setState(() {
-       _editingId = item['id'].toString();
-       _titleController.text = item['title'] ?? '';
-       _urlController.text = item['action_url'] ?? '';
-       _selectedType = _types.contains(item['type']) ? item['type'] : _types.first;
-       _selectedImageBytes = null; // Reset image (optional to update)
-     });
-  }
+  void _showEditor(Map<String, dynamic>? item) {
+    if (item != null) {
+        _editingId = item['id'].toString();
+        _titleController.text = item['title'] ?? '';
+        _urlController.text = item['action_url'] ?? '';
+        _selectedType = _types.contains(item['type']) ? item['type'] : _types.first;
+        _selectedImageBytes = null; // Don't pre-fill with downloaded bytes, just show current URL in UI if no new bytes
+    } else {
+        _editingId = null;
+        _titleController.clear();
+        _urlController.clear();
+        _selectedImageBytes = null;
+        _selectedImageFile = null;
+        _selectedType = _types.first;
+    }
 
-  void _cancelEditing() {
-    setState(() {
-      _editingId = null;
-      _titleController.clear();
-      _urlController.clear();
-      _selectedImageBytes = null;
-      _selectedImageFile = null;
-      _selectedType = _types.first;
-    });
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
+              top: 20, left: 20, right: 20
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _editingId != null ? "Edit Hero Item" : "Add New Hero Item", 
+                      style: Theme.of(context).textTheme.titleLarge
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Image Picker
+                    GestureDetector(
+                        onTap: () => _pickImage(setModalState),
+                        child: Container(
+                          height: 180,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                            border: Border.all(color: Theme.of(context).dividerColor),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _selectedImageBytes != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _selectedImageBytes is Uint8List
+                                      ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
+                                      : Image.network(_selectedImageBytes as String, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, size: 50)),
+                                )
+                              : (item != null && item['image'] != null 
+                                  ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(item['image'], fit: BoxFit.cover))
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                                        const SizedBox(height: 8),
+                                        Text(_editingId != null ? "Tap to replace image" : "Tap to upload image"),
+                                      ],
+                                    )),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    
+                    TextField(
+                        decoration: const InputDecoration(
+                            labelText: "Or Image URL",
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.link),
+                        ),
+                        onChanged: (val) {
+                            setModalState(() {
+                                if (val.isNotEmpty) {
+                                    _selectedImageBytes = val;
+                                    _selectedImageFile = null;
+                                } else {
+                                    _selectedImageBytes = null;
+                                }
+                            });
+                        },
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                      items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (v) => setModalState(() => _selectedType = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _urlController,
+                      decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    Row(
+                      children: [
+                        if (_editingId != null) ...[
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                               Navigator.pop(ctx);
+                               _confirmDelete(int.parse(_editingId!));
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                 Navigator.pop(ctx);
+                                 _toggleActive(item!);
+                              },
+                              icon: Icon(
+                                (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
+                                color: (item!['is_active'] ?? true) ? Colors.grey : Colors.green
+                              ),
+                              label: Text((item!['is_active'] ?? true) ? "Deactivate" : "Activate"),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: FfigTheme.primaryBrown,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(_editingId != null ? "Save Changes" : "Create Item"),
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      )
+    );
   }
 
   Future<void> _submitForm() async {
@@ -116,7 +262,8 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image')));
       return;
     }
-
+    
+    Navigator.pop(context);
     setState(() => _isLoading = true);
 
     try {
@@ -127,64 +274,34 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
         'is_active': 'true',
       };
 
-      // Prepare Image Object (File or Bytes)
       dynamic imageToUpload;
       if (_selectedImageBytes != null) {
           imageToUpload = kIsWeb ? _selectedImageBytes : _selectedImageFile;
       }
 
       if (_editingId != null) {
-         // UPDATE
          await _apiService.updateHeroItem(_editingId!, fields, imageToUpload);
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Updated!')));
-         _cancelEditing();
+         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Updated!')));
       } else {
-         // CREATE
          await _apiService.createHeroItem(fields, imageToUpload); 
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Added!')));
-         _titleController.clear();
-         _urlController.clear();
-         setState(() { 
-             _selectedImageBytes = null;
-             _selectedImageFile = null;
-         });
+         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hero Item Added!')));
       }
       
-      _fetchItems(); // Refresh list
+      _fetchItems();
     } catch (e) {
-      DialogUtils.showError(context, "Action Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Action Failed", e.toString());
     } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _deleteItem(int id) async {
-    // In a real app this would be a dialog
-    if (!confirm('Are you sure you want to delete this item?')) return; 
-    
-    try {
-      await _apiService.deleteItem('hero', id);
-       _fetchItems();
-    } catch (e) {
-       DialogUtils.showError(context, "Delete Failed", e.toString());
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _toggleActive(Map<String, dynamic> item) async {
     final id = item['id'];
-    // Default to true if missing, so we toggle to false
     final isActive = item['is_active'] ?? true; 
     final newState = !isActive;
 
+    setState(() => _isLoading = true);
     try {
-      // We use patch to update just is_active
-      // NOTE: AdminApiService needs to support patch or we use updateHeroItem with all fields
-      // Assuming updateHeroItem calls PATCH or PUT. If PUT, we need all fields.
-      // Usually update is PATCH in DRF if partial=True. 
-      // Let's assume _apiService.updateHeroItem handles it or we use raw http.
-      // For safety/speed, I'll use raw http here or update apiservice. 
-      // Actually, I'll use the _apiService.updateHeroItem wrapper but pass current values + new is_active.
-      
       final Map<String, String> fields = {
          'title': (item['title'] ?? '').toString(),
          'action_url': (item['action_url'] ?? '').toString(),
@@ -192,262 +309,129 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
          'is_active': newState.toString(),
       };
       
-      // We don't change the image, pass null
       await _apiService.updateHeroItem(id.toString(), fields, null);
       
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Item Activated" : "Item Deactivated")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Item Activated" : "Item Deactivated")));
       _fetchItems();
     } catch (e) {
-      DialogUtils.showError(context, "Toggle Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Toggle Failed", e.toString());
+      setState(() => _isLoading = false);
     }
   }
   
-  bool confirm(String message) {
-    return true; 
+  void _confirmDelete(int id) {
+      showDialog(
+          context: context, 
+          builder: (c) => AlertDialog(
+              title: const Text("Delete Item?"),
+              content: const Text("This action cannot be undone."),
+              actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
+                  TextButton(
+                      onPressed: () {
+                          Navigator.pop(c);
+                          _deleteItem(id);
+                      }, 
+                      child: const Text("Delete", style: TextStyle(color: Colors.red))
+                  )
+              ],
+          )
+      );
+  }
+
+  Future<void> _deleteItem(int id) async {
+    setState(() => _isLoading = true);
+    try {
+      await _apiService.deleteItem('hero', id);
+       _fetchItems();
+    } catch (e) {
+       if (mounted) DialogUtils.showError(context, "Delete Failed", e.toString());
+       setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Hero Carousel")),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 900;
-          
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 2, child: _buildForm()),
-                Expanded(flex: 3, child: _buildList()),
-              ],
-            );
-          } else {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildForm(),
-                  const Divider(height: 1),
-                  _buildList(),
-                  const SizedBox(height: 100), // Safe scroll space
-                ],
-              ),
-            );
-          }
-        },
-      ),
-      bottomNavigationBar: Container(
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
-        ),
-        child: SafeArea(
-          child: SizedBox(
-             height: 50,
-             child: ElevatedButton(
-               onPressed: _isLoading ? null : _submitForm,
-               style: ElevatedButton.styleFrom(
-                 backgroundColor: FfigTheme.primaryBrown,
-                 foregroundColor: Colors.white,
-               ),
-               child: _isLoading 
-                   ? const CircularProgressIndicator(color: Colors.white) 
-                   : Text(_editingId != null ? "UPDATE ITEM" : "PUBLISH ITEM"),
-             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        child: Column(
+            children: [
+                // 1. Search + Add
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_editingId != null ? "Edit Hero Item" : "Add New Hero Item", 
-                         style: Theme.of(context).textTheme.titleLarge),
-                    if (_editingId != null)
-                      TextButton.icon(
-                        onPressed: _cancelEditing,
-                        icon: const Icon(Icons.close),
-                        label: const Text("Cancel"),
-                      )
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // Image Picker
-                // Image Picker
-                GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                        border: Border.all(color: Theme.of(context).dividerColor),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: _selectedImageBytes != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: _selectedImageBytes is Uint8List
-                                  ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
-                                  : Image.network(_selectedImageBytes as String, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, size: 50)),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                                const SizedBox(height: 8),
-                                Text(_editingId != null ? "Click to change image (optional)" : "Click to upload image"),
-                              ],
+                    children: [
+                        Expanded(
+                            child: TextField(
+                                decoration: InputDecoration(
+                                    hintText: "Search items...",
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _searchQuery = val;
+                                    _filterItems();
+                                  });
+                                },
                             ),
-                    ),
-                  ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                            onPressed: () => _showEditor(null),
+                            icon: const Icon(Icons.add),
+                            label: const Text("Add New"),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: FfigTheme.primaryBrown,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                            ),
+                        )
+                    ],
+                ),
+                
                 const SizedBox(height: 16),
                 
-                TextField(
-                    decoration: const InputDecoration(
-                        labelText: "Or Image URL",
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.link),
-                    ),
-                    onChanged: (val) {
-                        setState(() {
-                            if (val.isNotEmpty) {
-                                _selectedImageBytes = val;
-                                _selectedImageFile = null;
-                            } else {
-                                _selectedImageBytes = null;
-                            }
-                        });
-                    },
+                // 2. List
+                Expanded(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator()) 
+                    : _filteredHeroItems.isEmpty 
+                        ? Center(child: Text("No items found. Add one above.", style: TextStyle(color: Colors.grey[600])))
+                        : ListView.builder(
+                              itemCount: _filteredHeroItems.length,
+                              itemBuilder: (context, index) {
+                                final item = _filteredHeroItems[index];
+                                final isActive = item['is_active'] ?? true;
+                                return Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    child: ListTile(
+                                        contentPadding: const EdgeInsets.all(12),
+                                        leading: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: item['image'] != null
+                                                ? Image.network(item['image'], width: 60, height: 60, fit: BoxFit.cover)
+                                                : Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.image)),
+                                        ),
+                                        title: Text(
+                                            item['title'] ?? 'No Title', 
+                                            style: const TextStyle(fontWeight: FontWeight.bold)
+                                        ),
+                                        subtitle: Text(item['type'] ?? ''),
+                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                        onTap: () => _showEditor(item),
+                                    ),
+                                );
+                              },
+                        ),
                 ),
-                const SizedBox(height: 16),
-                
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                DropdownButtonFormField<String>(
-                  value: _selectedType,
-                  decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                  items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => setState(() => _selectedType = v!),
-                ),
-                const SizedBox(height: 16),
-                
-                TextFormField(
-                  controller: _urlController,
-                  decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 24),
-                
-                // SizedBox(
-                //   width: double.infinity,
-                //   height: 50,
-                //   child: ElevatedButton(
-                //     onPressed: _isLoading ? null : _submitForm,
-                //     style: ElevatedButton.styleFrom(
-                //       backgroundColor: FfigTheme.primaryBrown,
-                //       foregroundColor: Colors.white,
-                //     ),
-                //     child: _isLoading 
-                //         ? const CircularProgressIndicator(color: Colors.white) 
-                //         : Text(_editingId != null ? "UPDATE ITEM" : "PUBLISH ITEM"),
-                //   ),
-                // ),
-              ],
-            ),
-          ),
+            ],
         ),
       ),
     );
-  }
-
-  Widget _buildList() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Current Items", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          
-          TextField(
-             decoration: const InputDecoration(
-               hintText: "Search Items...",
-               prefixIcon: Icon(Icons.search),
-               border: OutlineInputBorder(),
-               isDense: true,
-             ),
-             onChanged: (val) {
-               setState(() {
-                 _searchQuery = val;
-                 _filterItems();
-               });
-             },
-          ),
-          const SizedBox(height: 16),
-
-          if (_isLoading && _heroItems.isEmpty)
-            const Center(child: CircularProgressIndicator())
-          else
-             // Remove Expanded here because the parent might be a Column in SingleChildScrollView
-            ListView.builder(
-              shrinkWrap: true, // Needed for Column layout
-              physics: const NeverScrollableScrollPhysics(), // Scroll handled by parent
-              itemCount: _filteredHeroItems.length,
-              itemBuilder: (context, index) {
-                final item = _filteredHeroItems[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: ListTile(
-                    leading: item['image'] != null
-                        ? Image.network(item['image'], width: 60, height: 60, fit: BoxFit.cover)
-                        : const Icon(Icons.image),
-                    title: Text(item['title'] ?? 'No Title'),
-                    subtitle: Text(item['type'] ?? ''),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _startEditing(item),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.power_settings_new, color: (item['is_active'] ?? true) ? Colors.green : Colors.grey),
-                          onPressed: () => _toggleActive(item),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteItem(item['id']),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import '../../../../core/utils/dialog_utils.dart';
 import 'edit_event_screen.dart';
 
 class ManageEventsScreen extends StatefulWidget {
@@ -12,17 +13,18 @@ class ManageEventsScreen extends StatefulWidget {
 
 class _ManageEventsScreenState extends State<ManageEventsScreen> {
   final _apiService = AdminApiService();
+  
   bool _isLoading = false;
   List<dynamic> _events = [];
   List<dynamic> _filteredEvents = [];
   String _searchQuery = "";
   
-  // Quick Edit Form
+  // Quick Edit Form Controllers
   final _formKey = GlobalKey<FormState>();
   String? _editingId;
   final _titleController = TextEditingController();
   final _locController = TextEditingController();
-  final _dateController = TextEditingController(); // Simple string for now
+  final _dateController = TextEditingController(); 
   final _imgController = TextEditingController();
   
   @override
@@ -40,7 +42,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
          _filterEvents();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) DialogUtils.showError(context, "Error", e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -59,13 +61,12 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
     }
   }
 
-  void _startEditing(Map<String, dynamic> e) {
-    setState(() {
-      _editingId = e['id'].toString();
-      _titleController.text = e['title'] ?? '';
-      _locController.text = e['location'] ?? '';
-      // Default from backend is yyyy-mm-dd
-      final rawDate = e['date'] ?? '';
+  void _showEditor(Map<String, dynamic>? event) {
+    if (event != null) {
+      _editingId = event['id'].toString();
+      _titleController.text = event['title'] ?? '';
+      _locController.text = event['location'] ?? '';
+      final rawDate = event['date'] ?? '';
       if (rawDate.isNotEmpty) {
           try {
              final dt = DateTime.parse(rawDate);
@@ -76,30 +77,151 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
       } else {
          _dateController.text = '';
       }
-      _imgController.text = e['image_url'] ?? '';
-    });
-  }
-  
-  void _cancelEditing() {
-    setState(() {
+      _imgController.text = event['image_url'] ?? '';
+    } else {
       _editingId = null;
       _titleController.clear();
       _locController.clear();
       _dateController.clear();
       _imgController.clear();
-    });
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
+              top: 20, left: 20, right: 20
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _editingId != null ? "Edit Event" : "Create New Event", 
+                      style: Theme.of(context).textTheme.titleLarge
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    _buildField(_titleController, "Event Title", Icons.event),
+                    const SizedBox(height: 16),
+                    _buildField(_locController, "Location", Icons.location_on),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                        controller: _dateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: "Date",
+                          prefixIcon: Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(),
+                        ),
+                        onTap: () async {
+                           DateTime? picked = await showDatePicker(
+                             context: context,
+                             initialDate: DateTime.now(),
+                             firstDate: DateTime(2000),
+                             lastDate: DateTime(2100),
+                           );
+                             if (picked != null) {
+                               setModalState(() {
+                                 _dateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
+                               });
+                             }
+                        },
+                        validator: (v) => v!.isEmpty ? "Required" : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildField(_imgController, "Image URL", Icons.image, required: false),
+                    const SizedBox(height: 24),
+                    
+                    if (_editingId != null)
+                        Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: OutlinedButton.icon(
+                                icon: const Icon(Icons.confirmation_number),
+                                label: const Text("MANAGE TICKETS & SPEAKERS"),
+                                onPressed: () {
+                                    // Navigate to detailed edit screen
+                                    Navigator.pop(ctx);
+                                    _manageFullDetails(event!);
+                                },
+                                style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                            ),
+                        ),
+
+                     Row(
+                      children: [
+                        if (_editingId != null) ...[
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                               Navigator.pop(ctx);
+                               _confirmDelete(int.parse(_editingId!));
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                 Navigator.pop(ctx);
+                                 _toggleEventActive(event!);
+                              },
+                              icon: Icon(
+                                (event!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
+                                color: (event['is_active'] ?? true) ? Colors.grey : Colors.green
+                              ),
+                              label: Text((event['is_active'] ?? true) ? "Deactivate" : "Activate"),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: FfigTheme.primaryBrown,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(_editingId != null ? "Save Changes" : "Create Event"),
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      )
+    );
   }
-  
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
     
+    Navigator.pop(context);
+    setState(() => _isLoading = true);
+
     try {
-       final data = {
+        final data = {
          'title': _titleController.text,
          'location': _locController.text,
          'date': () {
-             // Convert dd-mm-yyyy back to yyyy-mm-dd for backend
              final parts = _dateController.text.split('-');
              if (parts.length == 3) {
                  return "${parts[2]}-${parts[1]}-${parts[0]}";
@@ -111,230 +233,163 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
        
        if (_editingId != null) {
          await _apiService.updateEvent(int.parse(_editingId!), data);
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Updated')));
+         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Updated')));
        } else {
          await _apiService.createEvent(data);
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Created')));
+         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Created')));
        }
-       _cancelEditing();
        _loadEvents();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action Failed: $e")));
+      if (mounted) DialogUtils.showError(context, "Failed", e.toString());
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _deleteEvent(int id) async {
-     // Legacy Delete (Hidden or Administrative only if absolutely needed)
-     // For now, we prefer Deactivation.
-     await _apiService.deleteEvent(id);
-     _loadEvents();
-  }
-  
   Future<void> _toggleEventActive(Map<String, dynamic> event) async {
     final id = event['id'];
     final isActive = event['is_active'] ?? true;
     final newState = !isActive;
+    setState(() => _isLoading = true);
     
     try {
       await _apiService.updateEvent(id, {'is_active': newState});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Event Activated" : "Event Deactivated")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newState ? "Event Activated" : "Event Deactivated")));
       _loadEvents();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to toggle: $e")));
+      if (mounted) DialogUtils.showError(context, "Failed", e.toString());
+       setState(() => _isLoading = false);
     }
   }
-  
+
   void _manageFullDetails(Map<String, dynamic> event) async {
     await Navigator.push(context, MaterialPageRoute(builder: (c) => EditEventScreen(event: event)));
     _loadEvents();
+  }
+  
+  void _confirmDelete(int id) {
+      showDialog(
+          context: context, 
+          builder: (c) => AlertDialog(
+              title: const Text("Delete Event?"),
+              content: const Text("This action cannot be undone."),
+              actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
+                  TextButton(
+                      onPressed: () {
+                          Navigator.pop(c);
+                          _deleteEvent(id);
+                      }, 
+                      child: const Text("Delete", style: TextStyle(color: Colors.red))
+                  )
+              ],
+          )
+      );
+  }
+
+  Future<void> _deleteEvent(int id) async {
+    setState(() => _isLoading = true);
+     try {
+       await _apiService.deleteEvent(id);
+       _loadEvents();
+     } catch (e) {
+        if (mounted) DialogUtils.showError(context, "Delete Failed", e.toString());
+        setState(() => _isLoading = false);
+     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Events")),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 800) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 2, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildForm(context))),
-                Expanded(flex: 3, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildList(context))),
-              ],
-            );
-          } else {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  Padding(padding: const EdgeInsets.all(16), child: _buildForm(context)),
-                  Divider(height: 1, thickness: 8, color: Theme.of(context).dividerColor),
-                  Padding(padding: const EdgeInsets.all(16), child: _buildList(context)),
-                  const SizedBox(height: 100), // Safe scroll space
-                ],
-              ),
-            );
-          }
-        },
-      ),
-      bottomNavigationBar: Container(
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
-        ),
-        child: SafeArea(
-           child: SizedBox(
-             height: 50,
-             child: ElevatedButton(
-               onPressed: _isLoading ? null : _submitForm,
-               style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-               child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "SAVE CHANGES" : "CREATE EVENT"),
-             ),
-           ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildForm(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   Text(_editingId != null ? "Edit Event" : "New Event", style: Theme.of(context).textTheme.titleLarge),
-                   if (_editingId != null) TextButton(onPressed: _cancelEditing, child: const Text("Cancel"))
-                ],
-              ),
-              const SizedBox(height: 24),
-              _buildField(_titleController, "Event Title", Icons.event),
-              const SizedBox(height: 16),
-              _buildField(_locController, "Location", Icons.location_on),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _dateController,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: "Date",
-                  prefixIcon: Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(),
+                // 1. Search + Add
+                Row(
+                    children: [
+                        Expanded(
+                            child: TextField(
+                                decoration: InputDecoration(
+                                    hintText: "Search events...",
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _searchQuery = val;
+                                    _filterEvents();
+                                  });
+                                },
+                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                            onPressed: () => _showEditor(null),
+                            icon: const Icon(Icons.add),
+                            label: const Text("Add New"),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: FfigTheme.primaryBrown,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                            ),
+                        )
+                    ],
                 ),
-                onTap: () async {
-                   DateTime? picked = await showDatePicker(
-                     context: context,
-                     initialDate: DateTime.now(),
-                     firstDate: DateTime(2000),
-                     lastDate: DateTime(2100),
-                   );
-                     if (picked != null) {
-                       setState(() {
-                         // Format: dd-MM-yyyy
-                         _dateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
-                       });
-                     }
-                },
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-              const SizedBox(height: 16),
-              _buildField(_imgController, "Image URL", Icons.image, required: false),
-              const SizedBox(height: 24),
-              
-              if (_editingId != null)
-                 Padding(
-                   padding: const EdgeInsets.only(bottom: 16),
-                   child: OutlinedButton.icon(
-                      icon: const Icon(Icons.confirmation_number),
-                      label: const Text("MANAGE TICKETS & SPEAKERS"),
-                      onPressed: () {
-                         // Find the event object
-                         final e = _events.firstWhere((element) => element['id'].toString() == _editingId);
-                         _manageFullDetails(e);
-                      },
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                   ),
-                 ),
+                
+                const SizedBox(height: 16),
+                
+                // 2. List
+                Expanded(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator()) 
+                    : _filteredEvents.isEmpty 
+                        ? Center(child: Text("No events found. Add one above.", style: TextStyle(color: Colors.grey[600])))
+                        : ListView.builder(
+                              itemCount: _filteredEvents.length,
+                              itemBuilder: (context, index) {
+                                final e = _filteredEvents[index];
+                                final isActive = e['is_active'] ?? true;
+                                final dateStr = e['date'];
+                                DateTime? dt;
+                                if (dateStr != null) {
+                                  dt = DateTime.tryParse(dateStr);
+                                }
 
-              // SizedBox(
-              //    width: double.infinity,
-              //    height: 50,
-              //    child: ElevatedButton(
-              //      onPressed: _isLoading ? null : _submitForm,
-              //      style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-              //      child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_editingId != null ? "SAVE CHANGES" : "CREATE EVENT"),
-              //    ),
-              // )
+                                return Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    child: ListTile(
+                                        contentPadding: const EdgeInsets.all(12),
+                                        leading: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: e['image_url'] != null && e['image_url'].toString().isNotEmpty
+                                            ? Image.network(e['image_url'], width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (c,err,s) => const Icon(Icons.event, size: 40))
+                                            : Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.event)),
+                                        ),
+                                        title: Text(
+                                            e['title'] ?? 'No Title', 
+                                            style: const TextStyle(fontWeight: FontWeight.bold)
+                                        ),
+                                        subtitle: Text(
+                                          dt != null 
+                                            ? "${dt.day}/${dt.month}/${dt.year} • ${e['location']}"
+                                            : e['location'] ?? ''
+                                        ),
+                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                        onTap: () => _showEditor(e),
+                                    ),
+                                );
+                              },
+                        ),
+                ),
             ],
-          ),
         ),
       ),
     );
-  }
-  
-  Widget _buildList(BuildContext context) {
-     return Column(
-       crossAxisAlignment: CrossAxisAlignment.start,
-       children: [
-          Text("Upcoming Events", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          TextField(
-             decoration: const InputDecoration(hintText: "Search Events...", prefixIcon: Icon(Icons.search), border: OutlineInputBorder(), isDense: true),
-             onChanged: (v) { setState(() { _searchQuery = v; _filterEvents(); }); },
-          ),
-          const SizedBox(height: 16),
-           if (_isLoading && _events.isEmpty)
-             const Center(child: CircularProgressIndicator())
-           else
-             ListView.builder(
-               shrinkWrap: true,
-               physics: const NeverScrollableScrollPhysics(),
-               itemCount: _filteredEvents.length,
-               itemBuilder: (context, index) {
-                 final e = _filteredEvents[index];
-                 return Card(
-                   margin: const EdgeInsets.only(bottom: 12),
-                   child: ListTile(
-                     leading: CircleAvatar(backgroundImage: NetworkImage(e['image_url'] ?? ''), child: e['image_url'] == null ? const Icon(Icons.event) : null),
-                     title: Text(e['title']),
-                     subtitle: Text(() {
-                        if (e['date'] == null) return e['location'] ?? '';
-                        try {
-                           final dt = DateTime.parse(e['date']);
-                           final formatted = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
-                           return "$formatted • ${e['location']}";
-                        } catch (_) {
-                           return "${e['date']} • ${e['location']}";
-                        }
-                     }()),
-                     trailing: Row(
-                       mainAxisSize: MainAxisSize.min,
-                       children: [
-                          IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(e)),
-                          // Power Toggle Logic
-                          IconButton(
-                             icon: Icon(Icons.power_settings_new, color: (e['is_active'] ?? true) ? Colors.green : Colors.grey),
-                             onPressed: () => _toggleEventActive(e),
-                           ),
-                           IconButton(
-                             icon: const Icon(Icons.delete, color: Colors.red),
-                             onPressed: () => _deleteEvent(e['id']),
-                           ),
-                       ],
-                     ),
-                     onTap: () => _startEditing(e), 
-                   ),
-                 );
-               },
-             )
-       ],
-     );
   }
 
   Widget _buildField(TextEditingController controller, String label, IconData icon, {bool required = true}) {
