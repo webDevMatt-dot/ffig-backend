@@ -1171,7 +1171,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      event['date'].toString().split('T')[0],
+                                      () {
+                                          try {
+                                              final dt = DateTime.parse(event['date']);
+                                              return DateFormat('dd-MM-yyyy').format(dt);
+                                          } catch (_) {
+                                              return event['date'].toString();
+                                          }
+                                      }(),
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
