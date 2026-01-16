@@ -11,27 +11,28 @@ class ResourceListView(generics.ListAPIView):
         # 1. Start with everything (that is active!)
         queryset = Resource.objects.filter(is_active=True).order_by('-created_at')
         
-        # 2. Get the category the app is asking for (e.g., "MAG")
-        category = self.request.query_params.get('category')
         user = self.request.user
+        
+        # 2. Check Premium Status (Support both Tier and Deprecated Boolean)
+        is_premium = False
+        if hasattr(user, 'profile'):
+             # Allow PREMIUM tier or legacy is_premium flag
+             is_premium = user.profile.tier == 'PREMIUM' or user.profile.is_premium
+        
+        # Allow Admins to see everything
+        if user.is_staff:
+             is_premium = True
 
         # 3. DEFINITION: What counts as "VIP Only"?
         vip_categories = ['MAG', 'CLASS', 'NEWS', 'POD']
+        
+        # 4. Global Filter: If not premium, HIDE VIP content from ALL views
+        # This prevents "All" from showing content that "Magazines" would hide.
+        if not is_premium:
+             queryset = queryset.exclude(category__in=vip_categories)
 
-        # 4. THE SECURITY CHECK 🔒
-        # If the app asks for a VIP category...
-        if category in vip_categories:
-            # Check if the user is actually Premium
-            # We use a safe check (getattr) just in case the profile is missing
-            is_premium = False
-            if hasattr(user, 'profile'):
-                is_premium = user.profile.is_premium
-            
-            # If they are NOT premium, return NOTHING.
-            if not is_premium:
-                return Resource.objects.none() 
-
-        # 5. Apply the filter (if the user passed the check)
+        # 5. Apply the requested category filter
+        category = self.request.query_params.get('category')
         if category:
             queryset = queryset.filter(category=category)
             
