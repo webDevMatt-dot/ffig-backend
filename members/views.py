@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
+from django.utils import timezone
 from .models import Profile
 from .serializers import ProfileSerializer
 from core.permissions import IsPremiumUser
@@ -153,12 +155,12 @@ class MyMarketingRequestListView(generics.ListAPIView):
         # Return only the logged-in user's requests
         return MarketingRequest.objects.filter(user=self.request.user).order_by('-created_at')
 
-class MarketingRequestUpdateView(generics.RetrieveUpdateAPIView):
+class MarketingRequestUpdateView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MarketingRequestSerializer
     
     def get_queryset(self):
-        # Ensure user can only edit their own requests
+        # Ensure user can only edit/delete their own requests
         return MarketingRequest.objects.filter(user=self.request.user)
 
 class MarketingFeedView(generics.ListAPIView):

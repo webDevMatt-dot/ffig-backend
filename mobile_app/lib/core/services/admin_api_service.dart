@@ -438,13 +438,8 @@ class AdminApiService {
 
   Future<void> deleteMarketingRequest(int id) async {
        final token = await _getToken();
-       // Assuming endpoint is standard viewset /members/me/marketing/{id}/ OR /admin/approvals/marketing/{id}/
-       // Given update uses /admin/approvals/marketing/{id}/, delete should likely be there too or standard object delete.
-       // User created requests are at /members/me/marketing/. Admin can likely delete via Admin interface.
-       // Let's try the approval endpoint with DELETE method if supported, or a specific admin delete.
-       // If backend viewset allows destroy, this works:
        final response = await http.delete(
-          Uri.parse('${baseUrl}admin/approvals/marketing/$id/'),
+          Uri.parse('$_membersBaseUrl/me/marketing/$id/'),
           headers: {'Authorization': 'Bearer $token'}
        );
        if (response.statusCode != 204) throw Exception('Failed to delete request');

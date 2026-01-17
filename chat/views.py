@@ -39,9 +39,11 @@ class ConversationListView(generics.ListAPIView):
         # 3. Filter (Unread/Favorites)
         filter_type = self.request.query_params.get('filter')
         if filter_type == 'unread':
+             # Use Q to find conversations with at least one message that is Unread AND Not from me.
+             # The previous .exclude(messages__sender=user) removed conversations if I ever sent a message.
              queryset = queryset.filter(
-                 messages__is_read=False
-             ).exclude(messages__sender=user).distinct()
+                 Q(messages__is_read=False) & ~Q(messages__sender=user)
+             ).distinct()
         elif filter_type == 'favorites':
              if hasattr(user, 'profile'):
                  queryset = queryset.filter(participants__in=user.profile.favorites.all()).distinct()

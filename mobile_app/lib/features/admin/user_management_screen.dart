@@ -68,7 +68,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
     
-    String url = '${baseUrl}admin/users/';
+    String url = '${baseUrl}members/';
     if (statusFilter != null) {
         url += '?status=$statusFilter';
     }

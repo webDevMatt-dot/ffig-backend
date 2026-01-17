@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/utils/dialog_utils.dart';
+import '../../core/services/admin_api_service.dart';
 import 'edit_marketing_request_screen.dart';
 
 class MarketingRequestsScreen extends StatefulWidget {
@@ -68,6 +69,21 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
   Future<void> _editRequest(dynamic request) async {
      await Navigator.push(context, MaterialPageRoute(builder: (c) => EditMarketingRequestScreen(requestData: request)));
      _fetchMyRequests();
+  }
+
+  Future<void> _deleteRequest(int id) async {
+    final confirmed = await DialogUtils.showConfirmation(context, "Delete Request", "Are you sure you want to delete this request?");
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await AdminApiService().deleteMarketingRequest(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request deleted")));
+      _fetchMyRequests();
+    } catch (e) {
+      if (mounted) DialogUtils.showError(context, "Error", e.toString());
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -154,9 +170,18 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
             Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit, color: FfigTheme.primaryBrown),
-          onPressed: () => _editRequest(req),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, color: FfigTheme.primaryBrown),
+              onPressed: () => _editRequest(req),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteRequest(req['id']),
+            ),
+          ],
         ),
       ),
     );
