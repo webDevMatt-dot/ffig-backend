@@ -19,6 +19,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
     admin_notice = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField() # Override to prefer S3 photo
     
     class Meta:
         model = Profile
@@ -62,6 +63,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         # Online if active in last 5 minutes
         return (timezone.now() - obj.last_seen) < timedelta(minutes=5)
 
+    def get_photo_url(self, obj):
+        if obj.photo:
+            return obj.photo.url
+        return obj.photo_url
+
 
 class BusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -94,7 +100,10 @@ class MarketingCommentSerializer(serializers.ModelSerializer):
 
     def get_photo_url(self, obj):
         try:
-            return obj.user.profile.photo_url
+            profile = obj.user.profile
+            if profile.photo:
+                return profile.photo.url
+            return profile.photo_url
         except:
             return None
 
@@ -124,7 +133,10 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
 
     def get_user_photo(self, obj):
         try:
-            return obj.user.profile.photo_url
+            profile = obj.user.profile
+            if profile.photo:
+                return profile.photo.url
+            return profile.photo_url
         except:
             return None
 

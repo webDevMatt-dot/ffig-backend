@@ -5,7 +5,16 @@ from .models import Conversation, Message
 # A simple User serializer for chat participants
 class ChatUserSerializer(serializers.ModelSerializer):
     tier = serializers.CharField(source='profile.tier', read_only=True)
-    photo_url = serializers.CharField(source='profile.photo_url', read_only=True)
+    tier = serializers.CharField(source='profile.tier', read_only=True)
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        try:
+            if obj.profile.photo:
+                return obj.profile.photo.url
+            return obj.profile.photo_url
+        except:
+            return None
 
     class Meta:
         model = User

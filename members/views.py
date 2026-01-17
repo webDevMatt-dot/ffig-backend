@@ -145,6 +145,22 @@ class MarketingRequestCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+class MyMarketingRequestListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = MarketingRequestSerializer
+    
+    def get_queryset(self):
+        # Return only the logged-in user's requests
+        return MarketingRequest.objects.filter(user=self.request.user).order_by('-created_at')
+
+class MarketingRequestUpdateView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = MarketingRequestSerializer
+    
+    def get_queryset(self):
+        # Ensure user can only edit their own requests
+        return MarketingRequest.objects.filter(user=self.request.user)
+
 class MarketingFeedView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MarketingRequestSerializer

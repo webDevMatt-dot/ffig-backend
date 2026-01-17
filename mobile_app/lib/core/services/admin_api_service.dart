@@ -292,6 +292,41 @@ class AdminApiService {
        }
   }
 
+  Future<void> updateMarketingRequest(int id, Map<String, String> fields, {dynamic imageFile, dynamic videoFile}) async {
+      final token = await _getToken();
+      final url = Uri.parse('$_membersBaseUrl/me/marketing/$id/');
+      var request = http.MultipartRequest('PATCH', url);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields.addAll(fields);
+
+      if (imageFile != null) {
+          if (imageFile is String) {
+               // URL String - Add as field? Or handle nicely?
+               // MultipartRequest fields are strings.
+               request.fields['image'] = imageFile;
+          } else if (kIsWeb && imageFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('image', imageFile, filename: 'upload.jpg', contentType: MediaType('image', 'jpeg')));
+          } else if (imageFile is File) {
+             request.files.add(await http.MultipartFile.fromPath('image', imageFile.path, contentType: MediaType('image', 'jpeg')));
+          }
+      }
+      if (videoFile != null) {
+           if (videoFile is String) {
+               request.fields['video'] = videoFile;
+           } else if (kIsWeb && videoFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('video', videoFile, filename: 'video.mp4', contentType: MediaType('video', 'mp4')));
+           } else if (videoFile is File) {
+             request.files.add(await http.MultipartFile.fromPath('video', videoFile.path, contentType: MediaType('video', 'mp4')));
+           }
+      }
+
+      final response = await request.send();
+       if (response.statusCode != 200) {
+           final respStr = await response.stream.bytesToString();
+           throw Exception('Failed to update marketing request: $respStr');
+       }
+  }
+
   Future<List<dynamic>> fetchMarketingFeed() async {
     final token = await _getToken();
     final response = await http.get(

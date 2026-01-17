@@ -45,7 +45,7 @@ from members.views import (
     AdminContentReportListView, AdminContentReportDetailView, AdminModerationActionView,
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
-    MarketingLikeView, MarketingCommentView
+    MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
@@ -102,7 +102,10 @@ urlpatterns = [
 
     # User Submissions
     path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
+    path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
+    path('api/members/me/marketing/list/', MyMarketingRequestListView.as_view(), name='my-marketing-list'),
+    path('api/members/me/marketing/<int:pk>/', MarketingRequestUpdateView.as_view(), name='update-marketing-request'),
     path('api/members/marketing/feed/', MarketingFeedView.as_view(), name='marketing-feed'),
     path('api/members/marketing/<int:pk>/like/', MarketingLikeView.as_view(), name='marketing-like'),
     path('api/members/marketing/<int:pk>/comments/', MarketingCommentView.as_view(), name='marketing-comments'),
