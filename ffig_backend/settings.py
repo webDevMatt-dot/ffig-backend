@@ -198,7 +198,8 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
             "OPTIONS": {
                 "bucket_name": AWS_STORAGE_BUCKET_NAME,
                 "region_name": AWS_S3_REGION_NAME,
-                "default_acl": "public-read",
+                # "default_acl": "public-read", <--- Removed ACL
+                "default_acl": None, 
                 "querystring_auth": False,
                 "object_parameters": {
                     "CacheControl": "max-age=86400",
