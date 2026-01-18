@@ -59,7 +59,11 @@ class EventDetailScreen extends StatelessWidget {
                       event['title'], 
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, shadows: [const Shadow(color: Colors.black, blurRadius: 4)])
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // AppBar title in expanded state needs to be visible on image
+                        shadows: [const Shadow(color: Colors.black, blurRadius: 4)]
+                      )
                   ),
                   background: Stack(
                     fit: StackFit.expand,
@@ -99,7 +103,7 @@ class EventDetailScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: (event['is_sold_out'] == true) ? Colors.grey : Theme.of(context).colorScheme.primary,
-                foregroundColor: (event['is_sold_out'] == true) ? Colors.white : Colors.black,
+                foregroundColor: (event['is_sold_out'] == true) ? Colors.white : Colors.white,
               ),
               child: Text(
                 (event['is_sold_out'] == true) ? "SOLD OUT" : "GET TICKETS",
@@ -164,7 +168,7 @@ class EventDetailScreen extends StatelessWidget {
 
            const Divider(height: 48),
            
-           Text("About this Event", style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold)),
+           Text("About this Event", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
            const SizedBox(height: 16),
            Text(event['description'] ?? "No description provided.", style: const TextStyle(fontSize: 16, height: 1.6)),
            

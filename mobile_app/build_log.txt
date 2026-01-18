@@ -19,15 +19,22 @@ Downloading packages...
   flutter_secure_storage_platform_interface 1.1.2 (2.0.1 available)
   flutter_secure_storage_web 1.2.1 (2.1.0 available)
   flutter_secure_storage_windows 3.1.2 (4.1.0 available)
-  google_fonts 6.3.3 (7.0.0 available)
+  google_fonts 6.3.3 (7.0.2 available)
   image 4.5.4 (4.7.2 available)
+  image_cropper 8.1.0 (11.0.0 available)
+  image_cropper_for_web 6.1.0 (7.0.0 available)
+  image_cropper_platform_interface 7.2.0 (8.0.0 available)
   js 0.6.7 (0.7.2 available)
   matcher 0.12.17 (0.12.18 available)
   material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.0 available)
+  path_provider_foundation 2.5.1 (2.6.0 available)
+  share_plus 10.1.4 (12.0.1 available)
+  share_plus_platform_interface 5.0.2 (6.1.0 available)
   test_api 0.7.7 (0.7.9 available)
   timezone 0.10.1 (0.11.0 available)
 Got dependencies!
-26 packages have newer versions incompatible with dependency constraints.
+33 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Compiling lib/main.dart for the Web...                          
 Wasm dry run findings:
@@ -44,287 +51,14 @@ Consider addressing these issues to enable wasm builds. See docs for more info: 
 
 Use --no-wasm-dry-run to disable these warnings.
 Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
-lib/features/chat/chat_screen.dart:415:31:
-Error: Can't find ')' to match '('.
-                  child: Align(
-                              ^
-lib/features/chat/chat_screen.dart:399:35:
-Error: Can't find ')' to match '('.
-                return Dismissible(
-                                  ^
-lib/features/chat/chat_screen.dart:335:45:
-Error: Can't find '}' to match '{'.
-              itemBuilder: (context, index) {
-                                            ^
-lib/features/chat/chat_screen.dart:330:49:
-Error: Can't find ')' to match '('.
-              : ScrollablePositionedList.builder(
-                                                ^
-lib/features/chat/chat_screen.dart:327:19:
-Error: Can't find ')' to match '('.
-          Expanded(
-                  ^
-lib/features/chat/chat_screen.dart:528:16:
-Error: Expected a class member, but got ','.
-              },
-               ^
-lib/features/chat/chat_screen.dart:529:13:
-Error: Expected a class member, but got ')'.
-            ),
-            ^
-lib/features/chat/chat_screen.dart:529:14:
-Error: Expected a class member, but got ','.
-            ),
-             ^
-lib/features/chat/chat_screen.dart:530:11:
-Error: Expected a class member, but got ')'.
-          ),
-          ^
-lib/features/chat/chat_screen.dart:530:12:
-Error: Expected a class member, but got ','.
-          ),
-           ^
-lib/features/chat/chat_screen.dart:532:11:
-Error: Expected a class member, but got 'if'.
-          if (_replyMessage != null)
-          ^^
-lib/features/chat/chat_screen.dart:532:29:
-Error: Expected ')' before this.
-          if (_replyMessage != null)
-                            ^^
-lib/features/chat/chat_screen.dart:532:36:
-Error: A record type with exactly one positional field requires a trailing comma.
-          if (_replyMessage != null)
-                                   ^
-lib/features/chat/chat_screen.dart:534:22:
-Error: Non-optional parameters can't have a default value.
-              padding: const EdgeInsets.all(8),
-                     ^
-lib/features/chat/chat_screen.dart:535:20:
-Error: Non-optional parameters can't have a default value.
-              color: Colors.grey[100],
-                   ^
-lib/features/chat/chat_screen.dart:536:20:
-Error: Non-optional parameters can't have a default value.
-              child: Row(
-                   ^
-lib/features/chat/chat_screen.dart:563:14:
-Error: Expected '{' before this.
-            ),
-             ^
-lib/features/chat/chat_screen.dart:563:14:
-Error: Expected a class member, but got ','.
-            ),
-             ^
-lib/features/chat/chat_screen.dart:567:20:
-Error: Non-optional parameters can't have a default value.
-            padding: const EdgeInsets.all(8),
-                   ^
-lib/features/chat/chat_screen.dart:568:18:
-Error: Non-optional parameters can't have a default value.
-            color: Colors.white,
-                 ^
-lib/features/chat/chat_screen.dart:569:18:
-Error: Non-optional parameters can't have a default value.
-            child: Row(
-                 ^
-lib/features/chat/chat_screen.dart:591:12:
-Error: Expected '{' before this.
-          ),
-           ^
-lib/features/chat/chat_screen.dart:591:12:
-Error: Expected a class member, but got ','.
-          ),
-           ^
-lib/features/chat/chat_screen.dart:592:9:
-Error: Expected a class member, but got ']'.
-        ],
-        ^
-lib/features/chat/chat_screen.dart:592:10:
-Error: Expected a class member, but got ','.
-        ],
-         ^
-lib/features/chat/chat_screen.dart:593:7:
-Error: Expected a class member, but got ')'.
-      ),
-      ^
-lib/features/chat/chat_screen.dart:593:8:
-Error: Expected a class member, but got ','.
-      ),
-       ^
-lib/features/chat/chat_screen.dart:594:5:
-Error: Expected a class member, but got ')'.
-    );
-    ^
-lib/features/chat/chat_screen.dart:594:6:
-Error: Expected a class member, but got ';'.
-    );
-     ^
-lib/features/chat/chat_screen.dart:596:1:
-Error: Expected a declaration, but got '}'.
-}
-^
-lib/features/chat/chat_screen.dart:566:11:
-Error: 'Container' is already declared in this scope.
-          Container(
-          ^^^^^^^^^
-lib/features/chat/chat_screen.dart:533:13:
-Info: Previous declaration of 'Container'.
-            Container(
-            ^^^^^^^^^
-lib/features/chat/chat_screen.dart:532:15:
-Error: '_replyMessage' isn't a type.
-          if (_replyMessage != null)
-              ^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:32:25:
-Info: This isn't a type.
-  Map<String, dynamic>? _replyMessage; // Swipe to reply state (Use Map instead of dynamic for type safety)
-                        ^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:545:42:
-Error: Not a constant expression.
-                          "Replying to ${_replyMessage!['sender']['username']}",
-                                         ^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:544:25:
-Error: Constant expression expected.
-                        Text(
-                        ^^^^
-lib/features/chat/chat_screen.dart:549:27:
-Error: Not a constant expression.
-                          _replyMessage!['text'],
-                          ^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:548:25:
-Error: Constant expression expected.
-                        Text(
-                        ^^^^
-lib/features/chat/chat_screen.dart:543:33:
-Error: Constant expression expected.
-                      children: [
-                                ^
-lib/features/chat/chat_screen.dart:541:28:
-Error: Constant expression expected.
-                    child: Column(
-                           ^^^^^^
-lib/features/chat/chat_screen.dart:540:19:
-Error: Constant expression expected.
-                  Expanded(
-                  ^^^^^^^^
-lib/features/chat/chat_screen.dart:559:67:
-Error: Not a constant expression.
-                    onPressed: () => setState(() => _replyMessage = null),
-                                                                  ^
-lib/features/chat/chat_screen.dart:559:47:
-Error: Not a constant expression.
-                    onPressed: () => setState(() => _replyMessage = null),
-                                              ^^
-lib/features/chat/chat_screen.dart:559:38:
-Error: Method not found: 'setState'.
-                    onPressed: () => setState(() => _replyMessage = null),
-                                     ^^^^^^^^
-lib/features/chat/chat_screen.dart:559:32:
-Error: Not a constant expression.
-                    onPressed: () => setState(() => _replyMessage = null),
-                               ^^
-lib/features/chat/chat_screen.dart:557:19:
-Error: Constant expression expected.
-                  IconButton(
-                  ^^^^^^^^^^
-lib/features/chat/chat_screen.dart:537:27:
-Error: Constant expression expected.
-                children: [
-                          ^
-lib/features/chat/chat_screen.dart:536:22:
-Error: Constant expression expected.
-              child: Row(
-                     ^^^
-lib/features/chat/chat_screen.dart:524:24:
-Error: Expected ';' after this.
-                      ),
-                       ^
-lib/features/chat/chat_screen.dart:527:17:
-Error: Expected ';' after this.
-                ));
-                ^
-lib/features/chat/chat_screen.dart:527:18:
-Error: Expected an identifier, but got ')'.
-                ));
-                 ^
-lib/features/chat/chat_screen.dart:527:18:
-Error: Unexpected token ';'.
-                ));
-                 ^
-lib/features/chat/chat_screen.dart:573:33:
-Error: Not a constant expression.
-                    controller: _controller,
-                                ^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:579:77:
-Error: Constant expression expected.
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                                                                            ^^^^^^^^
-lib/features/chat/chat_screen.dart:579:77:
-Error: Cannot invoke a non-'const' constructor where a const expression is expected.
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                                                                            ^^^^^^^^
-lib/features/chat/chat_screen.dart:579:31:
-Error: Constant expression expected.
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                              ^^^^^^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:577:33:
-Error: Constant expression expected.
-                    decoration: InputDecoration(
-                                ^^^^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:572:26:
-Error: Constant expression expected.
-                  child: TextField(
-                         ^^^^^^^^^
-lib/features/chat/chat_screen.dart:571:17:
-Error: Constant expression expected.
-                Expanded(
-                ^^^^^^^^
-lib/features/chat/chat_screen.dart:586:35:
-Error: Undefined name 'context'.
-                  color: Theme.of(context).colorScheme.primary,
-                                  ^^^^^^^
-lib/features/chat/chat_screen.dart:586:32:
-Error: Method invocation is not a constant expression.
-                  color: Theme.of(context).colorScheme.primary,
-                               ^^
-lib/features/chat/chat_screen.dart:586:44:
-Error: Not a constant expression.
-                  color: Theme.of(context).colorScheme.primary,
-                                           ^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:587:30:
-Error: Not a constant expression.
-                  onPressed: _sendMessage,
-                             ^^^^^^^^^^^^
-lib/features/chat/chat_screen.dart:584:17:
-Error: Constant expression expected.
-                IconButton(
-                ^^^^^^^^^^
-lib/features/chat/chat_screen.dart:570:25:
-Error: Constant expression expected.
-              children: [
-                        ^
-lib/features/chat/chat_screen.dart:569:20:
-Error: Constant expression expected.
-            child: Row(
-                   ^^^
-lib/features/chat/chat_screen.dart:535:33:
-Error: Constant evaluation error:
-              color: Colors.grey[100],
-                                ^
-lib/features/chat/chat_screen.dart:535:33:
-Info: The method '[]' can't be invoked on 'MaterialColor {}' in a constant expression.
- - 'MaterialColor' is from 'package:flutter/src/material/colors.dart' ('/usr/local/share/flutter/packages/flutter/lib/src/material/colors.dart').
-              color: Colors.grey[100],
-                                ^
-lib/features/chat/chat_screen.dart:535:15:
-Info: While analyzing:
-              color: Colors.grey[100],
-              ^
-lib/features/chat/chat_screen.dart:537:27:
-Error: Non-constant list literal is not a constant expression.
-                children: [
-                          ^
+lib/features/marketing/create_marketing_request_screen.dart:56:15:
+Error: No named parameter with the name 'enableExif'.
+              enableExif: true,
+              ^^^^^^^^^^
+../../.pub-cache/hosted/pub.dev/image_cropper_platform_interface-7.2.0/lib/src/models/settings.dart:663:3:
+Info: Found this candidate, but the arguments don't match.
+  WebUiSettings({
+  ^^^^^^^^^^^^^
 Error: Compilation failed.
   Command: /usr/local/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/usr/local/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/matt/ffig-mobile-app/mobile_app/.dart_tool/flutter_build/d31f487c3754d411e7dc5ad3b0f84884/app.dill --packages=/Users/matt/ffig-mobile-app/mobile_app/.dart_tool/package_config.json --cfe-only /Users/matt/ffig-mobile-app/mobile_app/.dart_tool/flutter_build/d31f487c3754d411e7dc5ad3b0f84884/main.dart
 #0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
@@ -367,5 +101,5 @@ Error: Compilation failed.
 #19     main (package:flutter_tools/executable.dart:103:3)
 <asynchronous suspension>
 
-Compiling lib/main.dart for the Web...                            123,6s
+Compiling lib/main.dart for the Web...                            214,1s
 Error: Failed to compile application for the Web.

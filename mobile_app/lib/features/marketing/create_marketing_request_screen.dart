@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart'; // IMPORT ADDED
 import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
+import 'preview_marketing_post_screen.dart'; // IMPORT ADDED
 
 class CreateMarketingRequestScreen extends StatefulWidget {
   final String type; // 'Ad' or 'Promotion'
@@ -21,8 +23,8 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   final _urlInputController = TextEditingController();
   
   bool _isLoading = false;
-  File? _selectedFile;
-  dynamic _selectedBytes; // Uint8List?
+  dynamic _selectedFile; // File or CroppedFile
+  dynamic _selectedBytes; // Uint8List? for Web preview
   bool _isVideo = false;
 
   Future<void> _pickMedia(bool pickVideo) async {
@@ -32,62 +34,77 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
       : await picker.pickImage(source: ImageSource.gallery);
       
     if (xfile != null) {
-      final bytes = await xfile.readAsBytes();
-      setState(() {
-        _selectedFile = kIsWeb ? null : File(xfile.path);
-        _selectedBytes = bytes;
-        _isVideo = pickVideo;
-        _urlInputController.clear(); // Clear manual URL if file picked
-      });
+      if (!pickVideo) {
+        // CROP IMAGE
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: xfile.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Edit Image',
+              toolbarColor: Colors.black,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Edit Image',
+              aspectRatioLockEnabled: false,
+            ),
+            WebUiSettings(
+              context: context,
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+           final bytes = await croppedFile.readAsBytes();
+           setState(() {
+             _selectedFile = croppedFile; 
+             _selectedBytes = bytes;
+             _isVideo = false;
+             _urlInputController.clear();
+           });
+        }
+      } else {
+        // VIDEO (No cropping)
+        final bytes = await xfile.readAsBytes();
+        setState(() {
+          _selectedFile = kIsWeb ? null : File(xfile.path);
+          _selectedBytes = bytes;
+          _isVideo = true;
+          _urlInputController.clear();
+        });
+      }
     }
   }
 
-  Future<void> _submit() async {
+  void _goToPreview() {
     if (!_formKey.currentState!.validate()) return;
     
     // Validate media
-    if (_selectedBytes == null && _urlInputController.text.isEmpty) {
+    if (_selectedBytes == null && _urlInputController.text.isEmpty && _selectedFile == null) {
       DialogUtils.showError(context, "Media Required", "Please pick an image/video or enter a URL.");
       return;
     }
 
-    setState(() => _isLoading = true);
-    
-    try {
-       final api = AdminApiService();
-       final fields = {
-         'type': widget.type == 'Ad' ? 'AD' : 'PROMOTION',
-         'title': _titleController.text,
-         'link': _linkController.text,
-       };
+    final media = (_urlInputController.text.isNotEmpty) 
+        ? _urlInputController.text 
+        : (_selectedFile ?? _selectedBytes);
 
-       // Determine media payload
-       dynamic mediaPayload;
-       if (_urlInputController.text.isNotEmpty) {
-          mediaPayload = _urlInputController.text;
-          // Auto-detect video from URL if possible, but the API service handles string detection
-          if (mediaPayload.toLowerCase().endsWith('.mp4') || mediaPayload.toLowerCase().endsWith('.mov')) {
-             _isVideo = true;
-          }
-       } else {
-          mediaPayload = kIsWeb ? _selectedBytes : _selectedFile;
-       }
-
-       await api.createMarketingRequestWithMedia(
-          fields,
-          imageFile: !_isVideo ? mediaPayload : null,
-          videoFile: _isVideo ? mediaPayload : null,
-       );
-
-       if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request Submitted Successfully!")));
-          Navigator.pop(context);
-       }
-    } catch (e) {
-       if (mounted) DialogUtils.showError(context, "Error", e.toString());
-    } finally {
-       if (mounted) setState(() => _isLoading = false);
-    }
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (c) => PreviewMarketingPostScreen(
+           formData: {
+             'type': widget.type,
+             'title': _titleController.text,
+             'link': _linkController.text,
+           },
+           mediaFile: media,
+           isVideo: _isVideo,
+        )
+      )
+    );
   }
 
   @override
@@ -148,8 +165,8 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                      children: [
                        Expanded(child: OutlinedButton.icon(
                           onPressed: () => _pickMedia(false),
-                          icon: const Icon(Icons.image),
-                          label: const Text("Pick Image"),
+                          icon: const Icon(Icons.crop_original),
+                          label: const Text("Pick & Crop Image"),
                        )),
                        const SizedBox(width: 12),
                        Expanded(child: OutlinedButton.icon(
@@ -172,11 +189,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                             _selectedBytes = null; 
                             if (val.isNotEmpty) {
                                _selectedBytes = val; // Hack to trigger preview logic if I reused it, but better explicit
-                               // Logic above uses _selectedBytes != null check. 
-                               // Let's set _selectedBytes TO the string if it's a URL for preview?
-                               // Or just handle separately.
-                               
-                               // Actually, for simplicity, I'll rely on Image.network in preview if _selectedBytes is string?
+                               _isVideo = val.toLowerCase().endsWith('.mp4');
                             }
                          });
                       },
@@ -198,13 +211,13 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
           child: SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _submit,
+              onPressed: _goToPreview, // Changed from _submit
               style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                   backgroundColor: FfigTheme.primaryBrown,
                   foregroundColor: Colors.white,
               ),
-              child: Text(_isLoading ? "Submitting..." : "SUBMIT REQUEST"),
+              child: const Text("PREVIEW REQUEST"), // Changed Label
             ),
           ),
         ),

@@ -370,7 +370,13 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                           child: e['image_url'] != null && e['image_url'].toString().isNotEmpty
                                             ? Image.network(e['image_url'], width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (c,err,s) => const Icon(Icons.event, size: 40))
-                                            : Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.event)),
+                                            : Container(
+                                                color: Theme.of(context).brightness == Brightness.dark 
+                                                    ? Colors.grey[800] 
+                                                    : Colors.grey[200],
+                                                width: 60, height: 60, 
+                                                child: const Icon(Icons.event)
+                                              ),
                                         ),
                                         title: Text(
                                             e['title'] ?? 'No Title', 

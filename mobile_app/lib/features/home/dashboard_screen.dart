@@ -117,8 +117,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           final data = jsonDecode(response.body);
           final int currentCount = data['unread_count'];
           if (currentCount > _lastUnreadCount) {
-            final player = AudioPlayer();
-            await player.play(AssetSource('sounds/ding.mp3'));
+            // Updated count - no sound needed as Push Notification handles alerting
+            // and this prevents "startup" dings for existing unread messages.
           }
           if (mounted) setState(() => _lastUnreadCount = currentCount);
         }
