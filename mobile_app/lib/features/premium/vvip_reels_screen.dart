@@ -7,6 +7,7 @@ import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import 'share_to_chat_sheet.dart';
+import '../../shared_widgets/user_avatar.dart';
 
 class VVIPReelsScreen extends StatefulWidget {
   const VVIPReelsScreen({super.key});
@@ -499,9 +500,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                                  }
 
                                  return ListTile(
-                                     leading: CircleAvatar(
-                                         backgroundImage: photoUrl != null && photoUrl.toString().isNotEmpty ? NetworkImage(photoUrl) : null,
-                                         child: photoUrl == null || photoUrl.toString().isEmpty ? Text(com['username'][0].toUpperCase()) : null,
+                                     leading: UserAvatar(
+                                       radius: 20,
+                                       imageUrl: photoUrl, // already corrected above
+                                       username: com['username'],
                                      ),
                                      title: Text(com['username'], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor)),
                                      subtitle: Text(com['content'], style: TextStyle(color: subTextColor)),

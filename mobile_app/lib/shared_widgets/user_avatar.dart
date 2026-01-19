@@ -46,7 +46,10 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Hack: Ignore the Backend's default "Yellow" UI Avatar so we can use our own Themed one.
-    bool useUrl = imageUrl != null && imageUrl!.isNotEmpty && !imageUrl!.contains("ui-avatars.com");
+    bool useUrl = imageUrl != null && 
+                  imageUrl!.isNotEmpty && 
+                  imageUrl != "null" &&
+                  !imageUrl!.contains("ui-avatars.com");
 
     final bgColor = backgroundColor ?? FfigTheme.primaryBrown.withOpacity(0.1);
     final txtColor = textColor ?? FfigTheme.primaryBrown;

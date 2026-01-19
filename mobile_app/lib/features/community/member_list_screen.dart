@@ -287,7 +287,13 @@ class _MemberListScreenState extends State<MemberListScreen> {
                           padding: const EdgeInsets.all(2), // Space for border
                           child: UserAvatar(
                             radius: 28,
-                            imageUrl: member['photo'] ?? member['photo_url'],
+                            imageUrl: () {
+                              var url = member['photo'] ?? member['photo_url'];
+                              if (url != null && url.toString().startsWith('/')) {
+                                return '${baseUrl.replaceAll('/api/', '')}$url';
+                              }
+                              return url;
+                            }(),
                             username: member['username'],
                             // member list often doesn't return full name in simple view, 
                             // check if your API returns first_name/last_name. 

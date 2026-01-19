@@ -389,13 +389,15 @@ class _DashboardScreenState extends State<DashboardScreen>
             // Ensure ID is string safely
             final Map<String, dynamic> data = Map<String, dynamic>.from(json);
             data['id'] = data['id'].toString();
-            if (data.containsKey('image')) {
+            if (data['image'] != null) {
                var url = data['image'].toString();
-               final domain = baseUrl.replaceAll('/api/', '');
-               if (url.startsWith('/')) {
-                 data['image_url'] = '$domain$url';
-               } else {
-                 data['image_url'] = url;
+               if (url.isNotEmpty && url != "null") {
+                 final domain = baseUrl.replaceAll('/api/', '');
+                 if (url.startsWith('/')) {
+                   data['image_url'] = '$domain$url';
+                 } else {
+                   data['image_url'] = url;
+                 }
                }
             }
             return HeroItem.fromJson(data);
@@ -409,12 +411,14 @@ class _DashboardScreenState extends State<DashboardScreen>
             );
             data['id'] = data['id'].toString();
             final domain = baseUrl.replaceAll('/api/', '');
-            if (data.containsKey('photo')) {
+            if (data['photo'] != null) {
               var url = data['photo'].toString();
-              if (url.startsWith('/')) {
-                data['photo_url'] = '$domain$url';
-              } else {
-                 data['photo_url'] = url;
+              if (url.isNotEmpty && url != "null") {
+                if (url.startsWith('/')) {
+                  data['photo_url'] = '$domain$url';
+                } else {
+                  data['photo_url'] = url;
+                }
               }
             }
             _founderProfile = FounderProfile.fromJson(data);
