@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart'; 
+import 'package:image_cropper/image_cropper.dart'; 
 import 'package:country_picker/country_picker.dart'; 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; 
 import '../../core/api/constants.dart'; 
@@ -93,13 +94,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     
     if (image != null) {
+      _cropImage(image);
+    }
+  }
+
+  Future<void> _cropImage(XFile imageFile) async {
+    try {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: imageFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+              toolbarTitle: 'Edit Photo',
+              toolbarColor: Colors.black,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true),
+          IOSUiSettings(
+            title: 'Edit Photo',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+          WebUiSettings(
+            context: context,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _pickedImage = XFile(croppedFile.path);
+        });
+      }
+    } catch (e) {
+      print("Cropping error: $e");
+      // Fallback to original image if cropping fails or is not supported
       setState(() {
-        _pickedImage = image;
+        _pickedImage = imageFile;
       });
     }
   }
