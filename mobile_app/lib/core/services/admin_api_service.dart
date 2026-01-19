@@ -445,6 +445,15 @@ class AdminApiService {
        if (response.statusCode != 204) throw Exception('Failed to delete request');
   }
 
+  Future<void> deleteAdminMarketingRequest(int id) async {
+       final token = await _getToken();
+       final response = await http.delete(
+          Uri.parse('${baseUrl}admin/approvals/marketing/$id/'),
+          headers: {'Authorization': 'Bearer $token'}
+       );
+       if (response.statusCode != 204) throw Exception('Failed to delete request (Admin)');
+  }
+
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)
   Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
     final token = await _getToken();

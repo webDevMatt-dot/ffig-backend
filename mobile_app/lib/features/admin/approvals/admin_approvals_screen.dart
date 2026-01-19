@@ -193,7 +193,7 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
 
          setState(() => _isLoading = true);
          try {
-             await _api.deleteMarketingRequest(id);
+             await _api.deleteAdminMarketingRequest(id);
              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deleted!")));
              _load(); 
          } catch (e) {

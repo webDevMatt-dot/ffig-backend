@@ -796,7 +796,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                       // Membership Status Tile
                       Expanded(
                         child: BentoTile(
-                          title: _isPremium ? "Premium" : "Standard",
+                          title: _isPremium
+                              ? "Premium"
+                              : (MembershipService.isStandard
+                                  ? "Standard"
+                                  : "Free"),
                           subtitle: "Membership",
                           height: 160,
                           color: _isPremium
