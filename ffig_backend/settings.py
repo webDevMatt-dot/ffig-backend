@@ -186,19 +186,20 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  <-- Removed to avoid conflict
 
 # Media Files (User Uploads)
+# Media Files (User Uploads)
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'eu-north-1')
 
 if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
+    print(f"🚀 Storage Configured: AWS S3 (Bucket: {AWS_STORAGE_BUCKET_NAME})")
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
             "OPTIONS": {
                 "bucket_name": AWS_STORAGE_BUCKET_NAME,
                 "region_name": AWS_S3_REGION_NAME,
-                # "default_acl": "public-read", <--- Removed ACL
                 "default_acl": None, 
                 "querystring_auth": False,
                 "object_parameters": {
@@ -213,6 +214,14 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
     MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
 else:
     # Local Storage fallback
+    print("⚠️  WARNING: AWS Keys missing. Falling back to Local Storage (FileSystem).")
+    
+    # SAFETY CHECK: If on Render (Production) but keys are missing, WARN LOUDLY or FAIL.
+    if os.environ.get('RENDER'):
+        print("❌ CRITICAL: Running on Render without AWS Keys! Uploads will be LOST on redeploy.")
+        # Uncomment the next line to strictly enforce S3 on production (Recommended)
+        # raise RuntimeError("🔥 FATAL: AWS Credentials missing in Production! Add AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME.")
+
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
