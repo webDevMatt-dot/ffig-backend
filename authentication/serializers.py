@@ -98,6 +98,23 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier', 'profile']
+        extra_kwargs = {
+            'username': {'validators': []},  # Remove default UniqueValidator to handle updates manually
+        }
+
+    def validate(self, data):
+        # Custom uniqueness check for username
+        if 'username' in data:
+            username = data['username']
+            # Check if username exists for ANY OTHER user (exclude self)
+            qs = User.objects.filter(username__iexact=username)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            if qs.exists():
+                raise serializers.ValidationError({"username": "A user with that username already exists."})
+        
+        return data
 
     def update(self, instance, validated_data):
         # Handle nested profile update
