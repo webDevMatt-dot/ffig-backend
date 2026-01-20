@@ -115,6 +115,8 @@ class UserSerializer(serializers.ModelSerializer):
             
             if 'tier' in profile_data:
                 instance.profile.tier = profile_data['tier']
+                # Sync deprecated is_premium flag
+                instance.profile.is_premium = (profile_data['tier'] == 'PREMIUM')
                 updated = True
                 
             if updated:
