@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'chat',
     'home',
     'storages',
+    'core',
 ]
 
 MIDDLEWARE = [
