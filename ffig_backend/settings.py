@@ -202,7 +202,7 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
                 "bucket_name": AWS_STORAGE_BUCKET_NAME,
                 "region_name": AWS_S3_REGION_NAME,
                 "default_acl": None, 
-                "querystring_auth": False,
+                "querystring_auth": True,
                 "object_parameters": {
                     "CacheControl": "max-age=86400",
                 },

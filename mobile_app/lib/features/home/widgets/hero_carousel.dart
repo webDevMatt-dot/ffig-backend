@@ -49,9 +49,18 @@ class HeroCarousel extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   image: DecorationImage(
-                    image: NetworkImage(item.imageUrl),
+                    image: item.imageUrl.isNotEmpty 
+                        ? NetworkImage(item.imageUrl) as ImageProvider
+                        : const AssetImage('assets/images/placeholder.png'), // Fallback
                     fit: BoxFit.cover,
+                    onError: (exception, stackTrace) {
+                        // Handle error silently or show placeholder
+                        // Since DecorationImage doesn't support onError easily like Image.network, 
+                        // we might need a different approach or just accept it.
+                        // Ideally use CachedNetworkImage with errorWidget.
+                    }
                   ),
+                  color: Colors.grey[300], // Background if image fails loading
                 ),
                 child: Container(
                   decoration: BoxDecoration(

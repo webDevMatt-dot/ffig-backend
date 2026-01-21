@@ -6,10 +6,17 @@ class InstagramMessageInput extends StatefulWidget {
   final Function(String) onSend;
   final TextEditingController? controller;
 
+  final VoidCallback? onCameraTap;
+  final VoidCallback? onGalleryTap;
+  final VoidCallback? onMicTap;
+
   const InstagramMessageInput({
     super.key,
     required this.onSend,
     this.controller,
+    this.onCameraTap,
+    this.onGalleryTap,
+    this.onMicTap,
   });
 
   @override
@@ -85,15 +92,15 @@ class _InstagramMessageInputState extends State<InstagramMessageInput> {
           children: [
             // Camera Button (Left Accent)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6, right: 8),
+              padding: const EdgeInsets.only(bottom: 6, right: 12), // Increased spacing
               child: GestureDetector(
                 onTap: () {
-                  // TODO: Handle Camera Action
+                  widget.onCameraTap?.call();
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: const BoxDecoration(
-                    color: Colors.cyan, // Instagram-like accent
+                    color: FfigTheme.primaryBrown, // Theme Color
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
@@ -147,14 +154,14 @@ class _InstagramMessageInputState extends State<InstagramMessageInput> {
                             children: [
                                IconButton(
                                  icon: Icon(Icons.mic, color: iconColor, size: 22),
-                                 onPressed: () {},
+                                 onPressed: widget.onMicTap,
                                  padding: EdgeInsets.zero,
                                  constraints: const BoxConstraints(),
                                ).animate().fade(),
                                const SizedBox(width: 12),
                                IconButton(
                                  icon: Icon(Icons.image, color: iconColor, size: 22),
-                                 onPressed: () {},
+                                 onPressed: widget.onGalleryTap,
                                  padding: EdgeInsets.zero,
                                  constraints: const BoxConstraints(),
                                ).animate().fade(),
@@ -172,13 +179,13 @@ class _InstagramMessageInputState extends State<InstagramMessageInput> {
 
                     if (_isTyping)
                        Padding(
-                         padding: const EdgeInsets.only(bottom: 5, right: 8), // Align with text
+                         padding: const EdgeInsets.only(bottom: 10.5, right: 12), // Align with text baseline (10 vertical padding + adjustment)
                          child: GestureDetector(
                            onTap: _handleSend,
                            child: Text(
                              "Send", 
                              style: TextStyle(
-                               color: Colors.cyan[400], // Match Camera accent or Brand
+                               color: FfigTheme.primaryBrown, // Theme Color
                                fontWeight: FontWeight.bold,
                                fontSize: 15
                              )

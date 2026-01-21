@@ -44,31 +44,15 @@ class MessageSerializer(serializers.ModelSerializer):
         if not obj.attachment:
             return None
         
-        # If in development or using local storage, return the direct URL
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
-            try:
-                request = self.context.get('request')
-                return request.build_absolute_uri(obj.attachment.url)
-            except:
-                return obj.attachment.url
-
-        # Generate Presigned URL for S3
+        request = self.context.get('request')
         try:
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.attachment.name},
-                ExpiresIn=3600 # 1 Hour
-            )
-            return url
-        except Exception as e:
-            # Fallback
-            return None
+             url = obj.attachment.url
+             # If local storage, ensure absolute URI
+             if url.startswith('/'):
+                 if request: return request.build_absolute_uri(url)
+             return url
+        except:
+             return None
 
     def get_is_read(self, obj):
         # 1. Start with actual DB status

@@ -9,6 +9,9 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart'; // For Clipboard
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:http_parser/http_parser.dart'; // For MediaType
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
@@ -144,42 +147,104 @@ class _ChatScreenState extends State<ChatScreen> {
       return null;
   }
 
-  Future<void> _sendMessage() async {
-    if (_controller.text.isEmpty) return;
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 70
+      );
+      
+      if (image != null) {
+        // Send immediately for now (Instagram style often sends immediately or previews)
+        // For simplicity, let's just send it immediately as a "media message"
+        // But usually we want a caption?
+        // Let's implement immediate send for MVP, or better: 
+        // Show preview dialog? 
+        // User asked for "image funtions", let's do direct send for MVP or add to input?
+        // "Instagram" usually adds to input or goes to separate screen.
+        // Let's just send strictly the image using _sendMessage with the file.
+        _sendMessage(attachment: File(image.path), type: 'image');
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to pick image")));
+    }
+  }
+
+  Future<void> _sendMessage({File? attachment, String type = 'text'}) async {
+    if (attachment == null && _controller.text.isEmpty) return;
+    
     final text = _controller.text;
-    _controller.clear(); // Clear input immediately for UX
-    // Optimistic Update could go here for even faster feel
+    if (attachment == null) _controller.clear(); // Clear text if sending text
+    
+    // For Mixed (Text + Image), clear text too
+    if (attachment != null && text.isNotEmpty) _controller.clear(); 
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
     final String url = '${baseUrl}chat/messages/send/';
 
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': text,
-          'recipient_id': widget.recipientId, // Used for the FIRST message
-          'conversation_id': _activeConversationId, // Used for replies
-          if (_replyMessage != null) 'reply_to_id': _replyMessage!['id']
-        }),
-      );
+      // Use Multipart if attachment present
+      if (attachment != null) {
+          final request = http.MultipartRequest('POST', Uri.parse(url));
+          request.headers['Authorization'] = 'Bearer $token';
+          
+          request.fields['message_type'] = type;
+          if (text.isNotEmpty) request.fields['text'] = text;
+          if (widget.recipientId != null) request.fields['recipient_id'] = widget.recipientId.toString();
+          if (_activeConversationId != null) request.fields['conversation_id'] = _activeConversationId.toString();
+          if (_replyMessage != null) request.fields['reply_to_id'] = _replyMessage!['id'].toString();
 
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        // If this was a new chat, we now have an ID!
-        if (_activeConversationId == null) {
-          setState(() => _activeConversationId = data['conversation_id']);
+          // Add File
+          request.files.add(await http.MultipartFile.fromPath(
+            'attachment',
+            attachment.path,
+            contentType: MediaType('image', 'jpeg'), // Assume JPEG from picker for now
+          ));
+          
+          final streamedResponse = await request.send();
+          final response = await http.Response.fromStream(streamedResponse);
+          
+          if (response.statusCode == 201) {
+             final data = jsonDecode(response.body);
+              if (_activeConversationId == null) {
+                setState(() => _activeConversationId = data['conversation_id']);
+              }
+              setState(() { _replyMessage = null; });
+              _fetchMessages(silent: true);
+          } else {
+             if (kDebugMode) print("Upload failed: ${response.statusCode} - ${response.body}");
+             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to send image.")));
+          }
+
+      } else {
+        // Standard JSON (Text Only)
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'text': text,
+            'recipient_id': widget.recipientId,
+            'conversation_id': _activeConversationId,
+            'reply_to_id': _replyMessage != null ? _replyMessage!['id'] : null
+          }),
+        );
+
+        if (response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          if (_activeConversationId == null) {
+            setState(() => _activeConversationId = data['conversation_id']);
+          }
+          setState(() { _replyMessage = null; });
+          _fetchMessages(silent: true);
         }
-        setState(() {
-            _replyMessage = null;
-        });
-        _fetchMessages(silent: true); // Refresh immediately
       }
     } catch (e) {
       if (kDebugMode) print(e);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error sending message.")));
     }
-
   }
 
   void _toggleSearch() {
@@ -790,6 +855,27 @@ class _ChatScreenState extends State<ChatScreen> {
                                               ),
                                           ),
                                       
+                                      // SHOW IMAGE ATTACHMENT
+                                      if (msg['attachment_url'] != null)
+                                          GestureDetector(
+                                            onTap: () {
+                                              // TODO: Fullscreen Image
+                                            },
+                                            child: Container(
+                                              margin: const EdgeInsets.only(bottom: 8),
+                                              constraints: const BoxConstraints(maxHeight: 200),
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(8),
+                                                image: DecorationImage(
+                                                  image: NetworkImage(msg['attachment_url']),
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                              width: double.infinity,
+                                              height: 150,
+                                            ),
+                                          ),
+                                      
                                       Linkify(
                                         onOpen: _onOpenLink,
                                         text: msg['text'],
@@ -867,17 +953,20 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           
           // Input Bar
+          const SizedBox(height: 8),
           InstagramMessageInput(
             controller: _controller,
             onSend: (text) {
-              // The controller is already managed by the widget for typing state,
-              // but we need to ensure _sendMessage uses the text or the controller correctly.
-              // Since _sendMessage uses _controller.text, and the widget uses the passed controller,
-              // we just need to trigger the send logic.
               if (_controller.text.isEmpty) {
-                  _controller.text = text; // Sync if needed, though they share the controller instance
+                  _controller.text = text; 
               }
               _sendMessage();
+            },
+            onCameraTap: () => _pickImage(ImageSource.camera),
+            onGalleryTap: () => _pickImage(ImageSource.gallery),
+            onMicTap: () {
+                // TODO: Implement Voice Note Recording
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Voice notes coming soon!")));
             },
           ),
         ],

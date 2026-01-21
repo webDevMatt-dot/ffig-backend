@@ -17,13 +17,13 @@ class HeroItemSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         if not obj.image: return None
-        # S3 Check & Presign
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
-                try: return obj.image.url
-                except: return None
+        request = self.context.get('request')
         try:
-            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
-            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.image.name}, ExpiresIn=3600)
+             url = obj.image.url
+             # If local storage, ensure absolute URI
+             if url.startswith('/'):
+                 return request.build_absolute_uri(url)
+             return url
         except: return None
 
 class FounderProfileSerializer(serializers.ModelSerializer):
@@ -36,25 +36,12 @@ class FounderProfileSerializer(serializers.ModelSerializer):
     def get_photo(self, obj):
         # 1. Use uploaded photo if available
         if obj.photo:
-            # S3 Check & Presign
-            if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(obj.photo.url)
-                return obj.photo.url
-
             try:
-                s3_client = boto3.client(
-                    's3',
-                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                    region_name=settings.AWS_S3_REGION_NAME
-                )
-                return s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.photo.name},
-                    ExpiresIn=3600
-                )
+                url = obj.photo.url
+                if url.startswith('/'):
+                    request = self.context.get('request')
+                    if request: return request.build_absolute_uri(url)
+                return url
             except:
                 return None
             

@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .models import Event, Ticket, TicketTier
+from django.utils import timezone
 from .models import Event, Ticket, TicketTier, EventSpeaker, AgendaItem, EventFAQ
 from .serializers import EventSerializer, TicketSerializer, TicketTierSerializer, EventSpeakerSerializer, AgendaItemSerializer, EventFAQSerializer
 
@@ -21,10 +22,11 @@ class EventListView(generics.ListCreateAPIView):
     
     def get_queryset(self):
         user = self.request.user
-        # Check if authenticated AND staff to see hidden events
         if user.is_authenticated and user.is_staff: 
             return Event.objects.all().order_by('date')
-        return Event.objects.filter(is_active=True).order_by('date')
+            
+        # Filter for UPCOMING events only
+        return Event.objects.filter(is_active=True, date__gte=timezone.now().date()).order_by('date')
 
 # 2. Get Single Event Details
 # 2. Get Single Event Details (Retrieve & Update)

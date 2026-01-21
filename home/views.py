@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
 from .serializers import (
     HeroItemSerializer, FounderProfileSerializer, 
@@ -15,6 +16,7 @@ class BaseHomeViewSet(viewsets.ModelViewSet):
 
 class HeroItemViewSet(BaseHomeViewSet):
     serializer_class = HeroItemSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     
     def get_queryset(self):
         # Admins see everything, Users see only active
@@ -24,6 +26,7 @@ class HeroItemViewSet(BaseHomeViewSet):
 
 class FounderProfileViewSet(BaseHomeViewSet):
     serializer_class = FounderProfileSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     
     def get_queryset(self):
         if self.request.user and self.request.user.is_staff:

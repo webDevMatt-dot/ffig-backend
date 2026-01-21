@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from core.permissions import IsPremiumUser, IsStandardUser
@@ -127,7 +127,7 @@ class UnreadCountView(APIView):
 # 3. Send a message (Auto-creates conversation if needed)
 class SendMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser) # Enable file uploads
+    parser_classes = (MultiPartParser, FormParser, JSONParser) # Enable file uploads and JSON
 
     def post(self, request):
         recipient_id = request.data.get('recipient_id')

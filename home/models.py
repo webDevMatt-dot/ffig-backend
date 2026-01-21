@@ -1,4 +1,7 @@
 from django.db import models
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 class HeroItem(models.Model):
     TYPE_CHOICES = [
@@ -19,6 +22,26 @@ class HeroItem(models.Model):
 
     class Meta:
         ordering = ['order', '-created_at']
+
+    def save(self, *args, **kwargs):
+        # Compression Logic
+        if self.image:
+             try:
+                img = Image.open(self.image)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize max dimension to 1024
+                img.thumbnail((1024, 1024))
+                
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85) # High quality for Hero
+                output.seek(0)
+                
+                self.image = ContentFile(output.read(), name=self.image.name.split('/')[-1])
+             except Exception:
+                pass 
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -67,11 +90,27 @@ class FounderProfile(models.Model):
                 if user_profile.tier == 'PREMIUM':
                     self.is_premium = True
                 
-                # Note: Handling ImageField copying is tricky without duplicating files.
-                # For now, we'll leave photo manual or rely on frontend to fallback to user photo URL if this is empty.
-                
             except Exception as e:
                 print(f"Error populating FounderProfile from User: {e}")
+        
+        # Compression Logic
+        if self.photo:
+             try:
+                img = Image.open(self.photo)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize max dimension to 1024
+                img.thumbnail((1024, 1024))
+                
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                
+                # Use split to get filename only
+                self.photo = ContentFile(output.read(), name=self.photo.name.split('/')[-1])
+             except Exception:
+                pass 
 
         super().save(*args, **kwargs)
 
