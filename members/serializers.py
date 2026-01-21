@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
+import boto3
 
 class ProfileSerializer(serializers.ModelSerializer):
     # Fetch the username from the related User model
@@ -64,16 +66,68 @@ class ProfileSerializer(serializers.ModelSerializer):
         return (timezone.now() - obj.last_seen) < timedelta(minutes=5)
 
     def get_photo_url(self, obj):
-        if obj.photo:
-            return obj.photo.url
-        return obj.photo_url
+        if not obj.photo:
+            return obj.photo_url
+
+        # Check for S3
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+            try:
+                request = self.context.get('request')
+                return request.build_absolute_uri(obj.photo.url)
+            except:
+                return obj.photo.url
+
+        # Generate Presigned URL
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.photo.name},
+                ExpiresIn=3600 # 1 Hour
+            )
+            return url
+        except Exception:
+            return None
 
 
 class BusinessProfileSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = BusinessProfile
         fields = '__all__'
         read_only_fields = ['user', 'status', 'feedback']
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+        
+        # S3 Check & Presign
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                try:
+                    return obj.logo.url
+                except:
+                    return None
+
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            return s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.logo.name},
+                ExpiresIn=3600
+            )
+        except:
+            return None
 
 class AdminBusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -101,9 +155,24 @@ class MarketingCommentSerializer(serializers.ModelSerializer):
     def get_photo_url(self, obj):
         try:
             profile = obj.user.profile
-            if profile.photo:
-                return profile.photo.url
-            return profile.photo_url
+            if not profile.photo:
+                return profile.photo_url
+            
+            # S3 Check & Presign
+            if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                 return profile.photo.url
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            return s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': profile.photo.name},
+                ExpiresIn=3600
+            )
         except:
             return None
 
@@ -113,10 +182,12 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     username = serializers.CharField(source='user.username', read_only=True)
     user_photo = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
 
     class Meta:
         model = MarketingRequest
-        fields = '__all__'
+        fields = ['id', 'user', 'type', 'title', 'image', 'image_url', 'video', 'video_url', 'link', 'status', 'feedback', 'created_at', 'likes_count', 'comments_count', 'is_liked', 'username', 'user_photo']
         read_only_fields = ['user', 'status', 'feedback']
 
     def get_likes_count(self, obj):
@@ -134,11 +205,48 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
     def get_user_photo(self, obj):
         try:
             profile = obj.user.profile
-            if profile.photo:
-                return profile.photo.url
-            return profile.photo_url
+            if not profile.photo:
+                return profile.photo_url
+            
+            # S3 Check & Presign
+            if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                 return profile.photo.url
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            return s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': profile.photo.name},
+                ExpiresIn=3600
+            )
         except:
             return None
+
+    def get_image_url(self, obj):
+        if not obj.image: return None
+        # S3 Check & Presign
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                try: return obj.image.url
+                except: return None
+        try:
+            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
+            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.image.name}, ExpiresIn=3600)
+        except: return None
+
+    def get_video_url(self, obj):
+        if not obj.video: return None
+        # S3 Check & Presign
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                try: return obj.video.url
+                except: return None
+        try:
+            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
+            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.video.name}, ExpiresIn=3600)
+        except: return None
 
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()

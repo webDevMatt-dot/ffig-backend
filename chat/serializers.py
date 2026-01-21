@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Conversation, Message
+import boto3
+from django.conf import settings
 
 # A simple User serializer for chat participants
 class ChatUserSerializer(serializers.ModelSerializer):
@@ -27,12 +29,46 @@ class MessageSerializer(serializers.ModelSerializer):
     reply_to_id = serializers.PrimaryKeyRelatedField(
         queryset=Message.objects.all(), source='reply_to', write_only=True, required=False, allow_null=True
     )
-
     is_read = serializers.SerializerMethodField()
+    
+    # Media Fields
+    attachment = serializers.FileField(write_only=True, required=False) # For input
+    attachment_url = serializers.SerializerMethodField() # For output
+    message_type = serializers.CharField(required=False)
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read']
+        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read', 'message_type', 'attachment', 'attachment_url']
+
+    def get_attachment_url(self, obj):
+        if not obj.attachment:
+            return None
+        
+        # If in development or using local storage, return the direct URL
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+            try:
+                request = self.context.get('request')
+                return request.build_absolute_uri(obj.attachment.url)
+            except:
+                return obj.attachment.url
+
+        # Generate Presigned URL for S3
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.attachment.name},
+                ExpiresIn=3600 # 1 Hour
+            )
+            return url
+        except Exception as e:
+            # Fallback
+            return None
 
     def get_is_read(self, obj):
         # 1. Start with actual DB status

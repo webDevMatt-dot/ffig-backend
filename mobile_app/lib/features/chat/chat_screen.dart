@@ -13,6 +13,7 @@ import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../community/public_profile_screen.dart';
+import 'widgets/instagram_message_input.dart';
 
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
@@ -866,31 +867,18 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           
           // Input Bar
-          Container(
-            padding: const EdgeInsets.all(8),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: Theme.of(context).colorScheme.primary,
-                  onPressed: _sendMessage,
-                ),
-              ],
-            ),
+          InstagramMessageInput(
+            controller: _controller,
+            onSend: (text) {
+              // The controller is already managed by the widget for typing state,
+              // but we need to ensure _sendMessage uses the text or the controller correctly.
+              // Since _sendMessage uses _controller.text, and the widget uses the passed controller,
+              // we just need to trigger the send logic.
+              if (_controller.text.isEmpty) {
+                  _controller.text = text; // Sync if needed, though they share the controller instance
+              }
+              _sendMessage();
+            },
           ),
         ],
       ),

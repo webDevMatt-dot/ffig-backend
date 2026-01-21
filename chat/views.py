@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from core.permissions import IsPremiumUser, IsStandardUser
@@ -126,31 +127,31 @@ class UnreadCountView(APIView):
 # 3. Send a message (Auto-creates conversation if needed)
 class SendMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser) # Enable file uploads
 
     def post(self, request):
         recipient_id = request.data.get('recipient_id')
         text = request.data.get('text')
         conversation_id = request.data.get('conversation_id')
+        
+        # New: Handle Attachment
+        attachment = request.FILES.get('attachment')
+        message_type = request.data.get('message_type', 'text')
 
         sender = request.user
 
         # Scenario A: Sending to an existing conversation
         if conversation_id:
-            # We need to filter by participants to ensure the sender is part of it
-            # But simpler for now: just get the object
             conversation = get_object_or_404(Conversation, id=conversation_id)
             if not conversation.is_public and sender not in conversation.participants.all():
                  return Response({"error": "You are not a participant"}, status=403)
             
             # BLOCKING CHECK (For 1-on-1 chats)
             if not conversation.is_public and conversation.participants.count() == 2:
-                # Identify the other person
                 recipient = conversation.participants.exclude(id=sender.id).first()
                 if recipient:
-                    # check if recipient blocked me
                     if hasattr(recipient, 'profile') and sender in recipient.profile.blocked_users.all():
                         return Response({"error": "You cannot send messages to this user."}, status=403)
-                    # check if I blocked recipient (optional, but good UX to prevent sending)
                     if hasattr(sender, 'profile') and recipient in sender.profile.blocked_users.all():
                         return Response({"error": "You have blocked this user. Unblock to send messages."}, status=403)
 
@@ -164,7 +165,6 @@ class SendMessageView(APIView):
             if hasattr(sender, 'profile') and recipient in sender.profile.blocked_users.all():
                 return Response({"error": "You have blocked this user. Unblock to send messages."}, status=403)
 
-            # Check if conversation already exists
             conversation = Conversation.objects.filter(participants=sender).filter(participants=recipient).first()
             if not conversation:
                 conversation = Conversation.objects.create()
@@ -174,12 +174,22 @@ class SendMessageView(APIView):
 
         # Create the message
         reply_id = request.data.get('reply_to_id')
-        Message.objects.create(conversation=conversation, sender=sender, text=text, reply_to_id=reply_id)
+        
+        # We can use the Serializer to validate, OR valid manually since we have file handling custom logic in Model
+        # Let's create manually for strict control over Blocking logic above, which Serializer doesn't know about easily
+        msg = Message.objects.create(
+            conversation=conversation, 
+            sender=sender, 
+            text=text, 
+            reply_to_id=reply_id,
+            attachment=attachment,
+            message_type=message_type
+        )
 
-        # Update timestamp
-        conversation.save() 
-
-        return Response({"status": "Message sent", "conversation_id": conversation.id}, status=201)
+        conversation.save() # Update timestamp
+        
+        # Return serialized data including URL
+        return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
 
 # 4. Get/Create Global Community Chat
 class CommunityChatView(APIView):
