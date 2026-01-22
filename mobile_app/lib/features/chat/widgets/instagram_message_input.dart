@@ -118,7 +118,7 @@ class _InstagramMessageInputState extends State<InstagramMessageInput> {
                     color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade300
                   )
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), // Increased from 4/2
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -179,7 +179,7 @@ class _InstagramMessageInputState extends State<InstagramMessageInput> {
 
                     if (_isTyping)
                        Padding(
-                         padding: const EdgeInsets.only(bottom: 10.5, right: 12), // Align with text baseline (10 vertical padding + adjustment)
+                         padding: const EdgeInsets.only(bottom: 10.5, right: 8), // Adjusted right padding
                          child: GestureDetector(
                            onTap: _handleSend,
                            child: Text(
