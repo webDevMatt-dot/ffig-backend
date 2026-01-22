@@ -30,6 +30,8 @@ class BentoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
+    final isDark = theme.brightness == Brightness.dark;
+
     Widget content = Container(
       width: width ?? double.infinity,
       height: height,
@@ -38,15 +40,18 @@ class BentoTile extends StatelessWidget {
         color: color ?? theme.cardTheme.color,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
           width: 1,
         ),
         gradient: isGlass ? LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
+          colors: isDark ? [
             const Color(0xFF2C2C2C).withOpacity(0.4),
             const Color(0xFF0D1117).withOpacity(0.6),
+          ] : [
+            Colors.white.withOpacity(0.6),
+            Colors.white.withOpacity(0.4),
           ],
         ) : null,
       ),
@@ -60,13 +65,13 @@ class BentoTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: isDark ? Colors.white.withOpacity(0.05) : FfigTheme.primaryBrown.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: icon,
                 ),
               if (icon != null) const Spacer(),
-              const Icon(Icons.arrow_outward, color: Colors.grey, size: 16),
+              Icon(Icons.arrow_outward, color: isDark ? Colors.grey : Colors.grey[400], size: 16),
             ],
           ),
           if (icon != null) const SizedBox(height: 16),
@@ -84,7 +89,8 @@ class BentoTile extends StatelessWidget {
               subtitle!,
               style: GoogleFonts.inter(
                 fontSize: 12,
-                color: Colors.grey,
+                color: isDark ? Colors.grey : Colors.black54, // Darker text for light mode
+                fontWeight: isDark ? FontWeight.normal : FontWeight.w500,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
