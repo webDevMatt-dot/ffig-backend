@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'event_detail_screen.dart';
+import 'event_detail_screen.dart';
 import '../../core/api/constants.dart'; // Import the details screen
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:intl/intl.dart';
 
@@ -83,7 +85,7 @@ class _EventsScreenState extends State<EventsScreen> {
       ),
       children: [
         // Upcoming Events Section
-        ..._buildEventSection(upcomingEvents, "EVENTS", context),
+        ..._buildEventSection(upcomingEvents, "UPCOMING EVENTS", context),
 
         // Past Events Section
         if (pastEvents.isNotEmpty) ...[
@@ -140,11 +142,13 @@ class _EventsScreenState extends State<EventsScreen> {
               children: [
                 Stack(
                   children: [
-                    Image.network(
-                      event['image_url'],
+                    CachedNetworkImage(
+                      imageUrl: event['image_url'],
                       height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(color: Colors.grey[200]),
+                      errorWidget: (context, url, error) => const Icon(Icons.error),
                     ),
                     // Date / Category Label (Top Right)
                     Positioned(

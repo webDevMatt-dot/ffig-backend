@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ticket_flow/ticket_selection_screen.dart';
 import '../../core/services/membership_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final Map<String, dynamic> event;
@@ -67,7 +68,12 @@ class EventDetailScreen extends StatelessWidget {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                       Image.network(event['image_url'], fit: BoxFit.cover, errorBuilder: (_,__,___)=> Container(color: Colors.grey)),
+                       CachedNetworkImage(
+                         imageUrl: event['image_url'],
+                         fit: BoxFit.cover,
+                         placeholder: (_,__) => Container(color: Colors.grey[200]),
+                         errorWidget: (_,__,___) => Container(color: Colors.grey),
+                       ),
                        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]))),
                     ],
                   ),
@@ -233,7 +239,7 @@ class EventDetailScreen extends StatelessWidget {
                children: [
                  CircleAvatar(
                    radius: 30,
-                   backgroundImage: (s['photo_url'] != null) ? NetworkImage(s['photo_url']) : null,
+                   backgroundImage: (s['photo_url'] != null) ? CachedNetworkImageProvider(s['photo_url']) : null,
                    child: (s['photo_url'] == null) ? Text(s['name'][0]) : null,
                  ),
                  const SizedBox(width: 16),
