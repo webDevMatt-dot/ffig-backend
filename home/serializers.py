@@ -13,16 +13,22 @@ class HeroItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = HeroItem
-        fields = '__all__'
+        fields = ['id', 'title', 'image', 'image_url', 'type', 'action_url', 'is_active', 'order', 'created_at']
 
     def get_image_url(self, obj):
         if not obj.image: return None
         request = self.context.get('request')
         try:
              url = obj.image.url
-             # If local storage, ensure absolute URI
-             if url.startswith('/'):
+             # Always return absolute URLs for consistency
+             if request and url.startswith('/'):
                  return request.build_absolute_uri(url)
+             # If no request context, construct absolute URL manually
+             if url.startswith('/') and not request:
+                 from django.conf import settings
+                 import os
+                 domain = os.environ.get('SITE_URL', 'https://ffig-backend-ti5w.onrender.com')
+                 return f"{domain}{url}"
              return url
         except: return None
 
@@ -31,16 +37,26 @@ class FounderProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = FounderProfile
-        fields = '__all__'
+        fields = ['id', 'user', 'name', 'photo', 'photo_url', 'bio', 'country', 'business_name', 'is_premium', 'is_active', 'expires_at', 'created_at']
 
     def get_photo_url(self, obj):
         # 1. Use uploaded photo if available
         if obj.photo:
             try:
                 url = obj.photo.url
-                if url.startswith('/'):
-                    request = self.context.get('request')
-                    if request: return request.build_absolute_uri(url)
+                # Always return absolute URLs for consistency
+                request = self.context.get('request')
+                if request and url.startswith('/'):
+                    return request.build_absolute_uri(url)
+                # If no request context, construct absolute URL manually
+                if url.startswith('/') and not request:
+                    from django.conf import settings
+                    from django.contrib.sites.shortcuts import get_current_site
+                    import os
+                    # Fallback: Use MEDIA_URL if available
+                    if hasattr(settings, 'MEDIA_URL'):
+                        domain = os.environ.get('SITE_URL', 'https://ffig-backend-ti5w.onrender.com')
+                        return f"{domain}{url}"
                 return url
             except:
                 return None
@@ -50,6 +66,7 @@ class FounderProfileSerializer(serializers.ModelSerializer):
             return obj.user.profile.photo_url
             
         return None
+
 
 class FlashAlertSerializer(serializers.ModelSerializer):
     class Meta:

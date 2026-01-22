@@ -385,7 +385,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (mounted) {
         setState(() {
           // 1. Hero Items
-          _heroItems = (results[0] as List).map((json) {
+          _heroItems = (results[0]).map((json) {
             // Ensure ID is string safely
             final Map<String, dynamic> data = Map<String, dynamic>.from(json);
             data['id'] = data['id'].toString();
@@ -404,14 +404,24 @@ class _DashboardScreenState extends State<DashboardScreen>
           }).toList();
 
           // 2. Founder Profile (Take the first one)
-          final founders = results[1] as List;
+          final founders = results[1];
           if (founders.isNotEmpty) {
             final Map<String, dynamic> data = Map<String, dynamic>.from(
               founders.first,
             );
             data['id'] = data['id'].toString();
             final domain = baseUrl.replaceAll('/api/', '');
-            if (data['photo'] != null) {
+            // The serializer returns photo_url directly, but ensure it's properly formatted
+            if (data['photo_url'] != null && data['photo_url'] != 'null') {
+              var url = data['photo_url'].toString();
+              if (url.isNotEmpty && !url.startsWith('http')) {
+                // If it's a relative path, make it absolute
+                if (url.startsWith('/')) {
+                  data['photo_url'] = '$domain$url';
+                }
+              }
+            } else if (data['photo'] != null) {
+              // Fallback: if photo field exists (raw upload), use that
               var url = data['photo'].toString();
               if (url.isNotEmpty && url != "null") {
                 if (url.startsWith('/')) {
@@ -427,7 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           }
 
           // 3. Flash Alert (Take the newest valid one)
-          final alerts = results[2] as List;
+          final alerts = results[2];
           if (alerts.isNotEmpty) {
             final Map<String, dynamic> data = Map<String, dynamic>.from(
               alerts.last,
@@ -439,7 +449,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           }
 
           // 4. News Ticker
-          final tickers = results[3] as List;
+          final tickers = results[3];
           // Map 'text' to string
           _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
         });
