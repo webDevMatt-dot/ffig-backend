@@ -49,12 +49,27 @@ class MessageSerializer(serializers.ModelSerializer):
         
         request = self.context.get('request')
         try:
+             # Try to get the URL from the attachment
              url = obj.attachment.url
-             # If local storage, ensure absolute URI
+             if not url:
+                 return None
+             
+             # If it's already an absolute URL (S3 or external), return as-is
+             if url.startswith('http'):
+                 return url
+             
+             # If local storage (relative path), ensure absolute URI
              if url.startswith('/'):
-                 if request: return request.build_absolute_uri(url)
+                 if request: 
+                     return request.build_absolute_uri(url)
+                 # Fallback if no request context
+                 import os
+                 domain = os.environ.get('SITE_URL', 'https://ffig-backend-ti5w.onrender.com')
+                 return f"{domain}{url}"
+             
              return url
-        except:
+        except Exception as e:
+             print(f"Error getting attachment URL: {e}")
              return None
 
     def get_is_read(self, obj):

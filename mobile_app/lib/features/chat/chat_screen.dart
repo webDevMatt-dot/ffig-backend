@@ -14,8 +14,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http_parser/http_parser.dart'; // For MediaType
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
-import '../../shared_widgets/user_avatar.dart';
-import '../community/public_profile_screen.dart';
 import 'widgets/instagram_message_input.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -116,7 +114,16 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         if (mounted) {
-           setState(() => _messages = jsonDecode(response.body));
+           final messages = jsonDecode(response.body);
+           if (kDebugMode) {
+             print("Fetched ${messages.length} messages");
+             for (var msg in messages) {
+               if (msg['attachment_url'] != null) {
+                 print("Message with attachment: ${msg['id']}, URL: ${msg['attachment_url']}");
+               }
+             }
+           }
+           setState(() => _messages = messages);
            _groupMessages(); // Only group after verify
            setState(() => _isLoading = false);
         }
@@ -209,6 +216,11 @@ class _ChatScreenState extends State<ChatScreen> {
           
           if (response.statusCode == 201) {
              final data = jsonDecode(response.body);
+             if (kDebugMode) {
+               print("Image upload successful!");
+               print("Response data: $data");
+               print("attachment_url: ${data['attachment_url']}");
+             }
               if (_activeConversationId == null) {
                 setState(() => _activeConversationId = data['conversation_id']);
               }
@@ -856,7 +868,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                           ),
                                       
                                       // SHOW IMAGE ATTACHMENT
-                                      if (msg['attachment_url'] != null)
+                                      if (msg['attachment_url'] != null && 
+                                          msg['attachment_url'].toString().isNotEmpty &&
+                                          msg['attachment_url'].toString() != 'null')
                                           GestureDetector(
                                             onTap: () {
                                                 // TODO: Fullscreen
@@ -867,25 +881,29 @@ class _ChatScreenState extends State<ChatScreen> {
                                                 borderRadius: BorderRadius.circular(8),
                                                 child: Container(
                                                     constraints: const BoxConstraints(
-                                                        maxWidth: 220, // Strict Max Width
-                                                        maxHeight: 300
+                                                        maxWidth: 180,
+                                                        maxHeight: 200
                                                     ),
                                                     child: Image.network(
-                                                      msg['attachment_url'],
-                                                      fit: BoxFit.cover,
+                                                      msg['attachment_url'].toString(),
+                                                      fit: BoxFit.contain,
                                                       // Explicit cache width to prevent massive memory usage/decode
-                                                      cacheWidth: 500, 
+                                                      cacheWidth: 400, 
                                                       loadingBuilder: (context, child, loadingProgress) {
                                                         if (loadingProgress == null) return child;
                                                         return Container(
-                                                            width: 220, height: 220,
+                                                            width: 180, height: 180,
                                                             color: Colors.black12,
                                                             child: const Center(child: CircularProgressIndicator(strokeWidth: 2))
                                                         );
                                                       },
                                                       errorBuilder: (context, error, stackTrace) {
+                                                          if (kDebugMode) {
+                                                              print('Image load error for URL: ${msg['attachment_url']}');
+                                                              print('Error: $error');
+                                                          }
                                                           return Container(
-                                                              width: 220, height: 150,
+                                                              width: 180, height: 120,
                                                               color: Colors.grey[300],
                                                               child: const Column(
                                                                   mainAxisAlignment: MainAxisAlignment.center,

@@ -5,6 +5,7 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
@@ -76,15 +77,47 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setModalState(() {
-        _selectedImageBytes = bytes;
-        if (!kIsWeb) {
-          _selectedImageFile = File(pickedFile.path);
+      if (!kIsWeb) {
+        // Crop logic for Mobile
+        final croppedFile = await _cropImage(File(pickedFile.path));
+        if (croppedFile != null) {
+          final bytes = await croppedFile.readAsBytes();
+          setModalState(() {
+            _selectedImageBytes = bytes;
+            _selectedImageFile = croppedFile;
+          });
         }
-      });
+      } else {
+        // Web fallthrough (Cropping not supported on web by default)
+        final bytes = await pickedFile.readAsBytes();
+        setModalState(() {
+          _selectedImageBytes = bytes;
+        });
+      }
     }
   }
+
+  Future<File?> _cropImage(File imageFile) async {
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Founder Photo',
+          toolbarColor: FfigTheme.primaryBrown,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Crop Founder Photo',
+        ),
+      ],
+    );
+    if (croppedFile != null) return File(croppedFile.path);
+    return null;
+  }
+
 
   Future<void> _showUserPicker(StateSetter setModalState) async {
     await showDialog(
@@ -275,7 +308,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleActive(item!);
+                                 _toggleActive(item);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -364,9 +397,11 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       }, null);
 
       _fetchItems();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(newState ? "Spotlight Activated" : "Spotlight Deactivated")),
       );
+      }
     } catch (e) {
       if (mounted) DialogUtils.showError(context, "Update Failed", e.toString());
       setState(() => _isLoading = false);
