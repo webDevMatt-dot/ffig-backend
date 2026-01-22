@@ -10,6 +10,8 @@ import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import '../tickets/my_tickets_screen.dart';
 import 'blocked_users_screen.dart';
+import '../../core/services/version_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,13 +26,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isPremium = false;
   String _tier = "FREE";
   bool _readReceiptsEnabled = true; // Default true
+
   String? _adminNotice;
+  bool _updateAvailable = false;
+  String? _updateUrl;
   
   @override
   void initState() {
     super.initState();
     _fetchUserInfo();
     _fetchVersion();
+    _checkUpdate();
+  }
+
+  Future<void> _checkUpdate() async {
+    final updateData = await VersionService().checkUpdate();
+    if (mounted && updateData != null && updateData['updateAvailable'] == true) {
+        setState(() {
+            _updateAvailable = true;
+            _updateUrl = updateData['url'];
+        });
+    }
   }
 
   Future<void> _fetchVersion() async {
@@ -381,11 +397,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // 4. System (Version)
            _buildSectionHeader("System"),
-           ListTile(
-             leading: const Icon(Icons.info_outline),
-             title: const Text("App Version"),
-             trailing: Text(_appVersion, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-           ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text("App Version"),
+              subtitle: _updateAvailable 
+                  ? GestureDetector(
+                      onTap: () {
+                          if (_updateUrl != null) launchUrl(Uri.parse(_updateUrl!), mode: LaunchMode.externalApplication);
+                      },
+                      child: const Text("Update Available", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold)),
+                  ) 
+                  : null,
+              trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                      Text(_appVersion, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                      if (_updateAvailable) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_ios, size: 14, color: FfigTheme.primaryBrown)
+                      ]
+                  ],
+              ),
+              onTap: _updateAvailable ? () {
+                  if (_updateUrl != null) launchUrl(Uri.parse(_updateUrl!), mode: LaunchMode.externalApplication);
+              } : null,
+            ),
 
            const Divider(),
 

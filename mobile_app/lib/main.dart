@@ -75,21 +75,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkSession() async {
-    // Run Version Check and Min Delay in parallel
-    final results = await Future.wait([
-      Future.delayed(const Duration(seconds: 3)),
-      VersionService().checkUpdate(),
-    ]);
-
-    final updateData = results[1] as Map<String, dynamic>?;
-
-    if (mounted) {
-      if (updateData != null && updateData['updateAvailable'] == true) {
-        _showUpdateDialog(updateData);
-      } else {
-        _navigateBasedOnToken();
-      }
-    }
+    // Just wait for splash animation/branding
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) _navigateBasedOnToken();
   }
 
   Future<void> _navigateBasedOnToken() async {
@@ -105,35 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  void _showUpdateDialog(Map<String, dynamic> data) {
-    final bool required = data['required'];
-    final String url = data['url'];
-    final String version = data['latestVersion'];
 
-    showDialog(
-      context: context,
-      barrierDismissible: !required,
-      builder: (context) => AlertDialog(
-        title: const Text("Update Available"),
-        content: Text("A new version ($version) is available.\nPlease update for the best experience."),
-        actions: [
-          if (!required)
-            TextButton(
-              child: const Text("Later"),
-              onPressed: () {
-                Navigator.pop(context);
-                _navigateBasedOnToken();
-              },
-            ),
-          ElevatedButton(
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-            style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.primaryBrown, foregroundColor: Colors.white),
-            child: const Text("Update Now"),
-          )
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -22,13 +22,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String _version = "";
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
-    _checkForUpdates();
   }
 
   Future<void> _loadVersion() async {
@@ -36,47 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _version = info.version);
   }
 
-  Future<void> _checkForUpdates() async {
-    final updateData = await VersionService().checkUpdate();
-    if (updateData != null &&
-        mounted &&
-        updateData['updateAvailable'] == true) {
-      _showUpdateDialog(updateData);
-    }
-  }
 
-  void _showUpdateDialog(Map<String, dynamic> data) {
-    if (!mounted) return;
-    final bool required = data['required'] ?? false;
-    final String url = data['url'];
-    final String version = data['latestVersion'];
-
-    showDialog(
-      context: context,
-      barrierDismissible: !required,
-      builder: (context) => AlertDialog(
-        title: const Text("Update Available"),
-        content: Text("Version $version is available."),
-        actions: [
-          if (!required)
-            TextButton(
-              child: const Text("Later"),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ElevatedButton(
-            onPressed: () {
-              // Cache Busting: Add timestamp to force fresh download
-              final uri = Uri.parse(
-                "$url?t=${DateTime.now().millisecondsSinceEpoch}",
-              );
-              launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-            child: const Text("Update"),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
@@ -153,15 +113,10 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else if (response.statusCode == 401) {
-        // Account might be deleted/disabled
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const ModerationDialog(type: ModerationType.delete),
-        );
+        // Standard Incorrect Password / User not found
+        _showError("Invalid credentials. Please check your username and password.");
       } else {
-        _showError("Invalid credentials.");
+        _showError("Login failed (${response.statusCode}). Please try again.");
       }
     } catch (e) {
       _showError("Login Error: $e");
@@ -258,14 +213,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: _passwordController,
-                  obscureText: true,
+                  obscureText: _obscurePassword,
                   autocorrect: false,
                   enableSuggestions: false,
                   textInputAction: TextInputAction.go, // Show "Go" or arrow
                   onSubmitted: (_) => _login(), // Enter = Login
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: "Password",
-                    prefixIcon: Icon(Icons.lock_outline, size: 20),
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),

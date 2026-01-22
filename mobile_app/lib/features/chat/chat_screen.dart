@@ -564,8 +564,11 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isCommunity = widget.recipientName == "Community Chat";
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor, // Explicitly set to avoid grey default
+      resizeToAvoidBottomInset: true, // Ensure layout resizes for keyboard
       appBar: AppBar(
         titleSpacing: 0,
         title: _isSearching 
