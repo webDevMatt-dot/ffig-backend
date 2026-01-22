@@ -6,9 +6,12 @@ from django.conf import settings
 
 # A simple User serializer for chat participants
 class ChatUserSerializer(serializers.ModelSerializer):
-    tier = serializers.CharField(source='profile.tier', read_only=True)
-    tier = serializers.CharField(source='profile.tier', read_only=True)
+    tier = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
+
+    def get_tier(self, obj):
+        try: return obj.profile.tier
+        except: return 'STANDARD'
 
     def get_photo_url(self, obj):
         try:
