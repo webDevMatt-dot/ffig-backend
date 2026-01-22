@@ -143,7 +143,22 @@ class _InboxScreenState extends State<InboxScreen> {
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
-            final allConversations = jsonDecode(response.body) as List;
+            // Parse response - handle both list and paginated response formats
+            var responseData = jsonDecode(response.body);
+            List<dynamic> allConversations;
+            
+            // If response is a list, use directly
+            if (responseData is List) {
+              allConversations = responseData;
+            } 
+            // If response is a dict with 'results' (paginated), extract results
+            else if (responseData is Map && responseData.containsKey('results')) {
+              allConversations = responseData['results'] as List;
+            }
+            // Fallback
+            else {
+              allConversations = [];
+            }
             
             // Sort by Last Message Timestamp (Descending)
             allConversations.sort((a, b) {

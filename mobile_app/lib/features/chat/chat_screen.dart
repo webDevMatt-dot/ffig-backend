@@ -143,9 +143,20 @@ class _ChatScreenState extends State<ChatScreen> {
           );
           
           if (response.statusCode == 200) {
-              final List data = jsonDecode(response.body);
-              if (data.isNotEmpty) {
-                  return data[0]['id'];
+              var responseData = jsonDecode(response.body);
+              List<dynamic> conversations;
+              
+              // Handle both list and paginated response formats
+              if (responseData is List) {
+                conversations = responseData;
+              } else if (responseData is Map && responseData.containsKey('results')) {
+                conversations = responseData['results'] as List;
+              } else {
+                conversations = [];
+              }
+              
+              if (conversations.isNotEmpty) {
+                  return conversations[0]['id'];
               }
           }
       } catch (e) {
@@ -623,27 +634,62 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: _isSearching 
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: _isSearching 
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
                 style: const TextStyle(color: Colors.black87),
                 cursorColor: FfigTheme.primaryBrown,
                 decoration: InputDecoration(
-                    hintText: "Search...",
+                    hintText: "Search in chat...",
                     hintStyle: TextStyle(color: Colors.grey[600]),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    prefixIcon: const Icon(Icons.search, color: FfigTheme.primaryBrown, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    isDense: true
                 ),
                 onChanged: (val) {
                    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
                    _searchDebounce = Timer(const Duration(milliseconds: 300), () => _performInChatSearch(val));
                 },
               )
-            : Text(widget.recipientName),
-        elevation: 1,
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.recipientName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Active now',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w400
+                    ),
+                  )
+                ],
+              ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: Colors.grey[200],
+          ),
+        ),
         actions: _isSearching 
         ? [
             IconButton(
@@ -710,15 +756,27 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (item['is_header'] == true) {
                     return Center(
                         child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            margin: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                             ),
                             child: Text(
                                 _getDateLabel(item['date']),
-                                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
                             ),
                         ),
                     );
@@ -810,25 +868,30 @@ class _ChatScreenState extends State<ChatScreen> {
                                      _showMessageOptions(msg);
                                 },
                                 child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
-                                    decoration: BoxDecoration(
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                                  decoration: BoxDecoration(
                                     color: isHighlighted 
-                                        ? Colors.amber.withOpacity(0.4) 
+                                        ? Colors.amber.withOpacity(0.3)
                                         : (isMe 
                                             ? FfigTheme.primaryBrown 
-                                            : (Theme.of(context).brightness == Brightness.dark 
-                                                ? const Color(0xFF21262D) 
-                                                : Colors.grey[200])), // Solid colors
+                                            : Colors.grey[50]),
                                     borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(16),
-                                        topRight: const Radius.circular(16),
-                                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                                        bottomRight: isMe ? Radius.zero : const Radius.circular(16)
+                                        topLeft: const Radius.circular(20),
+                                        topRight: const Radius.circular(20),
+                                        bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+                                        bottomRight: isMe ? Radius.zero : const Radius.circular(20)
                                     ),
-                                    // Remove border for solid style, or keep subtle
-                                    // border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: isMe 
+                                          ? Colors.black.withOpacity(0.1)
+                                          : Colors.black.withOpacity(0.06),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   child: IntrinsicWidth(
                                     child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start, 
@@ -879,20 +942,18 @@ class _ChatScreenState extends State<ChatScreen> {
                                               padding: const EdgeInsets.only(bottom: 8.0),
                                               child: ClipRRect(
                                                 borderRadius: BorderRadius.circular(8),
-                                                child: Container(
-                                                    constraints: const BoxConstraints(
-                                                        maxWidth: 180,
-                                                        maxHeight: 200
-                                                    ),
+                                                child: SizedBox(
+                                                    width: 160,
+                                                    height: 160,
                                                     child: Image.network(
                                                       msg['attachment_url'].toString(),
-                                                      fit: BoxFit.contain,
+                                                      fit: BoxFit.cover,
                                                       // Explicit cache width to prevent massive memory usage/decode
-                                                      cacheWidth: 400, 
+                                                      cacheWidth: 320, 
                                                       loadingBuilder: (context, child, loadingProgress) {
                                                         if (loadingProgress == null) return child;
                                                         return Container(
-                                                            width: 180, height: 180,
+                                                            width: 160, height: 160,
                                                             color: Colors.black12,
                                                             child: const Center(child: CircularProgressIndicator(strokeWidth: 2))
                                                         );
@@ -903,7 +964,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                                               print('Error: $error');
                                                           }
                                                           return Container(
-                                                              width: 180, height: 120,
+                                                              width: 160, height: 160,
                                                               color: Colors.grey[300],
                                                               child: const Column(
                                                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -924,20 +985,27 @@ class _ChatScreenState extends State<ChatScreen> {
                                       Linkify(
                                         onOpen: _onOpenLink,
                                         text: msg['text'],
-                                        style: TextStyle(fontSize: 16, color: isMe ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: isMe ? Colors.white : Colors.black87,
+                                          height: 1.4,
+                                        ),
                                         linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.none),
                                         options: const LinkifyOptions(humanize: false),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 6),
                                       Align(
                                         alignment: Alignment.bottomRight,
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end, // Align time right
+                                          mainAxisAlignment: MainAxisAlignment.end,
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
                                               timeString,
-                                              style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.grey[600]),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isMe ? Colors.white70 : Colors.grey[500],
+                                              ),
                                             ),
                                             if (isMe && !isCommunity) ...[
                                               const SizedBox(width: 4),
@@ -966,53 +1034,89 @@ class _ChatScreenState extends State<ChatScreen> {
           // Reply Preview
           if (_replyMessage != null)
             Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.grey[100],
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border(
+                  left: BorderSide(
+                    color: FfigTheme.primaryBrown,
+                    width: 4,
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.reply, color: FfigTheme.primaryBrown),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.reply, color: FfigTheme.primaryBrown, size: 18),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           "Replying to ${_replyMessage!['sender']['username']}",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: Colors.black87,
+                          ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           _replyMessage!['text'],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 16),
-                    onPressed: () => setState(() => _replyMessage = null),
+                  GestureDetector(
+                    onTap: () => setState(() => _replyMessage = null),
+                    child: Icon(Icons.close, size: 18, color: Colors.grey[500]),
                   )
                 ],
               ),
             ),
           
           // Input Bar
-          const SizedBox(height: 8),
-          InstagramMessageInput(
-            controller: _controller,
-            onSend: (text) {
-              if (_controller.text.isEmpty) {
-                  _controller.text = text; 
-              }
-              _sendMessage();
-            },
-            onCameraTap: () => _pickImage(ImageSource.camera),
-            onGalleryTap: () => _pickImage(ImageSource.gallery),
-            onMicTap: () {
-                // TODO: Implement Voice Note Recording
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Voice notes coming soon!")));
-            },
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey[200]!,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: InstagramMessageInput(
+              controller: _controller,
+              onSend: (text) {
+                if (_controller.text.isEmpty) {
+                    _controller.text = text; 
+                }
+                _sendMessage();
+              },
+              onCameraTap: () => _pickImage(ImageSource.camera),
+              onGalleryTap: () => _pickImage(ImageSource.gallery),
+              onMicTap: () {
+                  // TODO: Implement Voice Note Recording
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Voice notes coming soon!")));
+              },
+            ),
           ),
         ],
       ),

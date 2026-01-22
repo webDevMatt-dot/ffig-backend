@@ -371,6 +371,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  List<dynamic> _getUpcomingEventsForTrending() {
+    final now = DateTime.now();
+    return _events.where((event) {
+      try {
+        final eventDate = DateTime.parse(event['date']);
+        return eventDate.isAfter(now);
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+  }
+
   Future<void> _loadHomepageContent() async {
     final api = AdminApiService();
     try {
@@ -1123,10 +1135,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                   right: 24,
                   bottom: 20, // Reduced bottom padding as it's a fixed height container
                 ), 
-                itemCount: _events.length > 2 ? 2 : _events.length,
+                itemCount: _getUpcomingEventsForTrending().length > 2 ? 2 : _getUpcomingEventsForTrending().length,
                 itemBuilder: (context, index) {
-                  if (index >= _events.length) return const SizedBox.shrink();
-                  final event = _events[index];
+                  final upcomingEvents = _getUpcomingEventsForTrending();
+                  if (index >= upcomingEvents.length) return const SizedBox.shrink();
+                  final event = upcomingEvents[index];
                   return Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: GestureDetector(
