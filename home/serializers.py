@@ -27,13 +27,13 @@ class HeroItemSerializer(serializers.ModelSerializer):
         except: return None
 
 class FounderProfileSerializer(serializers.ModelSerializer):
-    photo = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
     
     class Meta:
         model = FounderProfile
         fields = '__all__'
 
-    def get_photo(self, obj):
+    def get_photo_url(self, obj):
         # 1. Use uploaded photo if available
         if obj.photo:
             try:

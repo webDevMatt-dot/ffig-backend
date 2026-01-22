@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
@@ -76,14 +77,44 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     
     if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setModalState(() {
-        _selectedImageBytes = bytes;
-        if (!kIsWeb) {
-            _selectedImageFile = File(pickedFile.path); 
+      if (!kIsWeb) {
+        // Crop logic for Mobile
+        final croppedFile = await _cropImage(File(pickedFile.path));
+        if (croppedFile != null) {
+             final bytes = await croppedFile.readAsBytes();
+             setModalState(() {
+                _selectedImageBytes = bytes;
+                _selectedImageFile = croppedFile;
+             });
         }
-      });
+      } else {
+        // Web fallthrough (Cropping not supported on web by default easily without setup, or use standard bytes)
+        final bytes = await pickedFile.readAsBytes();
+        setModalState(() {
+            _selectedImageBytes = bytes;
+        });
+      }
     }
+  }
+
+  Future<File?> _cropImage(File imageFile) async {
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+            toolbarTitle: 'Crop Hero Image',
+            toolbarColor: FfigTheme.primaryBrown,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false),
+        IOSUiSettings(
+          title: 'Crop Hero Image',
+        ),
+      ],
+    );
+    if (croppedFile != null) return File(croppedFile.path);
+    return null;
   }
 
   void _showEditor(Map<String, dynamic>? item) {

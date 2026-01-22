@@ -857,7 +857,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                       
                                       // SHOW IMAGE ATTACHMENT
                                       if (msg['attachment_url'] != null)
-                                      if (msg['attachment_url'] != null)
                                           GestureDetector(
                                             onTap: () {
                                                 // TODO: Fullscreen
@@ -866,26 +865,27 @@ class _ChatScreenState extends State<ChatScreen> {
                                               padding: const EdgeInsets.only(bottom: 8.0),
                                               child: ClipRRect(
                                                 borderRadius: BorderRadius.circular(8),
-                                                child: ConstrainedBox(
+                                                child: Container(
                                                     constraints: const BoxConstraints(
-                                                        maxHeight: 250, 
-                                                        minHeight: 100,
-                                                        maxWidth: 250
+                                                        maxWidth: 220, // Strict Max Width
+                                                        maxHeight: 300
                                                     ),
                                                     child: Image.network(
                                                       msg['attachment_url'],
                                                       fit: BoxFit.cover,
+                                                      // Explicit cache width to prevent massive memory usage/decode
+                                                      cacheWidth: 500, 
                                                       loadingBuilder: (context, child, loadingProgress) {
                                                         if (loadingProgress == null) return child;
                                                         return Container(
-                                                            width: 150, height: 150,
+                                                            width: 220, height: 220,
                                                             color: Colors.black12,
                                                             child: const Center(child: CircularProgressIndicator(strokeWidth: 2))
                                                         );
                                                       },
                                                       errorBuilder: (context, error, stackTrace) {
                                                           return Container(
-                                                              width: 150, height: 150,
+                                                              width: 220, height: 150,
                                                               color: Colors.grey[300],
                                                               child: const Column(
                                                                   mainAxisAlignment: MainAxisAlignment.center,

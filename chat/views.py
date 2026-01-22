@@ -208,7 +208,7 @@ class ChatSearchView(APIView):
         if not query:
             return Response({"users": [], "messages": []})
         
-        user = request.request.user
+        user = request.user
 
         # 1. Search Users (Global, filtering out self and admins/staff if desired, but user wants users)
         # Limit to 10 for performance
