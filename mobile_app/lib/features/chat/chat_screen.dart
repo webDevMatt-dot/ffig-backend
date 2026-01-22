@@ -9,12 +9,10 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart'; // For Clipboard
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:http_parser/http_parser.dart'; // For MediaType
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
-import 'widgets/instagram_message_input.dart';
+import '../../shared_widgets/user_avatar.dart';
+import '../community/public_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
@@ -114,16 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
         if (mounted) {
-           final messages = jsonDecode(response.body);
-           if (kDebugMode) {
-             print("Fetched ${messages.length} messages");
-             for (var msg in messages) {
-               if (msg['attachment_url'] != null) {
-                 print("Message with attachment: ${msg['id']}, URL: ${msg['attachment_url']}");
-               }
-             }
-           }
-           setState(() => _messages = messages);
+           setState(() => _messages = jsonDecode(response.body));
            _groupMessages(); // Only group after verify
            setState(() => _isLoading = false);
         }
@@ -143,20 +132,9 @@ class _ChatScreenState extends State<ChatScreen> {
           );
           
           if (response.statusCode == 200) {
-              var responseData = jsonDecode(response.body);
-              List<dynamic> conversations;
-              
-              // Handle both list and paginated response formats
-              if (responseData is List) {
-                conversations = responseData;
-              } else if (responseData is Map && responseData.containsKey('results')) {
-                conversations = responseData['results'] as List;
-              } else {
-                conversations = [];
-              }
-              
-              if (conversations.isNotEmpty) {
-                  return conversations[0]['id'];
+              final List data = jsonDecode(response.body);
+              if (data.isNotEmpty) {
+                  return data[0]['id'];
               }
           }
       } catch (e) {
@@ -165,109 +143,42 @@ class _ChatScreenState extends State<ChatScreen> {
       return null;
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70
-      );
-      
-      if (image != null) {
-        // Send immediately for now (Instagram style often sends immediately or previews)
-        // For simplicity, let's just send it immediately as a "media message"
-        // But usually we want a caption?
-        // Let's implement immediate send for MVP, or better: 
-        // Show preview dialog? 
-        // User asked for "image funtions", let's do direct send for MVP or add to input?
-        // "Instagram" usually adds to input or goes to separate screen.
-        // Let's just send strictly the image using _sendMessage with the file.
-        _sendMessage(attachment: File(image.path), type: 'image');
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to pick image")));
-    }
-  }
-
-  Future<void> _sendMessage({File? attachment, String type = 'text'}) async {
-    if (attachment == null && _controller.text.isEmpty) return;
-    
+  Future<void> _sendMessage() async {
+    if (_controller.text.isEmpty) return;
     final text = _controller.text;
-    if (attachment == null) _controller.clear(); // Clear text if sending text
-    
-    // For Mixed (Text + Image), clear text too
-    if (attachment != null && text.isNotEmpty) _controller.clear(); 
+    _controller.clear(); // Clear input immediately for UX
+    // Optimistic Update could go here for even faster feel
 
     final token = await const FlutterSecureStorage().read(key: 'access_token');
     final String url = '${baseUrl}chat/messages/send/';
 
     try {
-      // Use Multipart if attachment present
-      if (attachment != null) {
-          final request = http.MultipartRequest('POST', Uri.parse(url));
-          request.headers['Authorization'] = 'Bearer $token';
-          
-          request.fields['message_type'] = type;
-          if (text.isNotEmpty) request.fields['text'] = text;
-          if (widget.recipientId != null) request.fields['recipient_id'] = widget.recipientId.toString();
-          if (_activeConversationId != null) request.fields['conversation_id'] = _activeConversationId.toString();
-          if (_replyMessage != null) request.fields['reply_to_id'] = _replyMessage!['id'].toString();
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'text': text,
+          'recipient_id': widget.recipientId, // Used for the FIRST message
+          'conversation_id': _activeConversationId, // Used for replies
+          if (_replyMessage != null) 'reply_to_id': _replyMessage!['id']
+        }),
+      );
 
-          // Add File
-          request.files.add(await http.MultipartFile.fromPath(
-            'attachment',
-            attachment.path,
-            contentType: MediaType('image', 'jpeg'), // Assume JPEG from picker for now
-          ));
-          
-          final streamedResponse = await request.send();
-          final response = await http.Response.fromStream(streamedResponse);
-          
-          if (response.statusCode == 201) {
-             final data = jsonDecode(response.body);
-             if (kDebugMode) {
-               print("Image upload successful!");
-               print("Response data: $data");
-               print("attachment_url: ${data['attachment_url']}");
-             }
-              if (_activeConversationId == null) {
-                setState(() => _activeConversationId = data['conversation_id']);
-              }
-              setState(() { _replyMessage = null; });
-              _fetchMessages(silent: true);
-          } else {
-             if (kDebugMode) print("Upload failed: ${response.statusCode} - ${response.body}");
-             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to send image.")));
-          }
-
-      } else {
-        // Standard JSON (Text Only)
-        final response = await http.post(
-          Uri.parse(url),
-          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'text': text,
-            'recipient_id': widget.recipientId,
-            'conversation_id': _activeConversationId,
-            'reply_to_id': _replyMessage != null ? _replyMessage!['id'] : null
-          }),
-        );
-
-        if (response.statusCode == 201) {
-          final data = jsonDecode(response.body);
-          if (_activeConversationId == null) {
-            setState(() => _activeConversationId = data['conversation_id']);
-          }
-          setState(() { _replyMessage = null; });
-          _fetchMessages(silent: true);
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        // If this was a new chat, we now have an ID!
+        if (_activeConversationId == null) {
+          setState(() => _activeConversationId = data['conversation_id']);
         }
+        setState(() {
+            _replyMessage = null;
+        });
+        _fetchMessages(silent: true); // Refresh immediately
       }
     } catch (e) {
       if (kDebugMode) print(e);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error sending message.")));
     }
+
   }
 
   void _toggleSearch() {
@@ -634,62 +545,27 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _isSearching 
+        title: _isSearching 
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
                 style: const TextStyle(color: Colors.black87),
                 cursorColor: FfigTheme.primaryBrown,
                 decoration: InputDecoration(
-                    hintText: "Search in chat...",
+                    hintText: "Search...",
                     hintStyle: TextStyle(color: Colors.grey[600]),
-                    prefixIcon: const Icon(Icons.search, color: FfigTheme.primaryBrown, size: 20),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     filled: true,
-                    fillColor: Colors.grey[100],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    isDense: true
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
                 ),
                 onChanged: (val) {
                    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
                    _searchDebounce = Timer(const Duration(milliseconds: 300), () => _performInChatSearch(val));
                 },
               )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.recipientName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Active now',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w400
-                    ),
-                  )
-                ],
-              ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.grey[200],
-          ),
-        ),
+            : Text(widget.recipientName),
+        elevation: 1,
         actions: _isSearching 
         ? [
             IconButton(
@@ -756,27 +632,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (item['is_header'] == true) {
                     return Center(
                         child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 16),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            margin: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                                 _getDateLabel(item['date']),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
-                                ),
+                                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.bold),
                             ),
                         ),
                     );
@@ -868,30 +732,25 @@ class _ChatScreenState extends State<ChatScreen> {
                                      _showMessageOptions(msg);
                                 },
                                 child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-                                  decoration: BoxDecoration(
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
+                                    decoration: BoxDecoration(
                                     color: isHighlighted 
-                                        ? Colors.amber.withOpacity(0.3)
+                                        ? Colors.amber.withOpacity(0.4) 
                                         : (isMe 
                                             ? FfigTheme.primaryBrown 
-                                            : Colors.grey[50]),
+                                            : (Theme.of(context).brightness == Brightness.dark 
+                                                ? const Color(0xFF21262D) 
+                                                : Colors.grey[200])), // Solid colors
                                     borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(20),
-                                        topRight: const Radius.circular(20),
-                                        bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-                                        bottomRight: isMe ? Radius.zero : const Radius.circular(20)
+                                        topLeft: const Radius.circular(16),
+                                        topRight: const Radius.circular(16),
+                                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                                        bottomRight: isMe ? Radius.zero : const Radius.circular(16)
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: isMe 
-                                          ? Colors.black.withOpacity(0.1)
-                                          : Colors.black.withOpacity(0.06),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
+                                    // Remove border for solid style, or keep subtle
+                                    // border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   child: IntrinsicWidth(
                                     child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start, 
@@ -930,82 +789,23 @@ class _ChatScreenState extends State<ChatScreen> {
                                               ),
                                           ),
                                       
-                                      // SHOW IMAGE ATTACHMENT
-                                      if (msg['attachment_url'] != null && 
-                                          msg['attachment_url'].toString().isNotEmpty &&
-                                          msg['attachment_url'].toString() != 'null')
-                                          GestureDetector(
-                                            onTap: () {
-                                                // TODO: Fullscreen
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(bottom: 8.0),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: SizedBox(
-                                                    width: 160,
-                                                    height: 160,
-                                                    child: Image.network(
-                                                      msg['attachment_url'].toString(),
-                                                      fit: BoxFit.cover,
-                                                      // Explicit cache width to prevent massive memory usage/decode
-                                                      cacheWidth: 320, 
-                                                      loadingBuilder: (context, child, loadingProgress) {
-                                                        if (loadingProgress == null) return child;
-                                                        return Container(
-                                                            width: 160, height: 160,
-                                                            color: Colors.black12,
-                                                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                                                        );
-                                                      },
-                                                      errorBuilder: (context, error, stackTrace) {
-                                                          if (kDebugMode) {
-                                                              print('Image load error for URL: ${msg['attachment_url']}');
-                                                              print('Error: $error');
-                                                          }
-                                                          return Container(
-                                                              width: 160, height: 160,
-                                                              color: Colors.grey[300],
-                                                              child: const Column(
-                                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                                  children: [
-                                                                      Icon(Icons.broken_image, color: Colors.grey),
-                                                                      SizedBox(height: 4),
-                                                                      Text("Image Failed", style: TextStyle(fontSize: 10, color: Colors.grey))
-                                                                  ],
-                                                              )
-                                                          );
-                                                      },
-                                                    ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      
                                       Linkify(
                                         onOpen: _onOpenLink,
                                         text: msg['text'],
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: isMe ? Colors.white : Colors.black87,
-                                          height: 1.4,
-                                        ),
+                                        style: TextStyle(fontSize: 16, color: isMe ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
                                         linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.none),
                                         options: const LinkifyOptions(humanize: false),
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 4),
                                       Align(
                                         alignment: Alignment.bottomRight,
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          mainAxisAlignment: MainAxisAlignment.end, // Align time right
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
                                               timeString,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isMe ? Colors.white70 : Colors.grey[500],
-                                              ),
+                                              style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.grey[600]),
                                             ),
                                             if (isMe && !isCommunity) ...[
                                               const SizedBox(width: 4),
@@ -1034,57 +834,32 @@ class _ChatScreenState extends State<ChatScreen> {
           // Reply Preview
           if (_replyMessage != null)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border(
-                  left: BorderSide(
-                    color: FfigTheme.primaryBrown,
-                    width: 4,
-                  ),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey[100],
               child: Row(
                 children: [
-                  const Icon(Icons.reply, color: FfigTheme.primaryBrown, size: 18),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.reply, color: FfigTheme.primaryBrown),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           "Replying to ${_replyMessage!['sender']['username']}",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: Colors.black87,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
-                        const SizedBox(height: 2),
                         Text(
                           _replyMessage!['text'],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 11,
-                          ),
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => setState(() => _replyMessage = null),
-                    child: Icon(Icons.close, size: 18, color: Colors.grey[500]),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => setState(() => _replyMessage = null),
                   )
                 ],
               ),
@@ -1092,30 +867,29 @@ class _ChatScreenState extends State<ChatScreen> {
           
           // Input Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(
-                  color: Colors.grey[200]!,
-                  width: 1,
+            padding: const EdgeInsets.all(8),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: "Type a message...",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            child: InstagramMessageInput(
-              controller: _controller,
-              onSend: (text) {
-                if (_controller.text.isEmpty) {
-                    _controller.text = text; 
-                }
-                _sendMessage();
-              },
-              onCameraTap: () => _pickImage(ImageSource.camera),
-              onGalleryTap: () => _pickImage(ImageSource.gallery),
-              onMicTap: () {
-                  // TODO: Implement Voice Note Recording
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Voice notes coming soon!")));
-              },
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  color: Theme.of(context).colorScheme.primary,
+                  onPressed: _sendMessage,
+                ),
+              ],
             ),
           ),
         ],
