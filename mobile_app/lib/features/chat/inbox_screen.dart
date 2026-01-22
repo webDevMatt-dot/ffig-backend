@@ -211,8 +211,9 @@ class _InboxScreenState extends State<InboxScreen> {
             )
           ),
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
            // Search Bar
            Padding(
              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -396,6 +397,7 @@ class _InboxScreenState extends State<InboxScreen> {
               ),
            ),
         ],
+        ),
       ),
     );
   }

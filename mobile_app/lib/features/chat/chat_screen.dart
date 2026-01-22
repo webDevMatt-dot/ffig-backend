@@ -42,6 +42,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true; // Add loading state
   Map<String, dynamic>? _replyMessage; // Swipe to reply state (Use Map instead of dynamic for type safety)
   final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create(); // Listener for scroll position
+  bool _showScrollToBottom = false; // State for FAB visibility
   int? _highlightedMessageId; // For highlighting searched message
 
   @override
@@ -51,6 +53,20 @@ class _ChatScreenState extends State<ChatScreen> {
     _fetchMessages();
     // Auto-refresh every 5 seconds (Simple "Real-time")
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) => _fetchMessages(silent: true));
+
+    // Listen to scroll position
+    _itemPositionsListener.itemPositions.addListener(() {
+      final positions = _itemPositionsListener.itemPositions.value;
+      if (positions.isNotEmpty) {
+          // Check if index 0 (bottom-most message in reversed list) is visible
+          final isAtBottom = positions.any((p) => p.index == 0);
+          
+          // Show button if NOT at bottom (index 0 not visible)
+          if (_showScrollToBottom == isAtBottom) {
+              setState(() => _showScrollToBottom = !isAtBottom);
+          }
+      }
+    });
   }
 
   @override
@@ -174,6 +190,13 @@ class _ChatScreenState extends State<ChatScreen> {
             _replyMessage = null;
         });
         _fetchMessages(silent: true); // Refresh immediately
+        
+        // Auto-scroll to bottom (Index 0 in reversed list)
+        Future.delayed(const Duration(milliseconds: 100), () {
+             if (_itemScrollController.isAttached) {
+                 _itemScrollController.scrollTo(index: 0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+             }
+        });
       }
     } catch (e) {
       if (kDebugMode) print(e);
@@ -622,6 +645,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ? const Center(child: CircularProgressIndicator()) 
               : ScrollablePositionedList.builder(
               itemScrollController: _itemScrollController,
+              itemPositionsListener: _itemPositionsListener,
               padding: const EdgeInsets.all(16),
               reverse: true, // Start from bottom
               itemCount: _groupedMessages.length,
@@ -894,6 +918,25 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+      floatingActionButton: _showScrollToBottom 
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 80.0), // Above input area
+            child: FloatingActionButton(
+                mini: true,
+                backgroundColor: FfigTheme.primaryBrown,
+                child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                onPressed: () {
+                    if (_itemScrollController.isAttached) {
+                        _itemScrollController.scrollTo(
+                            index: 0, 
+                            duration: const Duration(milliseconds: 500), 
+                            curve: Curves.easeInOut
+                        );
+                    }
+                },
+            ),
+        )
+        : null,
     );
   }
 
