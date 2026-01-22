@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
-import '../../core/theme/theme_controller.dart'; 
 import '../../main.dart'; // To access themeController global
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';

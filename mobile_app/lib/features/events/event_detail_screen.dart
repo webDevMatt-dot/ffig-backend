@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ticket_flow/ticket_selection_screen.dart';
 import '../../core/services/membership_service.dart';

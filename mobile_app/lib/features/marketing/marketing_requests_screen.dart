@@ -1,11 +1,7 @@
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
-import 'dart:ui'; // For BackdropFilter
+// For BackdropFilter
 import 'create_marketing_request_screen.dart';
 
 import 'dart:convert';
@@ -13,7 +9,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/utils/dialog_utils.dart';
-import '../../core/services/admin_api_service.dart';
 import 'edit_marketing_request_screen.dart';
 
 class MarketingRequestsScreen extends StatefulWidget {

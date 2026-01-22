@@ -39,10 +39,12 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
           final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
           if (response.statusCode == 200) {
               final data = jsonDecode(response.body);
-              if (mounted) setState(() {
+              if (mounted) {
+                setState(() {
                   _users = data['users'] ?? [];
                   _isLoading = false;
               });
+              }
           }
       } catch (e) {
           if (mounted) setState(() => _isLoading = false);

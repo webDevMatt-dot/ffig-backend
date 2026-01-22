@@ -202,9 +202,9 @@ class _MemberListScreenState extends State<MemberListScreen> {
                             isExpanded: true,
                             items: _industryOptions,
                             onChanged: (val) {
-                              setState(() => {
-                                _selectedIndustry = val!,
-                                _isLoading = true
+                              setState(() {
+                                _selectedIndustry = val!;
+                                _isLoading = true;
                               });
                               _fetchMembers();
                             },

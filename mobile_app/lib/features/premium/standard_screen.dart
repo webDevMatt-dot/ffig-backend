@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../shared_widgets/upgrade_modal.dart';
-import '../community/member_list_screen.dart';
 import '../events/events_screen.dart';
 import '../chat/community_chat_screen.dart';
 import 'package:http/http.dart' as http;

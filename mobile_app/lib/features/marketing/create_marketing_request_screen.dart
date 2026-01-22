@@ -22,7 +22,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   final _linkController = TextEditingController();
   final _urlInputController = TextEditingController();
   
-  bool _isLoading = false;
+  final bool _isLoading = false;
   dynamic _selectedFile; // File or CroppedFile
   dynamic _selectedBytes; // Uint8List? for Web preview
   bool _isVideo = false;

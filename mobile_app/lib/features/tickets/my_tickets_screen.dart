@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/ticket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:intl/intl.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});

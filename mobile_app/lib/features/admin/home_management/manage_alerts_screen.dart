@@ -148,7 +148,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                     const SizedBox(height: 20),
                     
                     DropdownButtonFormField<String>(
-                      value: _selectedType,
+                      initialValue: _selectedType,
                       decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
                       items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                       onChanged: (v) => setModalState(() => _selectedType = v!),
@@ -204,7 +204,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleActive(item!);
+                                 _toggleActive(item);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),

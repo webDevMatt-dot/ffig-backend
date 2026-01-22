@@ -49,7 +49,7 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("UPCOMING EVENTS")),
+      appBar: AppBar(title: const Text("EVENTS")),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildEventsList(),
@@ -83,7 +83,7 @@ class _EventsScreenState extends State<EventsScreen> {
       ),
       children: [
         // Upcoming Events Section
-        ..._buildEventSection(upcomingEvents, "UPCOMING EVENTS", context),
+        ..._buildEventSection(upcomingEvents, "EVENTS", context),
 
         // Past Events Section
         if (pastEvents.isNotEmpty) ...[

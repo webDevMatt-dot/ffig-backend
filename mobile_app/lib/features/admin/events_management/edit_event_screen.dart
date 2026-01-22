@@ -390,7 +390,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  const SizedBox(height: 12),
                  SwitchListTile(
                      title: const Text("Is Virtual Event?"), 
-                     activeColor: FfigTheme.primaryBrown,
+                     activeThumbColor: FfigTheme.primaryBrown,
                      value: _isVirtual, 
                      onChanged: (v) => setState(() => _isVirtual = v)
                  ),
@@ -492,7 +492,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                   trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20), onPressed: () => _deleteItem(type, id)),
                   dense: true,
                 );
-             }).toList(),
+             }),
              if (items != null && items.isNotEmpty) const SizedBox(height: 8),
          ],
       ),

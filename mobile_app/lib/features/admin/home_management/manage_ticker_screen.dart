@@ -122,7 +122,7 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                         child: OutlinedButton(
                           onPressed: () {
                              Navigator.pop(ctx);
-                             _toggleActive(item!);
+                             _toggleActive(item);
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),

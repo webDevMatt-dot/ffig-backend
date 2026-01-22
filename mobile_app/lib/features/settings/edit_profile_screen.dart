@@ -283,7 +283,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 16),
 
             DropdownButtonFormField<String>(
-              value: _selectedIndustry,
+              initialValue: _selectedIndustry,
               style: Theme.of(context).textTheme.bodyLarge,
               dropdownColor: Theme.of(context).cardTheme.color, // Fix visibility in dark mode
               decoration: const InputDecoration(labelText: "Industry", prefixIcon: Icon(Icons.work)),

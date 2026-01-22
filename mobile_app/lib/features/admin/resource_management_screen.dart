@@ -133,7 +133,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                     const SizedBox(height: 16),
                     
                     DropdownButtonFormField<String>(
-                         value: _selectedCategory,
+                         initialValue: _selectedCategory,
                          decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                          items: const [
                            DropdownMenuItem(value: 'MAG', child: Text("Magazine")),
@@ -160,7 +160,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleResourceActive(item!);
+                                 _toggleResourceActive(item);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),

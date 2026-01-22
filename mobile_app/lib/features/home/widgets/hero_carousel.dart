@@ -1,7 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import '../models/hero_item.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class HeroCarousel extends StatelessWidget {
   final List<HeroItem> items;

@@ -221,7 +221,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                     const SizedBox(height: 16),
                     
                     DropdownButtonFormField<String>(
-                      value: _selectedType,
+                      initialValue: _selectedType,
                       decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
                       items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                       onChanged: (v) => setModalState(() => _selectedType = v!),
@@ -249,14 +249,14 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleActive(item!);
+                                 _toggleActive(item);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
                               child: Icon(
                                 (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
-                                color: (item!['is_active'] ?? true) ? Colors.grey : Colors.green
+                                color: (item['is_active'] ?? true) ? Colors.grey : Colors.green
                               ),
                             ),
                           ),

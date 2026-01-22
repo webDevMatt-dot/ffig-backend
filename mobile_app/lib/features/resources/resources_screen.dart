@@ -217,7 +217,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                          fit: BoxFit.cover,
                          errorBuilder: (context, error, stackTrace) => Container(
                            height: 180, 
-                           color: theme.colorScheme.surfaceVariant,
+                           color: theme.colorScheme.surfaceContainerHighest,
                            child: Center(child: Icon(Icons.image_not_supported, color: theme.disabledColor)),
                          ),
                        )

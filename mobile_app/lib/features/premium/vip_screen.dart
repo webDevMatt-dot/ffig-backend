@@ -72,10 +72,12 @@ class _ResourceListState extends State<_ResourceList> {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _items = jsonDecode(response.body);
           _isLoading = false;
         });
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);

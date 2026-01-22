@@ -127,7 +127,7 @@ class _ReelItem extends StatefulWidget {
   State<_ReelItem> createState() => _ReelItemState();
 }
 
-class _ReelItemState extends State<_ReelItem> {
+class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixin {
   final _api = AdminApiService();
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
@@ -137,12 +137,20 @@ class _ReelItemState extends State<_ReelItem> {
   bool _isLiked = false;
   int _likesCount = 0;
   int _commentsCount = 0;
+  
+  // Double-tap like animation
+  late AnimationController _heartAnimationController;
+  bool _showHeartAnimation = false;
 
   @override
   void initState() {
     super.initState();
     _initMedia();
     _initSocial();
+    _heartAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
   }
   
   void _initSocial() {
@@ -195,6 +203,7 @@ class _ReelItemState extends State<_ReelItem> {
   void dispose() {
     _videoController?.dispose();
     _chewieController?.dispose();
+    _heartAnimationController.dispose();
     super.dispose();
   }
   
@@ -207,17 +216,37 @@ class _ReelItemState extends State<_ReelItem> {
       
       try {
           final res = await _api.toggleMarketingLike(widget.item['id']);
-          if (mounted) setState(() {
+          if (mounted) {
+            setState(() {
                _isLiked = res['status'] == 'liked';
                _likesCount = res['count'];
           });
+          }
       } catch (e) {
           // Revert
-          if (mounted) setState(() {
+          if (mounted) {
+            setState(() {
                _isLiked = prevLiked;
                _likesCount += _isLiked ? 1 : -1;
           });
+          }
       }
+  }
+  
+  void _onDoubleTap() {
+    // Only trigger like if not already liked
+    if (!_isLiked) {
+      _toggleLike();
+    }
+    
+    // Show heart animation
+    setState(() => _showHeartAnimation = true);
+    _heartAnimationController.forward().then((_) {
+      if (mounted) {
+        setState(() => _showHeartAnimation = false);
+        _heartAnimationController.reset();
+      }
+    });
   }
   
   void _showComments() {
@@ -308,12 +337,48 @@ class _ReelItemState extends State<_ReelItem> {
       fit: StackFit.expand,
       children: [
         // Content Layer
-        if (hasVideo)
-          Chewie(controller: _chewieController!)
-        else if (imageUrl != null)
-          Image.network(imageUrl, fit: BoxFit.cover)
-        else
-          Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
+        Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasVideo)
+              Chewie(controller: _chewieController!)
+            else if (imageUrl != null)
+              Image.network(imageUrl, fit: BoxFit.cover)
+            else
+              Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
+          ],
+        ),
+
+        // Touch Detection Layer (Overlay)
+        GestureDetector(
+          onDoubleTap: _onDoubleTap,
+          behavior: HitTestBehavior.translucent, // Capture taps over the video
+          child: Container(
+            color: Colors.transparent,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+
+        // Floating Heart Animation
+        if (_showHeartAnimation)
+          Center(
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.3, end: 1.2).animate(
+                CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
+              ),
+              child: FadeTransition(
+                opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
+                  CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
+                ),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.red,
+                  size: 100,
+                ),
+              ),
+            ),
+          ),
           
         // Overlay Gradient
         Container(
@@ -415,7 +480,7 @@ class _ActionButton extends StatelessWidget {
 
 class _CommentsSheet extends StatefulWidget {
     final int requestId;
-    const _CommentsSheet({super.key, required this.requestId});
+    const _CommentsSheet({required this.requestId});
     @override
     State<_CommentsSheet> createState() => _CommentsSheetState();
 }

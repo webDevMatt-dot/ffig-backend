@@ -218,7 +218,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
                _buildSection("Membership & Access", [
                    DropdownButtonFormField<String>(
                      decoration: const InputDecoration(labelText: "Membership Tier", border: OutlineInputBorder()),
-                     value: _selectedTier,
+                     initialValue: _selectedTier,
                      items: const [
                        DropdownMenuItem(value: 'FREE', child: Text("Free")),
                        DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),

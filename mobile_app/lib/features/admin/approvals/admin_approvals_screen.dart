@@ -265,7 +265,7 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
                                         const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
                                     
                                     
-                                    ButtonBar(
+                                    OverflowBar(
                                         children: [
                                             if (item['status'] == 'PENDING') ...[
                                                TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),

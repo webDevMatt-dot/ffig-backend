@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/ffig_theme.dart';
 
 enum ModerationType { warning, suspend, block, delete }
 

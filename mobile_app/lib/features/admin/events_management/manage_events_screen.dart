@@ -175,7 +175,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleEventActive(event!);
+                                 _toggleEventActive(event);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),

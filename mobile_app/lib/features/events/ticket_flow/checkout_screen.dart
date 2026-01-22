@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/ticket_service.dart';
 import 'ticket_confirmation_screen.dart';
 

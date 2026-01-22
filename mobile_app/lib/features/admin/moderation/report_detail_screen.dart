@@ -66,21 +66,27 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               final msgs = jsonDecode(response.body) as List;
               // Take last 10
               final last10 = msgs.length > 10 ? msgs.sublist(msgs.length - 10) : msgs;
-              if (mounted) setState(() {
+              if (mounted) {
+                setState(() {
                   _chatContext = last10;
                   _isLoadingContext = false;
               });
+              }
           } else {
-              if (mounted) setState(() {
+              if (mounted) {
+                setState(() {
                   _isLoadingContext = false;
                   _contextError = true; // "Admin access denied" likely
               });
+              }
           }
       } catch (e) {
-          if (mounted) setState(() {
+          if (mounted) {
+            setState(() {
               _isLoadingContext = false;
               _contextError = true;
           });
+          }
       }
   }
 

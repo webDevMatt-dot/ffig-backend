@@ -284,7 +284,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 ),
               )
             : ListView.builder(
-                padding: const EdgeInsets.only(top: 8, bottom: 120),
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
                 itemCount: _conversations.length,
                 itemBuilder: (context, index) {
                   final chat = _conversations[index];
@@ -407,7 +407,7 @@ class _InboxScreenState extends State<InboxScreen> {
       final theme = Theme.of(context);
 
       return ListView(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16),
           children: [
               if (users.isNotEmpty) ...[
                   Padding(

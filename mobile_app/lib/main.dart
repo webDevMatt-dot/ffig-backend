@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:overlay_support/overlay_support.dart';
-import 'features/auth/login_screen.dart';
 import 'features/home/dashboard_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/theme/ffig_theme.dart';

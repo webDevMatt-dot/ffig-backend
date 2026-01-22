@@ -80,17 +80,21 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           });
         }
       } else {
-         if (mounted) setState(() {
+         if (mounted) {
+           setState(() {
              _isLoading = false;
              _errorMessage = "Failed to load profile (${response.statusCode})";
          });
+         }
       }
     } catch (e) {
       print(e);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
           _isLoading = false;
           _errorMessage = "Connection error";
       });
+      }
     }
   }
 
