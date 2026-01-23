@@ -337,16 +337,19 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       fit: StackFit.expand,
       children: [
         // Content Layer
-        Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasVideo)
-              Chewie(controller: _chewieController!)
-            else if (imageUrl != null)
-              Image.network(imageUrl, fit: BoxFit.cover)
-            else
-              Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
-          ],
+        // Content Layer (Wrapped in IgnorePointer to prevent stealing taps)
+        IgnorePointer(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (hasVideo)
+                Chewie(controller: _chewieController!)
+              else if (imageUrl != null)
+                Image.network(imageUrl, fit: BoxFit.cover)
+              else
+                Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
+            ],
+          ),
         ),
 
         // Touch Detection Layer (Overlay)
@@ -365,7 +368,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
           },
           behavior: HitTestBehavior.opaque, // Force capture
           child: Container(
-            color: Colors.transparent,
+            color: Colors.black.withOpacity(0.001), // Almost transparent but force hit test
             width: double.infinity,
             height: double.infinity,
           ),
