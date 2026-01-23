@@ -12,6 +12,7 @@ import '../tickets/my_tickets_screen.dart';
 import 'blocked_users_screen.dart';
 import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../home/dashboard_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,7 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String? _adminNotice;
   bool _updateAvailable = false;
+
   String? _updateUrl;
+  bool _isGuest = true;
   
   @override
   void initState() {
@@ -58,6 +61,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       try {
         const storage = FlutterSecureStorage();
         final token = await storage.read(key: 'access_token');
+        if (token == null) {
+          if (mounted) setState(() => _isGuest = true);
+          return;
+        }
         final response = await http.get(Uri.parse('${baseUrl}members/me/'), headers: {'Authorization': 'Bearer $token'});
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
@@ -67,8 +74,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _isPremium = data['is_premium'] ?? false;
               _tier = data['tier'] ?? "FREE";
               // Backend returns flat JSON via ProfileSerializer
+              _isPremium = data['is_premium'] ?? false;
+              _tier = data['tier'] ?? "FREE";
+              // Backend returns flat JSON via ProfileSerializer
               _readReceiptsEnabled = data['read_receipts_enabled'] ?? true;
               _adminNotice = data['admin_notice']; // May be null
+              _isGuest = false;
             });
           }
         }
@@ -128,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
      await storage.deleteAll();
      if(mounted) {
        Navigator.of(context).pushAndRemoveUntil(
-         MaterialPageRoute(builder: (c) => const LoginScreen()),
+         MaterialPageRoute(builder: (c) => const DashboardScreen()),
          (route) => false
        );
      }
@@ -250,25 +261,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                  ),
              ),
              
-          // 1. General (Edit Profile, Change Password)
-          _buildSectionHeader("General"),
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text("Edit Profile"),
-            subtitle: const Text("Name, Bio, Industry, Photo"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text("Change Password"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showPasswordChangeDialog,
-          ),
-          
-          const Divider(),
+             // 1. General (Edit Profile, Change Password) - HIDDEN FOR GUESTS
+             if (!_isGuest) ...[
+              _buildSectionHeader("General"),
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text("Edit Profile"),
+                subtitle: const Text("Name, Bio, Industry, Photo"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                   Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: const Text("Change Password"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: _showPasswordChangeDialog,
+              ),
+              const Divider(),
+             ],
+
 
           // 2. Preferences (Theme)
           _buildSectionHeader("Preferences"),
@@ -306,30 +319,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // 3. Privacy
-          _buildSectionHeader("Privacy"),
-          SwitchListTile(
-            title: const Text("Read Receipts"),
-            subtitle: const Text("Let others know when you've read their messages."),
-            value: _readReceiptsEnabled,
-            onChanged: (val) {
-                setState(() => _readReceiptsEnabled = val);
-                _updatePrivacy(val);
-            },
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.block, color: Colors.grey),
-            title: const Text("Blocked Users"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockedUsersScreen()));
-            },
-          ),
-          
-          const Divider(),
+          // 3. Privacy - HIDDEN FOR GUESTS
+          if (!_isGuest) ...[
+            _buildSectionHeader("Privacy"),
+            SwitchListTile(
+              title: const Text("Read Receipts"),
+              subtitle: const Text("Let others know when you've read their messages."),
+              value: _readReceiptsEnabled,
+              onChanged: (val) {
+                  setState(() => _readReceiptsEnabled = val);
+                  _updatePrivacy(val);
+              },
+            ),
+            
+            ListTile(
+              leading: const Icon(Icons.block, color: Colors.grey),
+              title: const Text("Blocked Users"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockedUsersScreen()));
+              },
+            ),
+            const Divider(),
+          ],
 
-          // 3. Account & Subscription
-          _buildSectionHeader("Account & Subscription"),
+
+          // 3. Subscription (Modified for Guests)
+          _buildSectionHeader( _isGuest ? "Subscription" : "Account & Subscription"),
           Container(
              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
              padding: const EdgeInsets.all(16),
@@ -340,22 +356,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
              ),
              child: Column(
                children: [
-                 Row(
-                   children: [
-                     const Icon(Icons.email_outlined, color: FfigTheme.primaryBrown),
-                     const SizedBox(width: 12),
-                     Expanded(
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                            const Text("Email Address", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text(_email, style: const TextStyle(fontWeight: FontWeight.bold)),
-                         ],
-                       ),
-                     )
-                   ],
-                 ),
-                 const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
+                 if (!_isGuest) ...[
+                   Row(
+                     children: [
+                       const Icon(Icons.email_outlined, color: FfigTheme.primaryBrown),
+                       const SizedBox(width: 12),
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                              const Text("Email Address", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text(_email, style: const TextStyle(fontWeight: FontWeight.bold)),
+                           ],
+                         ),
+                       )
+                     ],
+                   ),
+                   const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
+                 ],
                  Row(
                    children: [
                       if (_tier == 'PREMIUM')
@@ -384,72 +402,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // 4. System (Version)
-           ListTile(
-            leading: const Icon(Icons.confirmation_number_outlined),
-            title: const Text("My Tickets"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
-            },
-          ),
-          
-          const Divider(),
+          // My Tickets - HIDDEN FOR GUESTS
+           if (!_isGuest) ...[
+             ListTile(
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: const Text("My Tickets"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                 Navigator.push(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
+              },
+            ),
+            const Divider(),
+          ],
+
 
           // 4. System (Version)
            _buildSectionHeader("System"),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text("App Version"),
-              subtitle: _updateAvailable 
-                  ? GestureDetector(
-                      onTap: () {
-                          if (_updateUrl != null) launchUrl(Uri.parse(_updateUrl!), mode: LaunchMode.externalApplication);
-                      },
-                      child: const Text("Update Available", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold)),
-                  ) 
-                  : null,
+              subtitle: null, // Removed clickable subtitle
               trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                       Text(_appVersion, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                       if (_updateAvailable) ...[
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_ios, size: 14, color: FfigTheme.primaryBrown)
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: FfigTheme.primaryBrown,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                              minimumSize: const Size(0, 32),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                                if (_updateUrl != null) launchUrl(Uri.parse(_updateUrl!), mode: LaunchMode.externalApplication);
+                            },
+                            child: const Text("UPDATE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          )
                       ]
                   ],
               ),
-              onTap: _updateAvailable ? () {
-                  if (_updateUrl != null) launchUrl(Uri.parse(_updateUrl!), mode: LaunchMode.externalApplication);
-              } : null,
+              onTap: null, // Disable tile tap for update
             ),
 
            const Divider(),
 
-          // 5. Sign Out
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.grey),
-            title: const Text("Sign Out"),
-            onTap: _logout,
-          ),
-          
-          const SizedBox(height: 48),
-          
-          // 6. Danger Zone
-          _buildSectionHeader("DANGER ZONE"),
-           Container(
-             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-             decoration: BoxDecoration(
-               color: Colors.red.withOpacity(0.05),
-               borderRadius: BorderRadius.circular(12),
-               border: Border.all(color: Colors.red.withOpacity(0.3)),
+          // 5. Sign Out - HIDDEN FOR GUESTS
+          if (!_isGuest) ...[
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.grey),
+              title: const Text("Sign Out"),
+              onTap: _logout,
+            ),
+            
+            const SizedBox(height: 48),
+            
+            // 6. Danger Zone
+            _buildSectionHeader("DANGER ZONE"),
+             Container(
+               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+               decoration: BoxDecoration(
+                 color: Colors.red.withOpacity(0.05),
+                 borderRadius: BorderRadius.circular(12),
+                 border: Border.all(color: Colors.red.withOpacity(0.3)),
+               ),
+               child: ListTile(
+                 leading: const Icon(Icons.delete_forever, color: Colors.red),
+                 title: const Text("Delete Account", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                 subtitle: const Text("This action is permanent and cannot be undone."),
+                 onTap: _showDeleteConfirmation,
+               ),
              ),
-             child: ListTile(
-               leading: const Icon(Icons.delete_forever, color: Colors.red),
-               title: const Text("Delete Account", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-               subtitle: const Text("This action is permanent and cannot be undone."),
-               onTap: _showDeleteConfirmation,
-             ),
-           ),
+          ] else ...[
+             // Optionally show Login button for guests
+             ListTile(
+              leading: const Icon(Icons.login, color: FfigTheme.primaryBrown),
+              title: const Text("Log In / Sign Up", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold)),
+              onTap: _logout, // Logout effectively goes to login screen
+            ),
+          ],
            const SizedBox(height: 24),
         ],
       ),

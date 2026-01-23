@@ -81,7 +81,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     _checkPremiumStatus();
     _checkPremiumStatus();
     _loadHomepageContent();
-    // _checkForUpdates(); // Removed
     // Start the Global Listener (Checks every 10 seconds)
     _notificationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkUnreadMessages();
@@ -510,11 +509,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     const storage = FlutterSecureStorage();
     await storage.deleteAll();
 
-    // 2. Return to Login
+    // 2. Return to Homepage (Guest Mode)
     if (mounted) {
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        (route) => false, // Remove all previous routes
       );
     }
   }
@@ -761,6 +761,22 @@ class _DashboardScreenState extends State<DashboardScreen>
     ]);
   }
 
+  int _getUpcomingCount() {
+    final now = DateTime.now();
+    // Normalize to start of day to include events happening "today"
+    final today = DateTime(now.year, now.month, now.day);
+    return _events.where((event) {
+      try {
+        final eventDate = DateTime.parse(event['date']);
+        // We want events that are on or after today (ignoring time)
+        final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
+        return !eventDay.isBefore(today);
+      } catch (_) {
+        return false;
+      }
+    }).length;
+  }
+
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: _onRefresh,
@@ -848,7 +864,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       Expanded(
                         child: BentoTile(
                           title: "Events",
-                          subtitle: "${_events.length} Upcoming",
+                          subtitle: "${_getUpcomingCount()} Upcoming",
                           height: 160,
                           isGlass: true, // Glass effect
                           icon: const Icon(

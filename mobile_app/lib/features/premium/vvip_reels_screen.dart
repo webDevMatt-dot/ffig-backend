@@ -352,7 +352,18 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
         // Touch Detection Layer (Overlay)
         GestureDetector(
           onDoubleTap: _onDoubleTap,
-          behavior: HitTestBehavior.translucent, // Capture taps over the video
+          onTap: () {
+             if (_videoController != null && _videoController!.value.isInitialized) {
+                setState(() {
+                  if (_videoController!.value.isPlaying) {
+                     _videoController!.pause();
+                  } else {
+                     _videoController!.play();
+                  }
+                });
+             }
+          },
+          behavior: HitTestBehavior.opaque, // Force capture
           child: Container(
             color: Colors.transparent,
             width: double.infinity,
