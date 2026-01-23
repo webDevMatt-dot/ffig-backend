@@ -81,37 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text("My Profile"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.system_update),
-            onPressed: () async {
-               // Manual Update Check
-               final updateData = await VersionService().checkUpdate();
-               if (!mounted) return;
-               
-               if (updateData != null) {
-                  // Update Available
-                  showDialog(context: context, builder: (c) => AlertDialog(
-                    title: const Text("Update Available"),
-                    content: Text("Latest Version: ${updateData['latestVersion']}\nWe found an update!"),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
-                      ElevatedButton(onPressed: () => launchUrl(Uri.parse(updateData['url']), mode: LaunchMode.externalApplication), child: const Text("Update"))
-                    ],
-                  ));
-               } else {
-                  // No Update or Error
-                  // We can't easily distinguish "No Update" from "Error" with current Service, 
-                  // but usually checkUpdate returns null if no update OR error.
-                  // Let's assume up to date.
-                  final info = await PackageInfo.fromPlatform();
-                  showDialog(context: context, builder: (c) => AlertDialog(
-                    title: const Text("No Update Required"),
-                    content: Text("You are on version ${info.version}.\nSystem is up to date."),
-                    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-                  ));
-               }
-            },
-          ),
+
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () async {
