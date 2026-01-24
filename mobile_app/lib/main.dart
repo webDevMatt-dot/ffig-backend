@@ -105,10 +105,10 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             // Placeholder for Logo
             // Logo
-             Padding(
+            Padding(
               padding: const EdgeInsets.all(32.0),
               child: Image.asset(
-                'assets/images/TM FEMALE FOUNDERS GLOBALLOGO.avif',
+                'assets/images/tm_female_founders_logo.avif',
                 fit: BoxFit.contain,
               ),
             ),
