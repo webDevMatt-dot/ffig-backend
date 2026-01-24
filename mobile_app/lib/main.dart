@@ -108,17 +108,8 @@ class _SplashScreenState extends State<SplashScreen> {
              Padding(
               padding: const EdgeInsets.all(32.0),
               child: Image.asset(
-                'assets/images/female_founders_logo_full.png',
+                'assets/images/TM FEMALE FOUNDERS GLOBALLOGO.avif',
                 fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(height: 40),
-            Text(
-              "\"We don't compete,\nwe collaborate.\"",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dancingScript(
-                fontSize: 24,
-                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],

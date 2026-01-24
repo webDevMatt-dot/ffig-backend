@@ -112,7 +112,8 @@ class UserSerializer(serializers.ModelSerializer):
                 qs = qs.exclude(pk=self.instance.pk)
             
             if qs.exists():
-                raise serializers.ValidationError({"username": "A user with that username already exists."})
+                conflict = qs.first()
+                raise serializers.ValidationError({"username": f"A user with that username already exists (ID: {conflict.id})."})
         
         return data
 
