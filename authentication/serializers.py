@@ -8,9 +8,12 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     password2 = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
+    industry = serializers.CharField(required=False)
+    industry_other = serializers.CharField(required=False)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'password2', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'password', 'password2', 'first_name', 'last_name', 'industry', 'industry_other']
 
     def validate(self, data):
         if data['password'] != data['password2']:
@@ -18,6 +21,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        # Extract profile fields
+        industry = validated_data.pop('industry', 'OTH')
+        industry_other = validated_data.pop('industry_other', '')
+
         # Create user and hash the password securely
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -26,6 +33,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name']
         )
+        
+        # Update auto-created profile
+        # Note: Profile is created by signal, so we just fetch and update
+        if hasattr(user, 'profile'):
+            user.profile.industry = industry
+            user.profile.industry_other = industry_other
+            user.profile.save()
 
         return user
 

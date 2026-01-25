@@ -45,7 +45,8 @@ from members.views import (
     AdminContentReportListView, AdminContentReportDetailView, AdminModerationActionView,
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
-    MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView
+    MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
+    StoryViewSet
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
@@ -109,6 +110,11 @@ urlpatterns = [
     path('api/members/marketing/feed/', MarketingFeedView.as_view(), name='marketing-feed'),
     path('api/members/marketing/<int:pk>/like/', MarketingLikeView.as_view(), name='marketing-like'),
     path('api/members/marketing/<int:pk>/comments/', MarketingCommentView.as_view(), name='marketing-comments'),
+    
+    # Stories
+    path('api/members/stories/', StoryViewSet.as_view({'get': 'list', 'post': 'create'}), name='story-list'),
+    path('api/members/stories/<int:pk>/', StoryViewSet.as_view({'delete': 'destroy'}), name='story-detail'),
+
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),

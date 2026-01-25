@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -25,7 +25,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_other', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked']
 
     def get_admin_notice(self, obj):
         # Only show the notice if the request user IS the profile user
@@ -296,3 +296,20 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = '__all__'
         read_only_fields = ['recipient', 'created_at']
+
+class StorySerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    user_photo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Story
+        fields = ['id', 'user', 'username', 'user_photo', 'media', 'created_at']
+
+    def get_user_photo(self, obj):
+        if hasattr(obj.user, 'profile'):
+            # Re-use logic or quick access
+            p = obj.user.profile
+            if p.photo:
+                return p.photo.url
+            return p.photo_url
+        return None

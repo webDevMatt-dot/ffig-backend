@@ -487,7 +487,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+                Navigator.push(
                 context,
                 MaterialPageRoute(builder: (c) => const LoginScreen()),
               );
@@ -563,7 +563,18 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        setState(() => _selectedIndex = 0);
+        _pageController.animateToPage(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: Scaffold(
       extendBody: true, // Allow body to flow behind the floating nav bar
       appBar: AppBar(
         title: Text(
@@ -655,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton(
-                onPressed: () => Navigator.pushReplacement(
+                onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (c) => const LoginScreen()),
                 ),
@@ -748,6 +759,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
         ],
       ),
+    ),
     );
   }
 

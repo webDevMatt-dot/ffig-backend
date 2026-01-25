@@ -18,7 +18,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _industryOtherController = TextEditingController();
   bool _isLoading = false;
+  String _selectedIndustry = 'OTH';
+
+  final Map<String, String> _industryChoices = {
+    'TECH': 'Technology',
+    'FIN': 'Finance',
+    'HLTH': 'Healthcare',
+    'RET': 'Retail',
+    'EDU': 'Education',
+    'MED': 'Media & Arts',
+    'LEG': 'Legal',
+    'FASH': 'Fashion',
+    'MAN': 'Manufacturing',
+    'OTH': 'Other',
+  };
+
 
   Future<void> _register() async {
     setState(() => _isLoading = true);
@@ -28,6 +44,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showError("Passwords do not match");
       setState(() => _isLoading = false);
       return;
+    }
+    
+    if (_selectedIndustry == 'OTH' && _industryOtherController.text.trim().isEmpty) {
+         _showError("Please specify your industry.");
+         setState(() => _isLoading = false);
+         return;
     }
 
     // 2. Determine URL
@@ -44,6 +66,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'last_name': _lNameController.text,
           'password': _passwordController.text,
           'password2': _confirmController.text,
+          'industry': _selectedIndustry,
+          'industry_other': _selectedIndustry == 'OTH' ? _industryOtherController.text.trim() : '',
         }),
       );
 
@@ -109,6 +133,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(height: 16),
             _buildTextField("EMAIL ADDRESS", _emailController, Icons.mail_outline, type: TextInputType.emailAddress, action: TextInputAction.next),
             const SizedBox(height: 16),
+            
+            // Industry Dropdown
+            DropdownButtonFormField<String>(
+              value: _selectedIndustry,
+              decoration: const InputDecoration(
+                labelText: "INDUSTRY",
+                prefixIcon: Icon(Icons.work_outline),
+              ),
+              items: _industryChoices.entries.map((e) {
+                return DropdownMenuItem(value: e.key, child: Text(e.value));
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedIndustry = val);
+              },
+            ),
+             const SizedBox(height: 16),
+            
+            // Conditional Other Input
+            if (_selectedIndustry == 'OTH') ...[
+                _buildTextField("SPECIFY INDUSTRY", _industryOtherController, Icons.edit, action: TextInputAction.next),
+                const SizedBox(height: 16),
+            ],
+
             _buildTextField("PASSWORD", _passwordController, Icons.lock_outline, isObscure: true, action: TextInputAction.next),
             const SizedBox(height: 16),
             _buildTextField("CONFIRM PASSWORD", _confirmController, Icons.lock_outline, isObscure: true, action: TextInputAction.done),

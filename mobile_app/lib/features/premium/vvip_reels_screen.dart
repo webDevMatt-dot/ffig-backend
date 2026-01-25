@@ -345,7 +345,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               if (hasVideo)
                 Chewie(controller: _chewieController!)
               else if (imageUrl != null)
-                Image.network(imageUrl, fit: BoxFit.cover)
+                Image.network(imageUrl, fit: BoxFit.contain)
               else
                 Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
             ],

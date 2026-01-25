@@ -415,3 +415,16 @@ class NotificationMarkReadView(APIView):
         notification.is_read = True
         notification.save()
         return Response({"status": "marked as read"})
+
+from .models import Story
+from .serializers import StorySerializer
+
+class StoryViewSet(viewsets.ModelViewSet):
+    queryset = Story.objects.all()
+    serializer_class = StorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 24 hour filter
+        cutoff = timezone.now() - timedelta(hours=24)
+        return Story.objects.filter(created_at__gte=cutoff).order_by('-created_at')

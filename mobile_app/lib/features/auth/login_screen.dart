@@ -265,7 +265,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: TextSpan(
                       style: Theme.of(context).textTheme.bodyMedium,
                       children: [
-                        const TextSpan(text: "No account? "),
+                        TextSpan(
+                          text: "No account? ",
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
                         TextSpan(
                           text: "Sign Up",
                           style: TextStyle(
@@ -276,6 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
+
                 ),
                 const SizedBox(height: 24),
 

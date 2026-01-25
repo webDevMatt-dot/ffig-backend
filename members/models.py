@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+from datetime import timedelta
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -20,6 +22,7 @@ class Profile(models.Model):
     ]
     
     industry = models.CharField(max_length=50, choices=INDUSTRY_CHOICES, default='OTH')
+    industry_other = models.CharField(max_length=100, blank=True)
     location = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
     # RBAC Fields
@@ -133,3 +136,15 @@ class MarketingComment(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+class Story(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    media = models.FileField(upload_to='stories/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_active(self):
+        return self.created_at >= timezone.now() - timedelta(hours=24)
+
+    def __str__(self):
+        return f"Story by {self.user.username} at {self.created_at}"
