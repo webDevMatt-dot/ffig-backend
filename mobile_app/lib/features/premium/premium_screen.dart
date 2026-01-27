@@ -49,13 +49,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       // StoriesBar will be at the top.
       body: Stack(
         children: [
-          Column(
-            children: [
-              SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
-              const StoriesBar(),
-              const Expanded(child: VVIPFeed()),
-            ],
-          ),
+          const VVIPFeed(),
 
           // VVIP Creation Button (Top Left)
           Positioned(

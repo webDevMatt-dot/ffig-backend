@@ -7,6 +7,7 @@ import '../../../core/services/admin_api_service.dart';
 import '../../../core/theme/ffig_theme.dart';
 import '../../../core/api/constants.dart';
 import '../share_to_chat_sheet.dart';
+import 'stories_bar.dart'; // Import local widget
 import '../../../shared_widgets/user_avatar.dart';
 
 class VVIPFeed extends StatefulWidget {
@@ -53,43 +54,92 @@ class _VVIPFeedState extends State<VVIPFeed> {
         return const Center(child: Text("No VVIP content yet.", style: TextStyle(color: Colors.white)));
     }
 
-    return PageView.builder(
-      scrollDirection: Axis.vertical,
-      controller: _pageController,
-      itemCount: _reels.length + 1,
-      itemBuilder: (context, index) {
-        if (index == _reels.length) {
-            return const _CaughtUpPage();
-        }
-        return _ReelItem(item: _reels[index], key: ValueKey(_reels[index]['id']));
-      },
+    return Stack(
+      children: [
+        PageView.builder(
+          scrollDirection: Axis.vertical,
+          controller: _pageController,
+          itemCount: _reels.length + 1,
+          itemBuilder: (context, index) {
+            if (index == _reels.length) {
+                return _CaughtUpPage(onRefresh: () {
+                  _loadReels();
+                  _pageController.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+                });
+            }
+            return _ReelItem(item: _reels[index], key: ValueKey(_reels[index]['id']));
+          },
+        ),
+        
+        // Stories Bar (Scrolls away)
+        Positioned(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            left: 0, 
+            right: 0,
+            child: AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, child) {
+                    double offset = 0;
+                    try {
+                        if (_pageController.hasClients && _pageController.position.haveDimensions) {
+                             offset = _pageController.page ?? 0;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                    
+                    // Hide after 1 page scroll
+                    if (offset > 1) return const SizedBox.shrink();
+
+                    return Transform.translate(
+                        offset: Offset(0, -offset * 300), // Move up faster than scroll
+                        child: Opacity(
+                            opacity: (1 - offset).clamp(0.0, 1.0), // Fade out
+                            child: child
+                        ),
+                    );
+                },
+                child: const StoriesBar(),
+            )
+        )
+      ],
     );
   }
 }
 
 class _CaughtUpPage extends StatelessWidget {
-    const _CaughtUpPage();
+    final VoidCallback onRefresh;
+    const _CaughtUpPage({required this.onRefresh});
     
     @override
     Widget build(BuildContext context) {
-        return Container(
-            color: Colors.black,
-            child: const Center(
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                        Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-                        SizedBox(height: 24),
-                        Text(
-                            "You're all caught up!",
-                            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                            "Check back later for more.",
-                            style: TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                    ],
+        return GestureDetector(
+            onVerticalDragEnd: (details) {
+                if (details.primaryVelocity! < 0) { // Swipe Up
+                    onRefresh();
+                }
+            },
+            child: Container(
+                color: Colors.black,
+                child: const Center(
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                            Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                            SizedBox(height: 24),
+                            Text(
+                                "You're all caught up!",
+                                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                                "Swipe up to refresh",
+                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                            ), 
+                             SizedBox(height: 48),
+                             Icon(Icons.keyboard_double_arrow_up, color: Colors.white54, size: 40)
+                        ],
+                    ),
                 ),
             ),
         );
@@ -330,7 +380,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     child: hasVideo
                         ? Chewie(controller: _chewieController!)
                         : (imageUrl != null
-                            ? Image.network(imageUrl, fit: BoxFit.cover)
+                            ? Image.network(imageUrl, fit: BoxFit.contain)
                             : Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))))
                 )
             ),
@@ -414,10 +464,16 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     const SizedBox(height: 12),
                     Row(
                         children: [
-                             const Text("VVIP EXCLUSIVE", style: TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+                             Text((widget.item['username'] ?? 'VVIP Member').toUpperCase(), style: const TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
                              Container(margin: const EdgeInsets.symmetric(horizontal: 12), width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
-                             // Date would go here
-                             const Text("JUST NOW", style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
+                             Text(() {
+                                 final dateStr = widget.item['created_at'];
+                                 if (dateStr == null) return "";
+                                 try {
+                                     final d = DateTime.parse(dateStr);
+                                     return "${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}";
+                                 } catch (e) { return ""; }
+                             }(), style: const TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
                         ],
                     ),
                     const SizedBox(height: 24),

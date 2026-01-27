@@ -32,7 +32,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               toolbarTitle: 'Story',
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              initAspectRatio: CropAspectRatioPreset.original,
               lockAspectRatio: false,
             ),
             IOSUiSettings(
@@ -125,8 +125,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                         : ClipRRect(
                             borderRadius: BorderRadius.circular(20),
                             child: kIsWeb 
-                                ? Image.memory(_selectedFile, fit: BoxFit.cover)
-                                : Image.file(_selectedFile, fit: BoxFit.cover),
+                                ? Image.memory(_selectedFile, fit: BoxFit.contain)
+                                : Image.file(_selectedFile, fit: BoxFit.contain),
                         ),
                 ),
              ),

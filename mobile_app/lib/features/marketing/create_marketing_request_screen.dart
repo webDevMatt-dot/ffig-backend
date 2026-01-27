@@ -20,7 +20,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
-  final _urlInputController = TextEditingController();
+  // removed urlInputController
   
   final bool _isLoading = false;
   dynamic _selectedFile; // File or CroppedFile
@@ -62,7 +62,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
              _selectedFile = croppedFile; 
              _selectedBytes = bytes;
              _isVideo = false;
-             _urlInputController.clear();
+             // _urlInputController.clear();
            });
         }
       } else {
@@ -72,7 +72,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
           _selectedFile = kIsWeb ? null : File(xfile.path);
           _selectedBytes = bytes;
           _isVideo = true;
-          _urlInputController.clear();
+          // _urlInputController.clear();
         });
       }
     }
@@ -82,14 +82,12 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
     if (!_formKey.currentState!.validate()) return;
     
     // Validate media
-    if (_selectedBytes == null && _urlInputController.text.isEmpty && _selectedFile == null) {
-      DialogUtils.showError(context, "Media Required", "Please pick an image/video or enter a URL.");
+    if (_selectedBytes == null && _selectedFile == null) {
+      DialogUtils.showError(context, "Media Required", "Please pick an image/video.");
       return;
     }
 
-    final media = (_urlInputController.text.isNotEmpty) 
-        ? _urlInputController.text 
-        : (_selectedFile ?? _selectedBytes);
+    final media = _selectedFile ?? _selectedBytes;
 
     Navigator.push(
       context, 
@@ -147,11 +145,8 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                      child: _selectedBytes != null 
                         ? (_isVideo 
                              ? const Icon(Icons.videocam, size: 60, color: Colors.red)
-                             : (_selectedBytes is Uint8List 
-                                  ? Image.memory(_selectedBytes, fit: BoxFit.cover)
-                                  : Image.network(_urlInputController.text, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image))
-                                )
-                        )
+                             : Image.memory(_selectedBytes, fit: BoxFit.cover)
+                           )
                         : const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -177,23 +172,8 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                      ],
                    ),
                    const SizedBox(height: 16),
-                   const Text("- OR -", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
                    const SizedBox(height: 16),
-                   TextFormField(
-                      controller: _urlInputController,
-                      decoration: const InputDecoration(labelText: "Media URL", prefixIcon: Icon(Icons.link), border: OutlineInputBorder()),
-                      onChanged: (val) {
-                         setState(() {
-                            // Clear picked file if user types URL
-                            _selectedFile = null;
-                            _selectedBytes = null; 
-                            if (val.isNotEmpty) {
-                               _selectedBytes = val; // Hack to trigger preview logic if I reused it, but better explicit
-                               _isVideo = val.toLowerCase().endsWith('.mp4');
-                            }
-                         });
-                      },
-                   )
+                   // Removed Media URL input
                 ]),
                 
                 const SizedBox(height: 80),

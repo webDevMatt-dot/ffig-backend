@@ -265,7 +265,23 @@ class AdminApiService {
   }
 
   Future<void> createStory(dynamic file) async {
-      await _uploadWithImage('members/stories', {}, file, 'media');
+      final token = await _getToken();
+      var request = http.MultipartRequest('POST', Uri.parse('$_membersBaseUrl/stories/'));
+      request.headers['Authorization'] = 'Bearer $token';
+
+      if (file != null) {
+          if (kIsWeb && file is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('media', file, filename: 'story.jpg', contentType: MediaType('image', 'jpeg')));
+          } else if (file is File) {
+             request.files.add(await http.MultipartFile.fromPath('media', file.path, contentType: MediaType('image', 'jpeg')));
+          }
+      }
+
+      final response = await request.send();
+      if (response.statusCode != 201) {
+          final respStr = await response.stream.bytesToString();
+          throw Exception('Failed to post story: $respStr');
+      }
   }
 
   // BETTER APPROACH:
