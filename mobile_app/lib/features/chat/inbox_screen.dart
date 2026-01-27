@@ -10,6 +10,7 @@ import 'chat_screen.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../community/public_profile_screen.dart';
+import 'community_chat_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -263,6 +264,9 @@ class _InboxScreenState extends State<InboxScreen> {
                ],
              ),
            ),
+
+           // Community Chat Pinned Entry
+           if (_searchController.text.isEmpty) _buildCommunityChatTile(),
            
            Expanded(
              child: _isLoading 
@@ -559,5 +563,53 @@ class _InboxScreenState extends State<InboxScreen> {
           ),
         ),
       );
+  }
+  Widget _buildCommunityChatTile() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      child: Container(
+        decoration: BoxDecoration(
+          // Distinct background to make it stand out slightly
+          color: FfigTheme.primaryBrown.withOpacity(0.1), 
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: FfigTheme.primaryBrown.withOpacity(0.3)),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: FfigTheme.primaryBrown,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.groups, color: Colors.white, size: 28),
+          ),
+          title: Text(
+            "Community Chat",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: FfigTheme.primaryBrown,
+            ),
+          ),
+          subtitle: Text(
+            "Connect with all members",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+            ),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: FfigTheme.primaryBrown),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CommunityChatScreen()),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

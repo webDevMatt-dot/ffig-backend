@@ -7,7 +7,11 @@ import 'dart:async';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import 'widgets/stories_bar.dart';
+import 'widgets/stories_bar.dart';
 import 'widgets/vvip_feed.dart';
+import 'widgets/vvip_feed.dart';
+import '../marketing/create_marketing_request_screen.dart';
+import 'create_story_screen.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -43,25 +47,82 @@ class _PremiumScreenState extends State<PremiumScreen> {
       // We remove the AppBar to allow content to be immersive
       // DashboardScreen's AppBar is transparent, so it will overlay this.
       // StoriesBar will be at the top.
-      body: Column(
+      body: Stack(
         children: [
-          // Spacer for Status Bar + Dashboard AppBar
-          // Dashboard default AppBar height is kToolbarHeight (56).
-          // Status bar height is MediaQuery.of(context).padding.top.
-          // But StoriesBar needs to be interactable.
-          // If we are under the AppBar, touches might be intercepted if AppBar has background.
-          // But Dashboard AppBar is transparent and allows clicks through? 
-          // Usually Actions consume clicks. Title area might not.
-          // Ideally we add padding to push stories down below the AppBar.
-          SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
-          
-          // 1. Stories
-          const StoriesBar(),
-          
-          // 2. Feed
-          const Expanded(child: VVIPFeed()),
+          Column(
+            children: [
+              SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
+              const StoriesBar(),
+              const Expanded(child: VVIPFeed()),
+            ],
+          ),
+
+          // VVIP Creation Button (Top Left)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 12, // Align with Dashboard AppBar
+            left: 16,
+            child: FloatingActionButton.small(
+              backgroundColor: FfigTheme.primaryBrown,
+              heroTag: 'vvip_create_btn',
+              onPressed: _showCreationMenu,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  void _showCreationMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Create Content",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.video_library, color: Colors.pinkAccent),
+                title: const Text("Reel (Ad / Promotion)", style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateMarketingRequestScreen(type: 'Ad'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.history_toggle_off, color: Colors.cyanAccent),
+                title: const Text("Story", style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CreateStoryScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

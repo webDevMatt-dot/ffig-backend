@@ -387,7 +387,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
         // Side Action Bar (Right)
         Positioned(
             right: 16,
-            bottom: 100,
+            bottom: 140, // Increased from 100 to avoid GlassNavBar
             child: Column(
                 children: [
                     _ActionButton(
@@ -414,7 +414,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
         // Info Layer
         Positioned(
-            bottom: 40,
+            bottom: 110, // Increased from 40 to avoid GlassNavBar
             left: 16,
             right: 80, // Space for buttons
             child: Column(

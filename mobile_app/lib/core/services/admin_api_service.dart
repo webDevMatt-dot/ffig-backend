@@ -263,6 +263,10 @@ class AdminApiService {
     }
   }
 
+  Future<void> createStory(dynamic file) async {
+      await _uploadWithImage('members/stories', {}, file, 'media');
+  }
+
   // BETTER APPROACH:
   Future<void> createMarketingRequestWithMedia(Map<String, String> fields, {dynamic imageFile, dynamic videoFile}) async {
       final token = await _getToken();

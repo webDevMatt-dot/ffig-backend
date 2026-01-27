@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, mixins
+from rest_framework import viewsets, generics, permissions, status, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
@@ -422,9 +422,22 @@ from .serializers import StorySerializer
 class StoryViewSet(viewsets.ModelViewSet):
     queryset = Story.objects.all()
     serializer_class = StorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     def get_queryset(self):
         # 24 hour filter
+        now = timezone.now()
+        time_threshold = now - timedelta(hours=24)
+        return Story.objects.filter(created_at__gte=time_threshold).order_by('created_at')
+
+class MarketingFeedView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = MarketingRequestSerializer
+
+    def get_queryset(self):
+        return MarketingRequest.objects.filter(status='APPROVED').order_by('-created_at')
         cutoff = timezone.now() - timedelta(hours=24)
         return Story.objects.filter(created_at__gte=cutoff).order_by('-created_at')

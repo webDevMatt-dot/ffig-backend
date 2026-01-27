@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/api/constants.dart';
+import '../../../core/api/constants.dart';
 import '../../../shared_widgets/user_avatar.dart';
+import '../create_story_screen.dart';
 
 class StoriesBar extends StatefulWidget {
   const StoriesBar({super.key});
@@ -70,8 +72,7 @@ class _StoriesBarState extends State<StoriesBar> {
               name: "Your Story",
               isAdd: true,
               onTap: () {
-                 // Future implementation: Add Story
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Add Story feature coming soon!")));
+                 Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateStoryScreen()));
               },
             );
           }

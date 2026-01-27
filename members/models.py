@@ -73,7 +73,7 @@ class BusinessProfile(models.Model):
         return self.company_name
 
 class MarketingRequest(models.Model):
-    TYPE_CHOICES = [('AD', 'Advertisement'), ('PROMOTION', 'Promotion')]
+    TYPE_CHOICES = [('AD', 'Advertisement'), ('PROMOTION', 'Promotion'), ('CONTENT', 'VVIP Content')]
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
