@@ -67,7 +67,7 @@ class _VVIPFeedState extends State<VVIPFeed> {
                   _pageController.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
                 });
             }
-            return _ReelItem(item: _reels[index], key: ValueKey(_reels[index]['id']));
+            return _ReelItem(item: _reels[index], index: index, key: ValueKey(_reels[index]['id']));
           },
         ),
         
@@ -149,7 +149,8 @@ class _CaughtUpPage extends StatelessWidget {
 
 class _ReelItem extends StatefulWidget {
   final Map<String, dynamic> item;
-  const _ReelItem({super.key, required this.item});
+  final int index;
+  const _ReelItem({super.key, required this.item, required this.index});
 
   @override
   State<_ReelItem> createState() => _ReelItemState();
@@ -361,7 +362,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     final bool hasVideo = _chewieController != null;
     
     return Padding( // Wrapper for the "Card" effect
-      padding: const EdgeInsets.only(bottom: 24, left: 0, right: 0), 
+      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 110 : 0), 
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF161B22), // Obsidian lighter

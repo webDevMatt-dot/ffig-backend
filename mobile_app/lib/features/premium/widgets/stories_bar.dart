@@ -66,19 +66,9 @@ class _StoriesBarState extends State<StoriesBar> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _stories.length + 1, // +1 for "Your Story"
+        itemCount: _stories.length, 
         itemBuilder: (context, index) {
-          if (index == 0) {
-            return _buildStoryItem(
-              name: "Your Story",
-              isAdd: true,
-              onTap: () {
-                 Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateStoryScreen()));
-              },
-            );
-          }
-          
-          final story = _stories[index - 1];
+          final story = _stories[index];
           final user = story['username'] ?? 'User';
           final photo = story['user_photo'];
           
