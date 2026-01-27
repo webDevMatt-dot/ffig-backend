@@ -21,6 +21,7 @@ class PremiumScreen extends StatefulWidget {
 }
 
 class _PremiumScreenState extends State<PremiumScreen> {
+  final PageController _pageController = PageController();
   // We can keep these for future "Menu" integration if needed
   // int _communityUnreadCount = 0;
   // Timer? _chatTimer;
@@ -34,6 +35,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   @override
   void dispose() {
+    _pageController.dispose();
     // _chatTimer?.cancel();
     super.dispose();
   }
@@ -49,17 +51,39 @@ class _PremiumScreenState extends State<PremiumScreen> {
       // StoriesBar will be at the top.
       body: Stack(
         children: [
-          const VVIPFeed(),
+          VVIPFeed(controller: _pageController),
 
           // VVIP Creation Button (Top Left)
           Positioned(
             top: MediaQuery.of(context).padding.top + 12, // Align with Dashboard AppBar
             left: 16,
-            child: FloatingActionButton.small(
-              backgroundColor: FfigTheme.primaryBrown,
-              heroTag: 'vvip_create_btn',
-              onPressed: _showCreationMenu,
-              child: const Icon(Icons.add, color: Colors.white),
+            child: AnimatedBuilder(
+              animation: _pageController,
+              builder: (context, child) {
+                  double opacity = 1.0;
+                  try {
+                      if (_pageController.hasClients && _pageController.position.haveDimensions) {
+                           final offset = _pageController.page ?? 0;
+                           opacity = (1 - offset).clamp(0.0, 1.0);
+                      }
+                  } catch (_) {}
+                  
+                  if (opacity == 0) return const SizedBox.shrink();
+
+                  return Opacity(
+                      opacity: opacity,
+                      child: IgnorePointer(
+                          ignoring: opacity == 0,
+                          child: child
+                      )
+                  );
+              },
+              child: FloatingActionButton.small(
+                backgroundColor: FfigTheme.primaryBrown,
+                heroTag: 'vvip_create_btn',
+                onPressed: _showCreationMenu,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
             ),
           ),
         ],

@@ -75,9 +75,31 @@ class _StoriesBarState extends State<StoriesBar> {
           return _buildStoryItem(
             name: user,
             imageUrl: photo,
-            onTap: () {
-               // Show story
-            }
+              onTap: () {
+                 if (story['media_url'] != null) {
+                    showDialog(
+                      context: context,
+                      builder: (c) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        insetPadding: EdgeInsets.zero,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                             // Simple Image Viewer for now
+                             Image.network(story['media_url']),
+                             Positioned(
+                               top: 40, right: 20,
+                               child: IconButton(
+                                 icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                 onPressed: () => Navigator.pop(c),
+                               )
+                             )
+                          ],
+                        ),
+                      )
+                    );
+                 }
+              }
           );
         },
       ),

@@ -299,11 +299,11 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class StorySerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    user_photo = serializers.SerializerMethodField()
+    media_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Story
-        fields = ['id', 'user', 'username', 'user_photo', 'media', 'created_at']
+        fields = ['id', 'user', 'username', 'user_photo', 'media', 'media_url', 'created_at']
         read_only_fields = ['user', 'created_at']
 
     def get_user_photo(self, obj):
@@ -314,3 +314,14 @@ class StorySerializer(serializers.ModelSerializer):
                 return p.photo.url
             return p.photo_url
         return None
+
+    def get_media_url(self, obj):
+        if not obj.media: return None
+        # S3 Check & Presign
+        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                try: return obj.media.url
+                except: return None
+        try:
+            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
+            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.media.name}, ExpiresIn=3600)
+        except: return None

@@ -20,9 +20,16 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
   
+  late String _selectedType;
   dynamic _selectedFile; // File or CroppedFile
   dynamic _selectedBytes; // Uint8List? for Web preview
   bool _isVideo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.type;
+  }
 
   Future<void> _pickMedia(bool pickVideo) async {
     final picker = ImagePicker();
@@ -92,7 +99,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
       MaterialPageRoute(
         builder: (c) => PreviewMarketingPostScreen(
            formData: {
-             'type': widget.type,
+             'type': _selectedType,
              'title': _titleController.text,
              'link': _linkController.text,
            },
@@ -198,6 +205,44 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                    ),
 
                 const SizedBox(height: 24),
+
+                // TYPE SELECTION
+                _buildSection("Post Type", [
+                   SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment<String>(
+                        value: 'Ad',
+                        label: Text('Business Ad'),
+                        icon: Icon(Icons.campaign),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'Promotion', 
+                        label: Text('Promotion'), 
+                        icon: Icon(Icons.discount)
+                      ),
+                    ],
+                    selected: {_selectedType},
+                    onSelectionChanged: (Set<String> newSelection) {
+                      setState(() {
+                        _selectedType = newSelection.first;
+                      });
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                        return states.contains(WidgetState.selected) 
+                            ? FfigTheme.primaryBrown 
+                            : Colors.transparent;
+                      }),
+                      foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                        return states.contains(WidgetState.selected) 
+                            ? Colors.white 
+                            : Colors.white70;
+                      }),
+                    ),
+                  )
+                ]),
+
+                const SizedBox(height: 16),
 
                 _buildSection("Details", [
                    TextFormField(

@@ -433,11 +433,4 @@ class StoryViewSet(viewsets.ModelViewSet):
         time_threshold = now - timedelta(hours=24)
         return Story.objects.filter(created_at__gte=time_threshold).order_by('created_at')
 
-class MarketingFeedView(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = MarketingRequestSerializer
 
-    def get_queryset(self):
-        return MarketingRequest.objects.filter(status='APPROVED').order_by('-created_at')
-        cutoff = timezone.now() - timedelta(hours=24)
-        return Story.objects.filter(created_at__gte=cutoff).order_by('-created_at')

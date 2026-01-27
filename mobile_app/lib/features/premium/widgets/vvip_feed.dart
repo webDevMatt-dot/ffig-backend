@@ -11,7 +11,8 @@ import 'stories_bar.dart'; // Import local widget
 import '../../../shared_widgets/user_avatar.dart';
 
 class VVIPFeed extends StatefulWidget {
-  const VVIPFeed({super.key});
+  final PageController? controller;
+  const VVIPFeed({super.key, this.controller});
 
   @override
   State<VVIPFeed> createState() => _VVIPFeedState();
@@ -19,13 +20,14 @@ class VVIPFeed extends StatefulWidget {
 
 class _VVIPFeedState extends State<VVIPFeed> {
   final _api = AdminApiService();
-  final PageController _pageController = PageController();
+  late PageController _pageController;
   List<dynamic> _reels = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _pageController = widget.controller ?? PageController();
     _loadReels();
   }
 
@@ -104,6 +106,15 @@ class _VVIPFeedState extends State<VVIPFeed> {
         )
       ],
     );
+  }
+
+
+  @override
+  void dispose() {
+    if (widget.controller == null) {
+      _pageController.dispose();
+    }
+    super.dispose();
   }
 }
 
