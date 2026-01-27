@@ -18,33 +18,41 @@ class ChatScreen extends StatefulWidget {
   final int? conversationId;
   final int? recipientId;
   final String recipientName;
+  final bool isCommunity;
 
-  const ChatScreen({super.key, this.conversationId, this.recipientId, required this.recipientName});
+  const ChatScreen({
+    super.key, 
+    this.conversationId, 
+    this.recipientId, 
+    required this.recipientName,
+    this.isCommunity = false,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+// ... existing state variables ...
   final TextEditingController _controller = TextEditingController();
   List<dynamic> _messages = [];
   List<dynamic> _groupedMessages = [];
   int? _activeConversationId;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-  List<int> _searchResults = []; // Indices in _groupedMessages
+  List<int> _searchResults = []; 
   int _currentSearchIndex = 0;
   
   // Timer for debouncing search
   Timer? _searchDebounce;
 
   Timer? _timer;
-  bool _isLoading = true; // Add loading state
-  Map<String, dynamic>? _replyMessage; // Swipe to reply state (Use Map instead of dynamic for type safety)
+  bool _isLoading = true; 
+  Map<String, dynamic>? _replyMessage; 
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create(); // Listener for scroll position
-  bool _showScrollToBottom = false; // State for FAB visibility
-  int? _highlightedMessageId; // For highlighting searched message
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create(); 
+  bool _showScrollToBottom = false; 
+  int? _highlightedMessageId; 
 
   @override
   void initState() {
@@ -68,6 +76,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
+
+  // ... (dispose, groupMessages, getDateLabel, fetchMessages, fetchConversationIdByRecipient, sendMessage, toggleSearch, performInChatSearch, nextSearchResult, prevSearchResult, scrollToMessage, clearChat, muteChat, blockUser, reportUser, sendReport, onOpenLink, showMessageOptions, toggleFavorite) ...
+  // Keeping mostly unchanged, just showing the widget definition change above for context match if needed, 
+  // but let's target specific blocks to be safe and avoid huge replacement.
+
 
   @override
   void dispose() {
@@ -563,7 +576,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCommunity = widget.recipientName == "Community Chat";
+    final bool isCommunity = widget.isCommunity;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -762,7 +775,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
                                     decoration: BoxDecoration(
                                     color: isHighlighted 
-                                        ? Colors.amber.withOpacity(0.4) 
+                                        ? Colors.amber.withValues(alpha: 0.4) 
                                         : (isMe 
                                             ? FfigTheme.primaryBrown 
                                             : (Theme.of(context).brightness == Brightness.dark 

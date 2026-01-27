@@ -74,6 +74,7 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
       return ChatScreen(
         conversationId: _conversationId,
         recipientName: "Community Chat",
+        isCommunity: true,
       );
     }
     

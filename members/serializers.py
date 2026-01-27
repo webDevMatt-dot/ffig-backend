@@ -304,6 +304,7 @@ class StorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Story
         fields = ['id', 'user', 'username', 'user_photo', 'media', 'created_at']
+        read_only_fields = ['user', 'created_at']
 
     def get_user_photo(self, obj):
         if hasattr(obj.user, 'profile'):

@@ -2,11 +2,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart'; // IMPORT ADDED
-import '../../core/services/admin_api_service.dart';
+import 'package:image_cropper/image_cropper.dart'; 
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
-import 'preview_marketing_post_screen.dart'; // IMPORT ADDED
+import 'preview_marketing_post_screen.dart'; 
 
 class CreateMarketingRequestScreen extends StatefulWidget {
   final String type; // 'Ad' or 'Promotion'
@@ -20,9 +19,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
-  // removed urlInputController
   
-  final bool _isLoading = false;
   dynamic _selectedFile; // File or CroppedFile
   dynamic _selectedBytes; // Uint8List? for Web preview
   bool _isVideo = false;
@@ -35,6 +32,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
       
     if (xfile != null) {
       if (!pickVideo) {
+        if (!mounted) return;
         // CROP IMAGE
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: xfile.path,
@@ -108,7 +106,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Submit ${widget.type}")),
+      appBar: AppBar(title: const Text("Make a Post")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -116,6 +114,91 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
           child: Column(
              crossAxisAlignment: CrossAxisAlignment.stretch,
              children: [
+                // Media Selection (First)
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return SafeArea(
+                          child: Wrap(
+                            children: <Widget>[
+                              ListTile(
+                                leading: const Icon(Icons.image),
+                                title: const Text('Image'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _pickMedia(false);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.videocam),
+                                title: const Text('Video'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _pickMedia(true);
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    );
+                  },
+                  child: Container(
+                    height: 400, // Taller, like story creation
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                       color: Colors.grey[900],
+                       borderRadius: BorderRadius.circular(20),
+                       border: Border.all(color: Colors.grey[800]!)
+                    ),
+                    alignment: Alignment.center,
+                    child: _selectedBytes != null || _selectedFile != null
+                       ? ClipRRect(
+                           borderRadius: BorderRadius.circular(20),
+                           child: _isVideo 
+                             ? const Icon(Icons.play_circle_outline, size: 80, color: Colors.white)
+                             : Image.memory(_selectedBytes!, fit: BoxFit.contain) 
+                           // Note: simplified to just use memory bytes for preview as logic sets it for both
+                         )
+                       : Column(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Container(
+                               padding: const EdgeInsets.all(20),
+                               decoration: BoxDecoration(
+                                   color: Colors.white.withValues(alpha: 0.1),
+                                   shape: BoxShape.circle
+                               ),
+                               child: const Icon(Icons.add_a_photo, color: Colors.white, size: 40)
+                           ),
+                           const SizedBox(height: 12),
+                           const Text("Tap to add Media", style: TextStyle(color: Colors.white54))
+                         ]
+                       ),
+                  ),
+                ),
+                if (_selectedBytes != null)
+                   Padding(
+                     padding: const EdgeInsets.only(top: 8.0),
+                     child: Center(
+                       child: TextButton.icon(
+                         onPressed: () {
+                             setState(() {
+                               _selectedFile = null;
+                               _selectedBytes = null;
+                               _isVideo = false;
+                             });
+                         },
+                         icon: const Icon(Icons.delete, color: Colors.red),
+                         label: const Text("Remove Media", style: TextStyle(color: Colors.red))
+                       ),
+                     ),
+                   ),
+
+                const SizedBox(height: 24),
+
                 _buildSection("Details", [
                    TextFormField(
                      controller: _titleController,
@@ -128,52 +211,6 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                      controller: _linkController,
                      decoration: const InputDecoration(labelText: "Link URL (CTA)", prefixIcon: Icon(Icons.link)),
                    ),
-                ]),
-                const SizedBox(height: 24),
-                
-                _buildSection("Media", [
-                   // Preview
-                   Container(
-                     height: 200,
-                     width: double.infinity,
-                     decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[400]!)
-                     ),
-                     alignment: Alignment.center,
-                     child: _selectedBytes != null 
-                        ? (_isVideo 
-                             ? const Icon(Icons.videocam, size: 60, color: Colors.red)
-                             : Image.memory(_selectedBytes, fit: BoxFit.cover)
-                           )
-                        : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.image, size: 50, color: Colors.grey),
-                             Text("No Media Selected", style: TextStyle(color: Colors.grey))
-                          ]
-                        ),
-                   ),
-                   const SizedBox(height: 16),
-                   Row(
-                     children: [
-                       Expanded(child: OutlinedButton.icon(
-                          onPressed: () => _pickMedia(false),
-                          icon: const Icon(Icons.crop_original),
-                          label: const Text("Pick & Crop Image"),
-                       )),
-                       const SizedBox(width: 12),
-                       Expanded(child: OutlinedButton.icon(
-                          onPressed: () => _pickMedia(true),
-                          icon: const Icon(Icons.videocam),
-                          label: const Text("Pick Video"),
-                       )),
-                     ],
-                   ),
-                   const SizedBox(height: 16),
-                   const SizedBox(height: 16),
-                   // Removed Media URL input
                 ]),
                 
                 const SizedBox(height: 80),
@@ -191,13 +228,13 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
           child: SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: _goToPreview, // Changed from _submit
+              onPressed: _goToPreview, 
               style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                   backgroundColor: FfigTheme.primaryBrown,
                   foregroundColor: Colors.white,
               ),
-              child: const Text("PREVIEW REQUEST"), // Changed Label
+              child: const Text("PREVIEW REQUEST"), 
             ),
           ),
         ),
