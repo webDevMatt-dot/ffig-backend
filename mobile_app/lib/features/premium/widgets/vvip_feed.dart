@@ -289,7 +289,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
   @override
   Widget build(BuildContext context) {
     if (!_isInit) {
-        return const Center(child: CircularProgressIndicator(color: Colors.white));
+        return const Center(child: CircularProgressIndicator(color: FfigTheme.primaryBrown));
     }
 
     var imageUrl = widget.item['image'];
@@ -299,7 +299,6 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             final domain = baseUrl.replaceAll('/api/', '');
             imageUrl = '$domain$urlString';
         } else if (baseUrl.contains('onrender')) {
-           // Fix mixed content
            final domain = baseUrl.replaceAll('/api/', '');
            if (urlString.contains('localhost')) {
               imageUrl = urlString.replaceAll(RegExp(r'http://localhost:\d+'), domain);
@@ -311,164 +310,209 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
     final bool hasVideo = _chewieController != null;
     
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Content Layer
-        // Content Layer (Wrapped in IgnorePointer to prevent stealing taps)
-        IgnorePointer(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (hasVideo)
-                Chewie(controller: _chewieController!)
-              else if (imageUrl != null)
-                Image.network(imageUrl, fit: BoxFit.contain)
-              else
-                Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
-            ],
-          ),
+    return Padding( // Wrapper for the "Card" effect
+      padding: const EdgeInsets.only(bottom: 24, left: 0, right: 0), 
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF161B22), // Obsidian lighter
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          boxShadow: [
+             BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, spreadRadius: 0, offset: const Offset(0, -5))
+          ]
         ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Media Layer
+            Positioned.fill(
+                child: IgnorePointer(
+                    child: hasVideo
+                        ? Chewie(controller: _chewieController!)
+                        : (imageUrl != null
+                            ? Image.network(imageUrl, fit: BoxFit.cover)
+                            : Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))))
+                )
+            ),
 
-        // Touch Detection Layer (Overlay)
-        GestureDetector(
-          onDoubleTap: _onDoubleTap,
-          onTap: () {
-             if (_videoController != null && _videoController!.value.isInitialized) {
-                setState(() {
-                  if (_videoController!.value.isPlaying) {
-                     _videoController!.pause();
-                  } else {
-                     _videoController!.play();
-                  }
-                });
-             }
-          },
-          behavior: HitTestBehavior.opaque, // Force capture
-          child: Container(
-            color: Colors.black.withOpacity(0.001), // Almost transparent but force hit test
-            width: double.infinity,
-            height: double.infinity,
-          ),
-        ),
-
-        // Floating Heart Animation
-        if (_showHeartAnimation)
-          Center(
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.3, end: 1.2).animate(
-                CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
-              ),
-              child: FadeTransition(
-                opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
-                  CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
-                ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.red,
-                  size: 100,
+            // Touch Layer
+            GestureDetector(
+              onDoubleTap: _onDoubleTap,
+              onTap: () {
+                 if (_videoController != null && _videoController!.value.isInitialized) {
+                    setState(() {
+                      if (_videoController!.value.isPlaying) _videoController!.pause();
+                      else _videoController!.play();
+                    });
+                 }
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.transparent),
+            ),
+            
+             // Floating Heart Animation
+            if (_showHeartAnimation)
+              Center(
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.3, end: 1.2).animate(
+                    CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
+                  ),
+                  child: FadeTransition(
+                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
+                      CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
+                    ),
+                    child: const Icon(Icons.favorite, color: Colors.white, size: 100), // White heart looks premium
+                  ),
                 ),
               ),
-            ),
-          ),
-          
-        // Overlay Gradient
-        Container(
-           decoration: const BoxDecoration(
-             gradient: LinearGradient(
-               begin: Alignment.topCenter,
-               end: Alignment.bottomCenter,
-               colors: [Colors.transparent, Colors.black87],
-               stops: [0.6, 1.0],
-             ),
-           ),
-        ),
 
-        // Side Action Bar (Right)
-        Positioned(
-            right: 16,
-            bottom: 140, // Increased from 100 to avoid GlassNavBar
-            child: Column(
-                children: [
-                    _ActionButton(
-                        icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: _isLiked ? Colors.red : Colors.white,
-                        label: "$_likesCount",
-                        onTap: _toggleLike
+            // Top Glass Header (Tag)
+            Positioned(
+                top: 24,
+                left: 24,
+                child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.1))
                     ),
-                    const SizedBox(height: 20),
-                    _ActionButton(
-                        icon: Icons.comment, 
-                        label: "$_commentsCount",
-                        onTap: _showComments
-                    ),
-                    const SizedBox(height: 20),
-                    _ActionButton(
-                        icon: Icons.share, 
-                        label: "Share",
-                        onTap: _share
-                    ),
-                ],
-            ),
-        ),
-
-        // Info Layer
-        Positioned(
-            bottom: 110, // Increased from 40 to avoid GlassNavBar
-            left: 16,
-            right: 80, // Space for buttons
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: FfigTheme.primaryBrown, borderRadius: BorderRadius.circular(4)),
-                        child: Text(widget.item['type'] ?? 'PROMOTION', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(widget.item['title'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty)
-                        ElevatedButton(
-                            onPressed: () => launchUrl(Uri.parse(widget.item['link'])),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white, 
-                                foregroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))
+                    child: Row(
+                        children: [
+                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: FfigTheme.primaryBrown, shape: BoxShape.circle)), // Gold dot
+                            const SizedBox(width: 8),
+                            Text((widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
+                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)
                             ),
-                            child: const Text("View Offer"),
-                        ),
-                     const SizedBox(height: 40), // Bottom padding
-                ],
+                        ],
+                    ),
+                ),
             ),
+
+            // Bottom Gradient & Info
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 60, 24, 90),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Color(0xE60D1117)], // Fade to Obsidian
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.0, 0.4]
+                  )
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        widget.item['title'] ?? '',
+                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.2),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                        children: [
+                             const Text("VVIP EXCLUSIVE", style: TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+                             Container(margin: const EdgeInsets.symmetric(horizontal: 12), width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
+                             // Date would go here
+                             const Text("JUST NOW", style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
+                        ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Social Hub (Integrated Action Bar)
+                    Container(
+                        padding: const EdgeInsets.only(top: 24),
+                        decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1)))),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                                Row(
+                                    children: [
+                                        _SocialButton(
+                                            icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                                            label: "$_likesCount",
+                                            isActive: _isLiked,
+                                            onTap: _toggleLike
+                                        ),
+                                        const SizedBox(width: 24),
+                                        _SocialButton(
+                                            icon: Icons.chat_bubble_outline,
+                                            label: "$_commentsCount",
+                                            onTap: _showComments
+                                        ),
+                                        const SizedBox(width: 24),
+                                        _SocialButton(
+                                            icon: Icons.send_outlined,
+                                            label: "",
+                                            onTap: _share
+                                        ),
+                                    ],
+                                ),
+                                const Icon(Icons.bookmark_outline, color: FfigTheme.primaryBrown, size: 28)
+                            ],
+                        ),
+                    ),
+                    // Link Button if exists
+                    if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                                onPressed: () => launchUrl(Uri.parse(widget.item['link'])),
+                                style: OutlinedButton.styleFrom(
+                                    foregroundColor: FfigTheme.primaryBrown, side: const BorderSide(color: FfigTheme.primaryBrown),
+                                     padding: const EdgeInsets.symmetric(vertical: 16),
+                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                                ),
+                                child: const Text("VIEW DETAILS", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                            ),
+                          ),
+                        )
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _SocialButton extends StatelessWidget {
     final IconData icon;
     final String label;
     final VoidCallback onTap;
-    final Color color;
+    final bool isActive;
     
-    const _ActionButton({required this.icon, required this.label, required this.onTap, this.color = Colors.white});
+    const _SocialButton({
+      required this.icon, 
+      required this.label, 
+      required this.onTap, 
+      this.isActive = false
+    });
     
     @override
     Widget build(BuildContext context) {
         return GestureDetector(
             onTap: onTap,
-            child: Column(
+            child: Row(
                 children: [
-                    Icon(icon, color: color, size: 30),
-                    const SizedBox(height: 4),
-                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 12))
+                    Icon(icon, color: isActive ? Colors.red : Colors.white, size: 26),
+                    if (label.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))
+                    ]
                 ],
             ),
         );
     }
 }
+
 
 class _CommentsSheet extends StatefulWidget {
     final int requestId;
@@ -510,6 +554,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e")));
         }
     }
+
 
     @override
     Widget build(BuildContext context) {

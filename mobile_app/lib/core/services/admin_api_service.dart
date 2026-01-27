@@ -8,6 +8,7 @@ import '../api/constants.dart';
 
 class AdminApiService {
   static const String _baseUrl = '${baseUrl}home';
+  static const String _membersBaseUrl = '${baseUrl}members';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> _getToken() async {
@@ -200,7 +201,7 @@ class AdminApiService {
 
 
   // --- MEMBER SUBMISSIONS (RBAC) ---
-  static const String _membersBaseUrl = '${baseUrl}members';
+  // static const String _membersBaseUrl = '${baseUrl}members'; // Removed duplicate
 
   Future<Map<String, dynamic>?> fetchMyBusinessProfile() async {
     final token = await _getToken();

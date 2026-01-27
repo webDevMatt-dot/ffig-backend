@@ -6,6 +6,7 @@ import '../../../core/api/constants.dart';
 import '../../../core/api/constants.dart';
 import '../../../shared_widgets/user_avatar.dart';
 import '../create_story_screen.dart';
+import '../../../core/theme/ffig_theme.dart';
 
 class StoriesBar extends StatefulWidget {
   const StoriesBar({super.key});
@@ -101,37 +102,56 @@ class _StoriesBarState extends State<StoriesBar> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isAdd ? Colors.grey : Colors.cyan.shade400,
-                  width: 2,
-                ),
-              ),
-              child: Container(
-                width: 60,
-                height: 60,
+            if (isAdd)
+              Container(
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey[800],
-                  border: Border.all(color: Colors.black, width: 2),
+                  border: Border.all(color: Colors.white.withOpacity(0.2), width: 1, style: BorderStyle.none), // Dotted border hard in Flutter without package, using thin opacity for now
                 ),
-                clipBehavior: Clip.hardEdge,
-                child: isAdd 
-                    ? const Icon(Icons.add, color: Colors.white, size: 30)
-                    : UserAvatar(
-                        imageUrl: imageUrl, 
-                        radius: 30,
-                        username: name,
-                      ),
+                child: Container(
+                   decoration: BoxDecoration(
+                     shape: BoxShape.circle,
+                     border: Border.all(color: Colors.grey.shade800, width: 2),
+                     color: Colors.transparent
+                   ),
+                   child: Center(child: Icon(Icons.add, color: FfigTheme.primaryBrown, size: 24)),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFD4AF37), Color(0xFF8B4513)], // Gold to Brown
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF0D1117), // Obsidian
+                  ),
+                  child: UserAvatar(
+                    imageUrl: imageUrl, 
+                    radius: 30,
+                    username: name,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               name,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  color: isAdd ? Colors.grey[500] : Colors.white, 
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

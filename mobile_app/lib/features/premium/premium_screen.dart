@@ -43,7 +43,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0D1117),
       // We remove the AppBar to allow content to be immersive
       // DashboardScreen's AppBar is transparent, so it will overlay this.
       // StoriesBar will be at the top.
@@ -96,7 +96,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.video_library, color: Colors.pinkAccent),
+                leading: const Icon(Icons.video_library, color: Colors.white),
                 title: const Text("Reel (Ad / Promotion)", style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
@@ -109,7 +109,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.history_toggle_off, color: Colors.cyanAccent),
+                leading: const Icon(Icons.history_toggle_off, color: FfigTheme.primaryBrown),
                 title: const Text("Story", style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
