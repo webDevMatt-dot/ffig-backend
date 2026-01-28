@@ -11,6 +11,7 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../community/public_profile_screen.dart';
 import 'community_chat_screen.dart';
+import '../../core/services/admin_api_service.dart'; // Import Service
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -83,16 +84,20 @@ class _InboxScreenState extends State<InboxScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   String _selectedFilter = 'all'; // 'all', 'unread', 'favorites'
+  int _communityUnreadCount = 0; // New State
+  final _apiService = AdminApiService(); // Instantiate Helper
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserAndConversations();
+    _fetchCommunityUnreadCount(); // Initial Fetch
     // Refresh every 5 seconds for "Live" counts
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
         // Only refresh if NOT searching (to avoid overwriting search results with full list)
         if (_searchController.text.isEmpty) {
             _fetchCurrentUserAndConversations(silent: true);
+            _fetchCommunityUnreadCount(); // Poll Community Count
         }
     });
   }
@@ -172,6 +177,16 @@ class _InboxScreenState extends State<InboxScreen> {
       if (kDebugMode) print(e);
       if (mounted && !silent) setState(() => _isLoading = false);
     }
+  }
+
+  // New Method to fetch count
+  Future<void> _fetchCommunityUnreadCount() async {
+      try {
+          final count = await _apiService.fetchCommunityUnreadCount();
+          if (mounted && count != _communityUnreadCount) {
+              setState(() => _communityUnreadCount = count);
+          }
+      } catch (_) {}
   }
 
   String _formatTimestamp(String? isoString) {
@@ -601,12 +616,34 @@ class _InboxScreenState extends State<InboxScreen> {
               color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             ),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: FfigTheme.primaryBrown),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+                if (_communityUnreadCount > 0)
+                   Container(
+                       margin: const EdgeInsets.only(right: 8),
+                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                       decoration: const BoxDecoration(
+                           color: Colors.red,
+                           shape: BoxShape.circle,
+                       ),
+                       child: Text(
+                           _communityUnreadCount > 9 ? "9+" : _communityUnreadCount.toString(),
+                           style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                       ),
+                   ),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: FfigTheme.primaryBrown),
+            ],
+          ),
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const CommunityChatScreen()),
-            );
+            ).then((_) {
+                 // Mark as read immediately on return (or on enter, but return refreshes count safely)
+                 _apiService.markCommunityChatRead();
+                 setState(() => _communityUnreadCount = 0);
+            });
           },
         ),
       ),

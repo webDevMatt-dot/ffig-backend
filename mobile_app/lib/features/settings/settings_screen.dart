@@ -13,6 +13,8 @@ import 'blocked_users_screen.dart';
 import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../home/dashboard_screen.dart';
+import '../../core/services/membership_service.dart';
+import '../marketing/business_profile_editor_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -280,6 +282,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _showPasswordChangeDialog,
               ),
               const Divider(),
+
+              // PROFESSIONAL TOOLS
+               _buildSectionHeader("Professional Tools"),
+               if (MembershipService.canCreateBusinessProfile)
+                 ListTile(
+                    leading: const Icon(Icons.business_center_outlined, color: FfigTheme.primaryBrown),
+                    title: const Text("Manage Business Profile"),
+                    subtitle: const Text("Edit your business details and services"),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                         Navigator.push(context, MaterialPageRoute(builder: (context) => const BusinessProfileEditorScreen()));
+                    },
+                 )
+               else
+                 ListTile(
+                    leading: const Icon(Icons.lock_outline, color: Colors.grey),
+                    title: const Text("Business Profile"),
+                    subtitle: const Text("Upgrade to unlock business features"),
+                    trailing: TextButton(
+                        onPressed: () => MembershipService.showUpgradeDialog(context, "Business Profile"),
+                        child: const Text("UNLOCK")
+                    ),
+                 ),
+               const Divider(),
              ],
 
 

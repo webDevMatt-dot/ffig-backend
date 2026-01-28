@@ -293,3 +293,41 @@ class MuteChatView(APIView):
             status.save()
         
         return Response({"status": "muted" if status.is_muted else "unmuted", "is_muted": status.is_muted})
+
+# 8. Community Chat Unread Count
+class CommunityUnreadCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # 1. Get Public Conversation
+        try:
+            conversation = Conversation.objects.get(is_public=True)
+        except Conversation.DoesNotExist:
+             return Response({"unread_count": 0})
+        
+        # 2. Get User's Last Read Timestamp
+        last_read = None
+        if hasattr(request.user, 'profile'):
+            last_read = request.user.profile.last_read_community_chat
+            
+        # 3. Count messages created AFTER last_read
+        # If never read, count all (or maybe limit to last 100 for sanity?)
+        # Let's count all since 'joined' or just all. All is safer for "High number" excitement.
+        queryset = Message.objects.filter(conversation=conversation)
+        if last_read:
+            queryset = queryset.filter(created_at__gt=last_read)
+            
+        # Exclude my own messages from unread count
+        count = queryset.exclude(sender=request.user).count()
+        
+        return Response({"unread_count": count})
+
+class MarkCommunityReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from django.utils import timezone
+        if hasattr(request.user, 'profile'):
+            request.user.profile.last_read_community_chat = timezone.now()
+            request.user.profile.save()
+        return Response({"status": "marked"})

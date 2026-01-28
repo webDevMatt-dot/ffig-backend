@@ -475,6 +475,21 @@ class AdminApiService {
        if (response.statusCode != 204) throw Exception('Failed to delete request (Admin)');
   }
 
+
+  Future<int> fetchCommunityUnreadCount() async {
+      final token = await _getToken();
+      final response = await http.get(Uri.parse('${baseUrl}chat/community/unread/'), headers: {'Authorization': 'Bearer $token'});
+      if (response.statusCode == 200) {
+          return jsonDecode(response.body)['unread_count'];
+      }
+      return 0; // Default to 0 on error
+  }
+
+  Future<void> markCommunityChatRead() async {
+      final token = await _getToken();
+      await http.post(Uri.parse('${baseUrl}chat/community/read/'), headers: {'Authorization': 'Bearer $token'});
+  }
+
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)
   Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
     final token = await _getToken();

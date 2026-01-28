@@ -714,14 +714,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Username Visibility Logic
                 bool showUsername = false;
                 if (isCommunity && !isMe) {
-                    // List is REVERSED. Index 0 is bottom. Index MAX is top.
-                    // Previous message (visually above) is at `index + 1`.
+                    showUsername = true; // Always show in Community Chat
+                } else if (!isMe) {
+                    // Normal Grouping for DM
                     if (index == _groupedMessages.length - 1) {
-                        // Topmost message always shows name (if it's a message)
                          showUsername = true; 
                     } else {
-                        final nextMsg = _groupedMessages[index + 1]; // Visually above
-                        // If it's a header or different sender, show name
+                        final nextMsg = _groupedMessages[index + 1];
                         if (nextMsg['is_header'] == true || 
                             nextMsg['sender']['id'] != msg['sender']['id']) {
                             showUsername = true;

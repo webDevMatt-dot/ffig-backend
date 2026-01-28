@@ -9,6 +9,7 @@ import '../../../core/api/constants.dart';
 import '../share_to_chat_sheet.dart';
 import 'stories_bar.dart'; // Import local widget
 import '../../../shared_widgets/user_avatar.dart';
+import 'full_screen_media_viewer.dart';
 
 class VVIPFeed extends StatefulWidget {
   final PageController? controller;
@@ -401,12 +402,11 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             GestureDetector(
               onDoubleTap: _onDoubleTap,
               onTap: () {
-                 if (_videoController != null && _videoController!.value.isInitialized) {
-                    setState(() {
-                      if (_videoController!.value.isPlaying) _videoController!.pause();
-                      else _videoController!.play();
-                    });
-                 }
+                 // Navigate to Full Screen
+                 Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenMediaViewer(
+                     url: hasVideo ? widget.item['video'] : imageUrl, 
+                     isVideo: hasVideo
+                 )));
               },
               behavior: HitTestBehavior.opaque,
               child: Container(color: Colors.transparent),

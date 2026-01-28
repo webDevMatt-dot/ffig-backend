@@ -34,7 +34,10 @@ class Profile(models.Model):
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     subscription_expiry = models.DateTimeField(null=True, blank=True)
     suspension_expiry = models.DateTimeField(null=True, blank=True)
-    admin_notice = models.TextField(blank=True, help_text="Reason for warning/suspension (visible to user)")
+    admin_notice = models.TextField(blank=True, null=True) # Warning/suspension reason
+    
+    # Community Chat Tracking
+    last_read_community_chat = models.DateTimeField(null=True, blank=True)
     
     # Deprecated (Map to Tier later)
     is_premium = models.BooleanField(default=False) 

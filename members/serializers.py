@@ -318,10 +318,21 @@ class StorySerializer(serializers.ModelSerializer):
     def get_media_url(self, obj):
         if not obj.media: return None
         # S3 Check & Presign
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
-                try: return obj.media.url
-                except: return None
         try:
+            # Safe check for S3 being used
+            is_s3 = False
+            if hasattr(settings, 'DEFAULT_FILE_STORAGE') and 's3' in settings.DEFAULT_FILE_STORAGE.lower():
+                is_s3 = True
+            elif hasattr(settings, 'STORAGES') and 's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower():
+                is_s3 = True
+                
+            if not is_s3:
+                return obj.media.url
+                
             s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
             return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.media.name}, ExpiresIn=3600)
-        except: return None
+        except Exception as e:
+            # Fallback to standard URL if anything fails (e.g. config missing)
+            print(f"Error generating presigned URL: {e}")
+            try: return obj.media.url
+            except: return None
