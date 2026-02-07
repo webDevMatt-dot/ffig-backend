@@ -300,6 +300,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 class StorySerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     media_url = serializers.SerializerMethodField()
+    user_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = Story
