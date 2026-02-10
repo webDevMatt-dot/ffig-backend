@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 from .models import Profile
 from .serializers import ProfileSerializer
 from core.permissions import IsPremiumUser
