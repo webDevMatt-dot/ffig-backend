@@ -39,6 +39,21 @@ class _StoriesBarState extends State<StoriesBar> {
       if (response.statusCode == 200) {
         if (mounted) {
            final rawStories = jsonDecode(response.body) as List<dynamic>;
+           
+           // Fix relative URLs
+           final domain = baseUrl.endsWith('/api/') 
+               ? baseUrl.substring(0, baseUrl.length - 5) 
+               : baseUrl;
+
+           for (var s in rawStories) {
+             if (s['media_url'] != null && s['media_url'].toString().startsWith('/')) {
+               s['media_url'] = '$domain${s['media_url']}';
+             }
+             if (s['user_photo'] != null && s['user_photo'].toString().startsWith('/')) {
+               s['user_photo'] = '$domain${s['user_photo']}';
+             }
+           }
+
            // Sort
            final sorted = StoryLogic.sortStories(rawStories, null); // Pass current user ID if available
            
@@ -73,7 +88,7 @@ class _StoriesBarState extends State<StoriesBar> {
     if (_isLoading) {
       return Container(
         height: 115,
-        margin: const EdgeInsets.only(top: 8, bottom: 8),
+        margin: const EdgeInsets.only(top: 8, bottom: 24),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
@@ -85,7 +100,7 @@ class _StoriesBarState extends State<StoriesBar> {
 
     return Container(
       height: 115,
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
+      margin: const EdgeInsets.only(top: 8, bottom: 24),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,

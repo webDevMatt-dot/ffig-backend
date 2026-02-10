@@ -38,7 +38,9 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   
   // For Reply
   final TextEditingController _replyController = TextEditingController();
+  final FocusNode _replyFocusNode = FocusNode();
   bool _isReplyLoading = false;
+  bool _isClosed = false;
 
   @override
   void initState() {
@@ -48,20 +50,39 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     
     _animController = AnimationController(vsync: this);
     
+    _replyFocusNode.addListener(_onReplyFocusChange);
+    
     _loadStory(index: _currentIndex);
   }
 
   @override
   void dispose() {
+    _replyFocusNode.removeListener(_onReplyFocusChange);
+    _replyFocusNode.dispose();
     _pageController.dispose();
     _animController.dispose();
     _videoController?.dispose();
     super.dispose();
   }
 
+  void _onReplyFocusChange() {
+    if (_replyFocusNode.hasFocus) {
+      _animController.stop();
+      _videoController?.pause();
+    } else {
+      if (!_isReplyLoading && !_isClosed) {
+         if (_videoController != null && _videoController!.value.isInitialized) {
+             _videoController!.play();
+         }
+         _animController.forward();
+      }
+    }
+  }
+
   void _loadStory({required int index, bool animateToPage = false}) {
+    if (_isClosed) return;
     if (index < 0 || index >= widget.stories.length) {
-      widget.onGlobalClose();
+      _close();
       return;
     }
 
@@ -91,11 +112,13 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     if (isVideo) {
       _videoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl))
         ..initialize().then((_) {
-          setState(() {});
-          if (_videoController!.value.isInitialized) {
-            _animController.duration = _videoController!.value.duration;
-            _videoController!.play();
-            _animController.forward();
+          if (mounted && !_isClosed) {
+             setState(() {});
+             if (_videoController!.value.isInitialized) {
+               _animController.duration = _videoController!.value.duration;
+               _videoController!.play();
+               _animController.forward();
+             }
           }
         });
     } else {
@@ -111,15 +134,24 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     });
   }
 
-  void _onNext() {
-    if (_currentIndex < widget.stories.length - 1) {
-      _loadStory(index: _currentIndex + 1, animateToPage: true);
-    } else {
+  void _close() {
+    if (!_isClosed) {
+      _isClosed = true;
       widget.onGlobalClose();
     }
   }
 
+  void _onNext() {
+    if (_isClosed) return;
+    if (_currentIndex < widget.stories.length - 1) {
+      _loadStory(index: _currentIndex + 1, animateToPage: true);
+    } else {
+      _close();
+    }
+  }
+
   void _onPrevious() {
+    if (_isClosed) return;
     if (_currentIndex > 0) {
       _loadStory(index: _currentIndex - 1, animateToPage: true);
     } else {
@@ -130,6 +162,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   }
 
   void _onTapDown(TapDownDetails details) {
+    if (_isClosed) return;
     final screenWidth = MediaQuery.of(context).size.width;
     final dx = details.globalPosition.dx;
     
@@ -246,12 +279,12 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
           _animController.forward();
         },
         onVerticalDragEnd: (details) {
+            if (_isClosed) return;
             if (details.primaryVelocity! < -200) {
                  // Swipe Up
-                 _showViewers(); // Try showing viewers, if not ours, it will just show empty or fail (safe)
-                 // Actually, only if isMyStory.
+                 _showViewers(); 
             } else if (details.primaryVelocity! > 200) {
-                 widget.onGlobalClose();
+                 _close();
             }
         },
         child: Stack(
@@ -356,7 +389,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
               right: 16,
               child: IconButton(
                 icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: widget.onGlobalClose,
+                onPressed: _close,
               ),
             ),
 
@@ -398,6 +431,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                         Expanded(
                           child: TextField(
                              controller: _replyController,
+                             focusNode: _replyFocusNode,
                              style: const TextStyle(color: Colors.white),
                              cursorColor: Colors.white,
                              decoration: const InputDecoration(
