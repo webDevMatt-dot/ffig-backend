@@ -161,7 +161,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
-  void _onTapDown(TapDownDetails details) {
+  void _onTapUp(TapUpDetails details) {
     if (_isClosed) return;
     final screenWidth = MediaQuery.of(context).size.width;
     final dx = details.globalPosition.dx;
@@ -269,14 +269,18 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
-        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
         onLongPress: () {
           _videoController?.pause();
           _animController.stop();
         },
         onLongPressUp: () {
-          _videoController?.play();
-          _animController.forward();
+          if (!_isClosed && !_isReplyLoading) {
+             if (_videoController != null && _videoController!.value.isInitialized) {
+                 _videoController!.play();
+             }
+             _animController.forward();
+          }
         },
         onVerticalDragEnd: (details) {
             if (_isClosed) return;

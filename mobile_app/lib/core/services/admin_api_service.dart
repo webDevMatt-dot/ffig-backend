@@ -7,8 +7,8 @@ import 'package:flutter/foundation.dart'; // For kIsWeb
 import '../api/constants.dart';
 
 class AdminApiService {
-  static const String _baseUrl = '${baseUrl}home';
-  static const String _membersBaseUrl = '${baseUrl}members';
+  static final String _baseUrl = '${baseUrl}home';
+  static final String _membersBaseUrl = '${baseUrl}members';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> _getToken() async {
@@ -85,7 +85,7 @@ class AdminApiService {
   }
 
   // --- EVENTS ---
-  static const String _eventsBaseUrl = '${baseUrl}events';
+  static final String _eventsBaseUrl = '${baseUrl}events';
 
   Future<List<dynamic>> fetchEvents() async {
     final token = await _getToken();

@@ -53,7 +53,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     // 2. Determine URL
-    const url = '${baseUrl}auth/register/';
+    final url = '${baseUrl}auth/register/';
 
     try {
       final response = await http.post(

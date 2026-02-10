@@ -29,7 +29,7 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<void> _fetchEvents() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    const String endpoint = '${baseUrl}events/';
+    final String endpoint = '${baseUrl}events/';
 
     final headers = <String, String>{};
     if (token != null) headers['Authorization'] = 'Bearer $token';

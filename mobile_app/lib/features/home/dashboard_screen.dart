@@ -230,7 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       return;
     }
 
-    const String endpoint = '${baseUrl}members/me/';
+    final String endpoint = '${baseUrl}members/me/';
 
     try {
       final response = await http.get(
@@ -346,7 +346,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
-    const String endpoint = '${baseUrl}events/';
+    final String endpoint = '${baseUrl}events/';
 
     final headers = {'Content-Type': 'application/json'};
     if (token != null) headers['Authorization'] = 'Bearer $token';
