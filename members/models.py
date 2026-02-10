@@ -151,3 +151,37 @@ class Story(models.Model):
 
     def __str__(self):
         return f"Story by {self.user.username} at {self.created_at}"
+
+
+class StoryView(models.Model):
+    story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name='views')
+    viewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='story_views')
+    seen_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('story', 'viewer')
+
+
+class Conversation(models.Model):
+    user_a = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations_as_a')
+    user_b = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations_as_b')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user_a', 'user_b')
+
+    def __str__(self):
+        return f"Chat between {self.user_a.username} and {self.user_b.username}"
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='members_sent_messages')
+    content = models.TextField(blank=True)
+    story = models.ForeignKey(Story, on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Message from {self.sender.username}: {self.content[:20]}"

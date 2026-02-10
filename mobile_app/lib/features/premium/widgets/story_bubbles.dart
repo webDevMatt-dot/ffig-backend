@@ -1,0 +1,146 @@
+import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../../shared_widgets/user_avatar.dart';
+import '../../../core/theme/ffig_theme.dart';
+
+class StoryBubble extends StatelessWidget {
+  final String name;
+  final String? imageUrl;
+  final bool isAdd;
+  final bool isSeen;
+  final VoidCallback onTap;
+
+  const StoryBubble({
+    super.key,
+    required this.name,
+    this.imageUrl,
+    this.isAdd = false,
+    this.isSeen = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(right: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: isAdd
+                        ? null
+                        : (isSeen
+                            ? null // Seen stories have no gradient (grey border)
+                            : const LinearGradient(
+                                colors: [Color(0xFFD4AF37), Color(0xFF8B4513)], // Gold to Bronze
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )),
+                    border: (isAdd || isSeen)
+                        ? Border.all(
+                            color: isAdd 
+                                ? Colors.white.withOpacity(0.15) 
+                                : Colors.grey.shade700,
+                            width: 1.5,
+                          )
+                        : null,
+                  ),
+                  child: CircleAvatar(
+                    radius: 32,
+                    backgroundColor: const Color(0xFF0D1117),
+                    child: isAdd
+                        ? Icon(Icons.add, size: 28, color: FfigTheme.primaryBrown)
+                        : UserAvatar(
+                            imageUrl: imageUrl,
+                            radius: 30,
+                            username: name,
+                          ),
+                  ),
+                ),
+                if (isAdd)
+                  Positioned(
+                    right: 2,
+                    bottom: 2,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: FfigTheme.primaryBrown,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add, size: 14, color: Colors.black),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 72,
+              child: Text(
+                name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isAdd ? Colors.grey[400] : (isSeen ? Colors.grey[500] : Colors.white),
+                  fontSize: 11,
+                  fontWeight: isSeen ? FontWeight.w400 : FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ShimmerStoryBubble extends StatelessWidget {
+  const ShimmerStoryBubble({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Shimmer.fromColors(
+            baseColor: Colors.grey.shade800,
+            highlightColor: Colors.grey.shade700,
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Shimmer.fromColors(
+            baseColor: Colors.grey.shade800,
+            highlightColor: Colors.grey.shade700,
+            child: Container(
+              width: 50,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

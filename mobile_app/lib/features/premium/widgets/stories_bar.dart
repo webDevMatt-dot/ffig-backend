@@ -3,10 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/api/constants.dart';
-import '../../../core/api/constants.dart';
-import '../../../shared_widgets/user_avatar.dart';
 import '../create_story_screen.dart';
-import '../../../core/theme/ffig_theme.dart';
+import 'story_bubbles.dart';
+import 'story_viewer.dart';
+import '../logic/story_logic.dart';
 
 class StoriesBar extends StatefulWidget {
   const StoriesBar({super.key});
@@ -16,8 +16,10 @@ class StoriesBar extends StatefulWidget {
 }
 
 class _StoriesBarState extends State<StoriesBar> {
-  List<dynamic> _stories = [];
+  List<dynamic> _allStories = [];
+  List<dynamic> _uniqueUserStories = [];
   bool _isLoading = true;
+  final Set<int> _seenStoryIds = {};
 
   @override
   void initState() {
@@ -36,8 +38,25 @@ class _StoriesBarState extends State<StoriesBar> {
       );
       if (response.statusCode == 200) {
         if (mounted) {
+           final rawStories = jsonDecode(response.body) as List<dynamic>;
+           // Sort
+           final sorted = StoryLogic.sortStories(rawStories, null); // Pass current user ID if available
+           
+           // Filter for unique users for the Bar display
+           final unique = <dynamic>[];
+           final seenUsers = <String>{};
+           
+           for (var s in sorted) {
+             final username = s['username'] ?? 'User';
+             if (!seenUsers.contains(username)) {
+               seenUsers.add(username);
+               unique.add(s);
+             }
+           }
+
            setState(() {
-             _stories = jsonDecode(response.body);
+             _allStories = sorted;
+             _uniqueUserStories = unique;
              _isLoading = false;
            });
         }
@@ -51,125 +70,84 @@ class _StoriesBarState extends State<StoriesBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
-    
-    // Include specific internal/static stories if needed, or just DB stories
-    // User requested: "Your Story", "Sarah", "Elena" etc.
-    // For now, assume DB returns actual stories. We can inject a "Your Story" button.
-    
-    return Container(
-      height: 110,
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
+    if (_isLoading) {
+      return Container(
+        height: 115,
+        margin: const EdgeInsets.only(top: 8, bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _stories.length, 
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: 6,
+          itemBuilder: (_, __) => const ShimmerStoryBubble(),
+        ),
+      );
+    }
+
+    return Container(
+      height: 115,
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: _uniqueUserStories.length + 1,
         itemBuilder: (context, index) {
-          final story = _stories[index];
-          final user = story['username'] ?? 'User';
-          final photo = story['user_photo'];
-          
-          return _buildStoryItem(
-            name: user,
-            imageUrl: photo,
+          if (index == 0) {
+            return StoryBubble(
+              name: 'Your Story',
+              isAdd: true,
               onTap: () {
-                 if (story['media_url'] != null) {
-                    showDialog(
-                      context: context,
-                      builder: (c) => Dialog(
-                        backgroundColor: Colors.transparent,
-                        insetPadding: EdgeInsets.zero,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                             // Simple Image Viewer for now
-                             Image.network(story['media_url']),
-                             Positioned(
-                               top: 40, right: 20,
-                               child: IconButton(
-                                 icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                                 onPressed: () => Navigator.pop(c),
-                               )
-                             )
-                          ],
-                        ),
-                      )
-                    );
-                 }
-              }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+                );
+              },
+            );
+          }
+
+          final story = _uniqueUserStories[index - 1];
+          final storyId = story['id'];
+          final isSeen = storyId != null && _seenStoryIds.contains(storyId);
+
+          return StoryBubble(
+            name: story['username'] ?? 'User',
+            imageUrl: story['user_photo'],
+            isSeen: isSeen,
+            onTap: () => _openStoryViewer(story),
           );
         },
       ),
     );
   }
 
-  Widget _buildStoryItem({required String name, String? imageUrl, bool isAdd = false, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isAdd)
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.2), width: 1, style: BorderStyle.none), // Dotted border hard in Flutter without package, using thin opacity for now
-                ),
-                child: Container(
-                   decoration: BoxDecoration(
-                     shape: BoxShape.circle,
-                     border: Border.all(color: Colors.grey.shade800, width: 2),
-                     color: Colors.transparent
-                   ),
-                   child: Center(child: Icon(Icons.add, color: FfigTheme.primaryBrown, size: 24)),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFD4AF37), Color(0xFF8B4513)], // Gold to Brown
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF0D1117), // Obsidian
-                  ),
-                  child: UserAvatar(
-                    imageUrl: imageUrl, 
-                    radius: 30,
-                    username: name,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 6),
-            Text(
-              name,
-              style: TextStyle(
-                  color: isAdd ? Colors.grey[500] : Colors.white, 
-                  fontSize: 10, 
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
+  void _openStoryViewer(dynamic startingStory) {
+    // Find index in ALL stories to start playing from there
+    // This allows "Play all" behavior while selecting a specific user's starting point
+    final index = _allStories.indexOf(startingStory);
+    if (index == -1) return;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Story',
+      barrierColor: Colors.black,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) {
+        return StoryViewer(
+          stories: _allStories,
+          initialIndex: index,
+          onGlobalClose: () => Navigator.pop(context),
+          onStoryViewed: (id) {
+            if (mounted) {
+              setState(() {
+                _seenStoryIds.add(id);
+              });
+            }
+          },
+        );
+      },
+      transitionBuilder: (_, anim, __, child) {
+         return FadeTransition(opacity: anim, child: child);
+      },
     );
   }
 }

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story, StoryView, Conversation, Message
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -301,11 +301,16 @@ class StorySerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     media_url = serializers.SerializerMethodField()
     user_photo = serializers.SerializerMethodField()
+    seen = serializers.SerializerMethodField()
 
     class Meta:
         model = Story
-        fields = ['id', 'user', 'username', 'user_photo', 'media', 'media_url', 'created_at']
+        fields = ['id', 'user', 'username', 'user_photo', 'media', 'media_url', 'created_at', 'seen']
         read_only_fields = ['user', 'created_at']
+
+    def get_seen(self, obj):
+        # This will be populated by the ViewSet efficiently
+        return getattr(obj, 'is_seen', False)
 
     def get_user_photo(self, obj):
         if hasattr(obj.user, 'profile'):
@@ -353,3 +358,36 @@ class StorySerializer(serializers.ModelSerializer):
             print(f"Error generating presigned URL: {e}")
             try: return obj.media.url
             except: return None
+    
+    def get_seen(self, obj):
+        # This will be populated by the ViewSet efficiently
+        return getattr(obj, 'is_seen', False)
+
+    class Meta:
+        model = Story
+        fields = ['id', 'user', 'media', 'media_url', 'created_at', 'is_active', 'user_photo', 'username', 'seen']
+        read_only_fields = ['user', 'created_at']
+
+
+class StoryViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoryView
+        fields = ['story', 'viewer', 'seen_at']
+        read_only_fields = ['viewer', 'seen_at']
+
+
+class StoryGroupSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    username = serializers.CharField()
+    user_photo = serializers.CharField(allow_null=True)
+    has_unseen = serializers.BooleanField()
+    stories = StorySerializer(many=True)
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = ProfileSerializer(source='sender.profile', read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'sender', 'content', 'created_at', 'story', 'is_read']
+        read_only_fields = ['sender', 'created_at', 'is_read']

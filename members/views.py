@@ -417,8 +417,11 @@ class NotificationMarkReadView(APIView):
         notification.save()
         return Response({"status": "marked as read"})
 
-from .models import Story
-from .serializers import StorySerializer
+from .models import Story, StoryView
+from .serializers import StorySerializer, StoryGroupSerializer, StoryViewSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Exists, OuterRef
 
 class StoryViewSet(viewsets.ModelViewSet):
     queryset = Story.objects.all()
@@ -433,5 +436,115 @@ class StoryViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         time_threshold = now - timedelta(hours=24)
         return Story.objects.filter(created_at__gte=time_threshold).order_by('created_at')
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.user != request.user:
+            return Response({'error': 'You cannot delete this story'}, status=403)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        
+        # Annotate with seen status efficiently
+        is_seen_subquery = StoryView.objects.filter(
+            story=OuterRef('pk'),
+            viewer=request.user
+        )
+        stories = queryset.annotate(is_seen=Exists(is_seen_subquery)).select_related('user', 'user__profile')
+        
+        # Group by user
+        grouped = {}
+        for story in stories:
+            uid = story.user.id
+            if uid not in grouped:
+                # Basic user info
+                username = story.user.username
+                photo = None
+                if hasattr(story.user, 'profile'):
+                    photo = story.user.profile.photo.url if story.user.profile.photo else story.user.profile.photo_url
+                    
+                grouped[uid] = {
+                    'user_id': uid,
+                    'username': username,
+                    'user_photo': photo,
+                    'has_unseen': False,
+                    'stories': []
+                }
+            
+            # Add story
+            grouped[uid]['stories'].append(story)
+            if not story.is_seen:
+                 grouped[uid]['has_unseen'] = True
+
+        # Convert to list and serialize using the Group serializer structure
+        results = []
+        for uid, data in grouped.items():
+            # We need to manually serialize the story objects because we are constructing a custom dict
+            # or we can use the serializer on the list of stories.
+            # Let's use the serializer for stories to ensure all fields (media_url etc) are correct.
+            story_serializer = StorySerializer(data['stories'], many=True, context={'request': request})
+            data['stories'] = story_serializer.data
+            results.append(data)
+            
+        return Response(results)
+
+    @action(detail=True, methods=['post'], url_path='seen')
+    def mark_seen(self, request, pk=None):
+        story = self.get_object()
+        StoryView.objects.get_or_create(story=story, viewer=request.user)
+        return Response({'status': 'seen'})
+
+    @action(detail=True, methods=['post'], url_path='reply')
+    def reply(self, request, pk=None):
+        story = self.get_object()
+        content = request.data.get('message')
+        if not content:
+            return Response({'error': 'Message content is required'}, status=400)
+
+        # 1. Get or Create Conversation
+        # Ensure we always order user_a < user_b to convert unique constraint
+        if request.user.id < story.user.id:
+            user_a, user_b = request.user, story.user
+        else:
+            user_a, user_b = story.user, request.user
+            
+        from .models import Conversation, Message
+        conversation, _ = Conversation.objects.get_or_create(user_a=user_a, user_b=user_b)
+
+        # 2. Create Message
+        Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+            story=story
+        )
+
+        return Response({'status': 'sent', 'conversation_id': conversation.id})
+
+    @action(detail=True, methods=['get'], url_path='views')
+    def get_views(self, request, pk=None):
+        story = self.get_object()
+        if story.user != request.user:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        views = StoryView.objects.filter(story=story).select_related('viewer', 'viewer__profile').order_by('-seen_at')
+        
+        # Manual serialize for speed/simplicity
+        data = []
+        for v in views:
+            photo = None
+            if hasattr(v.viewer, 'profile'):
+                photo = v.viewer.profile.photo.url if v.viewer.profile.photo else v.viewer.profile.photo_url
+            
+            data.append({
+                'viewer_id': v.viewer.id,
+                'username': v.viewer.username,
+                'profile_photo': photo,
+                'seen_at': v.seen_at
+            })
+            
+        return Response(data)
 
 
