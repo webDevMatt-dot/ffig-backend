@@ -7,6 +7,13 @@ import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
 
+/// Screen for creating and uploading a new Story.
+///
+/// **Features:**
+/// - Pick image from Gallery.
+/// - Required Cropping (9:16 aspect ratio) for consistency.
+/// - Uploads to backend via `AdminApiService`.
+/// - Supports both Mobile (File) and Web (Bytes) uploads.
 class CreateStoryScreen extends StatefulWidget {
   const CreateStoryScreen({super.key});
 
@@ -16,9 +23,14 @@ class CreateStoryScreen extends StatefulWidget {
 
 class _CreateStoryScreenState extends State<CreateStoryScreen> {
   final _api = AdminApiService();
-  dynamic _selectedFile; 
+  dynamic _selectedFile; // File for Mobile, Uint8List for Web
   bool _isLoading = false;
 
+  /// Picks and crops an image from the gallery.
+  /// Picks and crops an image from the gallery.
+  /// - Uses `ImagePicker` to select an image.
+  /// - Uses `ImageCropper` to enforce 9:16 aspect ratio.
+  /// - Sets `_selectedFile` for display and upload.
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final xfile = await picker.pickImage(source: ImageSource.gallery);
@@ -56,6 +68,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     }
   }
 
+  /// Uploads the selected story to the backend.
+  /// - Uses `AdminApiService.createStory`.
+  /// - Shows loading state during upload.
+  /// - Navigates back on success.
   Future<void> _postStory() async {
       if (_selectedFile == null) return;
       
@@ -100,6 +116,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                ),
              ),
              
+             // Image Preview Area
              Expanded(
                 child: Container(
                     width: double.infinity,
@@ -146,3 +163,4 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 }
+

@@ -3,9 +3,17 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../api/constants.dart';
 
+/// Service for handling Event Ticket purchases and retrieval.
+///
+/// **Features:**
+/// - Purchase Tickets (Tier-based).
+/// - Retrieve User's Tickets (with QR data).
 class TicketService {
   final _storage = const FlutterSecureStorage();
 
+  /// Purchases a ticket for a specific event tier.
+  /// - Sends `tier_id` to the backend.
+  /// - Returns transaction data on success (201).
   Future<Map<String, dynamic>> purchaseTicket(int eventId, int tierId) async {
     final token = await _storage.read(key: 'access_token');
     final url = Uri.parse('${baseUrl}events/$eventId/purchase/');
@@ -26,6 +34,8 @@ class TicketService {
     }
   }
 
+  /// Retrieves all tickets purchased by the current user.
+  /// - Returns a list of tickets, typically including QR code data.
   Future<List<dynamic>> getMyTickets() async {
     final token = await _storage.read(key: 'access_token');
     final url = Uri.parse('${baseUrl}events/my-tickets/');
@@ -42,3 +52,4 @@ class TicketService {
     }
   }
 }
+

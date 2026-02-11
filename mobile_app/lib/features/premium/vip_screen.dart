@@ -4,6 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/constants.dart'; // Your baseUrl
 
+/// A screen displaying exclusive VIP resources.
+///
+/// **Features:**
+/// - Tabbed view for Magazines, Masterclasses, and Newsletters.
+/// - Fetches content based on category code.
 class VipScreen extends StatefulWidget {
   const VipScreen({super.key});
 
@@ -65,6 +70,9 @@ class _ResourceListState extends State<_ResourceList> {
     _fetchItems();
   }
 
+  /// Fetches resource items for the specific category.
+  /// - Uses `http` to query `/resources/?category=CODE`.
+  /// - Updates local list of items.
   Future<void> _fetchItems() async {
     try {
       // API CALL: Ask for only this category

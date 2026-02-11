@@ -5,6 +5,12 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart';
 
+/// A utility widget to view images and videos in full screen.
+///
+/// **Features:**
+/// - Supports both Network URLs and Local Files.
+/// - Zoomable Image View (using `PhotoView`).
+/// - Video Playback with Controls (using `Chewie`).
 class FullScreenMediaViewer extends StatefulWidget {
   final String? url;
   final File? file;
@@ -36,6 +42,9 @@ class _FullScreenMediaViewerState extends State<FullScreenMediaViewer> {
     }
   }
 
+  /// Initializes the video player controller.
+  /// - Determines source (File vs Network).
+  /// - Sets up `Chewie` for playback controls.
   Future<void> _initVideo() async {
     try {
       if (widget.file != null) {

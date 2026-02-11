@@ -13,6 +13,14 @@ import '../community/public_profile_screen.dart';
 import 'community_chat_screen.dart';
 import '../../core/services/admin_api_service.dart'; // Import Service
 
+/// Displays the User's Message Inbox.
+///
+/// **Features:**
+/// - Lists recent conversations.
+/// - Filters: All, Unread, Favorites.
+/// - Search functionality (Users and Messages).
+/// - Quick access to "Community Chat".
+/// - Shows Unread Counts.
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
 
@@ -110,6 +118,11 @@ class _InboxScreenState extends State<InboxScreen> {
     super.dispose();
   }
 
+  /// Fetches the user's conversations and "Me" profile.
+  /// - Supports filtering (all/unread/favorites).
+  /// - Supports searching.
+  /// - Sorts conversations by last message timestamp.
+  /// - Filters out self-chats.
   Future<void> _fetchCurrentUserAndConversations({bool silent = false, String? search}) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
@@ -208,6 +221,10 @@ class _InboxScreenState extends State<InboxScreen> {
       }
   }
 
+  /// Builds the list of conversations or the empty state.
+  /// - Supports loading state.
+  /// - Filters out empty matches during search.
+  /// - Renders `ListTile` for each conversation with unread count and last message.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -422,6 +439,9 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   // --- NEW SEARCH UI ---
+  /// Builds the search results list.
+  /// - Displays matching Users and Messages separately.
+  /// - Handles empty/loading states.
   Widget _buildSearchResults() {
       final users = _searchResults['users'] as List;
       final messages = _searchResults['messages'] as List;
@@ -504,6 +524,9 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Map<String, dynamic> _searchResults = {'users': [], 'messages': []};
 
+  /// Executes the search query against the backend.
+  /// - `query`: The search text.
+  /// - Updates `_searchResults` with 'users' and 'messages'.
   Future<void> _performSearch(String query) async {
        if (query.isEmpty) {
            setState(() => _searchResults = {'users': [], 'messages': []});

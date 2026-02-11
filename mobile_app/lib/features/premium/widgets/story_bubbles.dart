@@ -3,6 +3,13 @@ import 'package:shimmer/shimmer.dart';
 import '../../../shared_widgets/user_avatar.dart';
 import '../../../core/theme/ffig_theme.dart';
 
+/// A widget that displays a circular user avatar with a gradient border to indicate a story.
+///
+/// This widget is used in the `StoriesBar` to represent a user's story.
+/// It visualizes different states:
+/// - **Add Story:** Shows a plus icon if `isAdd` is true, allowing the current user to post.
+/// - **Unseen Story:** Shows a Gradient border (Gold to Bronze) if the story hasn't been watched.
+/// - **Seen Story:** Shows a Grey border if the story has already been viewed.
 class StoryBubble extends StatelessWidget {
   final String name;
   final String? imageUrl;
@@ -32,19 +39,27 @@ class StoryBubble extends StatelessWidget {
             Stack(
               alignment: Alignment.bottomRight,
               children: [
+                // The main circular container with border logic
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    // GRADIENT LOGIC:
+                    // - No gradient for "Add" button
+                    // - No gradient for "Seen" stories
+                    // - Gold/Bronze gradient for "Unseen" stories
                     gradient: isAdd
                         ? null
                         : (isSeen
-                            ? null // Seen stories have no gradient (grey border)
+                            ? null 
                             : const LinearGradient(
                                 colors: [Color(0xFFD4AF37), Color(0xFF8B4513)], // Gold to Bronze
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               )),
+                    // BORDER LOGIC:
+                    // - White/Transparent border for "Add"
+                    // - Grey border for "Seen"
                     border: (isAdd || isSeen)
                         ? Border.all(
                             color: isAdd 
@@ -66,6 +81,7 @@ class StoryBubble extends StatelessWidget {
                           ),
                   ),
                 ),
+                // Small Plus Badge for the "Add Story" bubble
                 if (isAdd)
                   Positioned(
                     right: 2,
@@ -83,6 +99,7 @@ class StoryBubble extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // User Name below the bubble
             SizedBox(
               width: 72,
               child: Text(
@@ -104,6 +121,9 @@ class StoryBubble extends StatelessWidget {
   }
 }
 
+/// A placeholder widget that displays a shimmering effect while stories are loading.
+///
+/// This mimics the shape and size of a `StoryBubble` to provide a smooth loading experience.
 class ShimmerStoryBubble extends StatelessWidget {
   const ShimmerStoryBubble({super.key});
 
@@ -114,6 +134,7 @@ class ShimmerStoryBubble extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Circle Shimmer
           Shimmer.fromColors(
             baseColor: Colors.grey.shade800,
             highlightColor: Colors.grey.shade700,
@@ -127,6 +148,7 @@ class ShimmerStoryBubble extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+          // Text Line Shimmer
           Shimmer.fromColors(
             baseColor: Colors.grey.shade800,
             highlightColor: Colors.grey.shade700,

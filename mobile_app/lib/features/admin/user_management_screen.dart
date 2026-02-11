@@ -6,6 +6,12 @@ import '../../core/api/constants.dart';
 import 'dart:async';
 import 'edit_user_screen.dart';
 
+/// Screen for managing application users.
+///
+/// **Features:**
+/// - Tabbed view for All, Suspended, and Blocked users.
+/// - Search functionality by username or email.
+/// - Edit user details or delete users.
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
 
@@ -44,6 +50,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
     super.dispose();
   }
 
+  /// Fetches users for all tabs concurrently.
+  /// - `silent`: If true, suppresses loading indicator (for background refresh).
+  /// - Updates `_allUsers`, `_suspendedUsers`, `_blockedUsers`.
   Future<void> _fetchAllCategories({bool silent = false}) async {
       if (!silent) setState(() => _isLoading = true);
       try {
@@ -60,6 +69,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
       }
   }
 
+  /// Helper to fetch users with optional status filter.
+  /// - Status filters: 'suspended', 'blocked', or null (all).
   Future<List<dynamic>> _fetchUsers(String? statusFilter) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
@@ -97,6 +108,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
   // BUT the previous view was truncated. I must re-implement basic CRUD calls or rely on a "keep existing" assumption that isn't safe.
   // I will re-implement the CRUD calls briefly to ensure functionality.
 
+  /// Deletes a user by ID.
+  /// - Sends DELETE request to `/admin/users/$id/`.
+  /// - Silently refreshes the list on success.
   Future<void> _deleteUser(int userId) async {
      try {
        final token = await const FlutterSecureStorage().read(key: 'access_token');

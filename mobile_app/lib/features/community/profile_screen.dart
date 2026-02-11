@@ -12,6 +12,13 @@ import '../../core/services/version_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Displays the Current User's Profile.
+///
+/// **Features:**
+/// - Fetches user data from `members/me/`.
+/// - Shows Avatar, Name, Industry, Location, and Bio.
+/// - Provides access to Settings (`SettingsScreen`).
+/// - Allows Premium users to manage their Business Profile (`BusinessProfileEditorScreen`).
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -29,6 +36,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _fetchMyProfile();
   }
 
+  /// Fetches the authenticated user's profile data.
+  /// - Handles token validation.
+  /// - Redirects to login on 401 (handled via state/navigation logic primarily in main/auth).
   Future<void> _fetchMyProfile() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');

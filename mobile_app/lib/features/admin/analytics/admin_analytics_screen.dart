@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/services/admin_api_service.dart';
 
+/// A dashboard for Admin-level analytics.
+///
+/// **Features:**
+/// - Displays high-level stats: Active Users, Revenue, Conversion Rates.
+/// - Fetches data from `AdminApiService.fetchAnalytics`.
+/// - Shows placeholders for detailed charts (future implementation).
 class AdminAnalyticsScreen extends StatefulWidget {
   const AdminAnalyticsScreen({super.key});
 
@@ -20,6 +26,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     _loadData();
   }
 
+  /// Fetches analytics data from the backend.
+  /// - Sets `_isLoading` while fetching.
+  /// - Handles errors with a SnackBar.
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {

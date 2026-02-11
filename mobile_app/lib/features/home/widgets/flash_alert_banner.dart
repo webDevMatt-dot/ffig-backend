@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/flash_alert.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// A red scrolling banner for urgent announcements.
+/// - Appears at the very top of the Dashboard.
+/// - Supports external links.
 class FlashAlertBanner extends StatelessWidget {
   final FlashAlert alert;
 

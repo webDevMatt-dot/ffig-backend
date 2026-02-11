@@ -4,6 +4,13 @@ import 'dart:convert';
 // for kIsWeb
 import '../../core/api/constants.dart';
 
+/// The User Registration Screen.
+///
+/// **Features:**
+/// - Registration Form (Name, Username, Email, Password).
+/// - Industry Selection (with "Other" text field).
+/// - Sends registration data to backend.
+/// - Redirects to Login on success.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -36,6 +43,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   };
 
 
+  /// Submits the registration form to the backend.
+  /// - Validates passwords match.
+  /// - Ensures Industry "Other" field is filled if selected.
+  /// - Handles successful creation (201) by showing snackbar and popping.
+  /// - Displays errors on failure.
   Future<void> _register() async {
     setState(() => _isLoading = true);
 

@@ -28,6 +28,9 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
     _loadReels();
   }
 
+  /// Fetches the marketing feed (reels) from the backend.
+  /// - Uses `AdminApiService.fetchMarketingFeed`.
+  /// - Updates local state.
   Future<void> _loadReels() async {
     try {
       final data = await _api.fetchMarketingFeed();
@@ -89,6 +92,7 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
   }
 }
 
+/// A screen displayed at the end of the feed to indicate no more content.
 class _CaughtUpPage extends StatelessWidget {
     const _CaughtUpPage();
     
@@ -159,6 +163,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       _commentsCount = widget.item['comments_count'] ?? 0;
   }
 
+  /// Initializes the video/image content.
+  /// - Handles URL correction for localhost/relative paths.
+  /// - Initializes `VideoPlayerController` if content is a video.
+  /// - Configures `ChewieController` for playback.
   Future<void> _initMedia() async {
     var videoUrl = widget.item['video'];
     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
@@ -207,6 +215,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     super.dispose();
   }
   
+  /// Toggles the like status of the reel.
+  /// - Updates UI optimistically.
+  /// - Sends API request to backend.
+  /// - Reverts UI if API fails.
   Future<void> _toggleLike() async {
       final prevLiked = _isLiked;
       setState(() {
@@ -233,6 +245,9 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       }
   }
   
+  /// Handles double-tap gesture.
+  /// - Tips: Triggers like if not already liked.
+  /// - Shows a floating heart animation.
   void _onDoubleTap() {
     // Only trigger like if not already liked
     if (!_isLiked) {
@@ -261,6 +276,9 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       });
   }
   
+  /// Opens the external share sheet.
+  /// - Option to share text externally.
+  /// - Option to share internally via Chat.
   void _share() {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
@@ -521,17 +539,20 @@ class _CommentsSheetState extends State<_CommentsSheet> {
         }
     }
     
-    Future<void> _post() async {
-        if (_controller.text.trim().isEmpty) return;
-        final content = _controller.text;
-        _controller.clear(); 
-        try {
-            await _api.postMarketingComment(widget.requestId, content);
-            _load(); // reload
-        } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e")));
-        }
-    }
+    /// Posts a new comment.
+  /// - Sends text to `AdminApiService.postMarketingComment`.
+  /// - Reloads comments on success.
+  Future<void> _post() async {
+      if (_controller.text.trim().isEmpty) return;
+      final content = _controller.text;
+      _controller.clear(); 
+      try {
+          await _api.postMarketingComment(widget.requestId, content);
+          _load(); // reload
+      } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e")));
+      }
+  }
 
     @override
     Widget build(BuildContext context) {

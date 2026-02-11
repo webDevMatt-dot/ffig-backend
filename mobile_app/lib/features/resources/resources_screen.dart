@@ -8,6 +8,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 
+/// Displays Curated Resources (Magazines, Masterclasses, etc.).
+///
+/// **Features:**
+/// - Fetches resources from backend.
+/// - Filters by Category (Gen, Mag, News, Class, Pod).
+/// - Launches external URLs for content consumption.
 class ResourcesScreen extends StatefulWidget {
   const ResourcesScreen({super.key});
 
@@ -34,6 +40,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     _fetchResources();
   }
 
+  /// Fetches resources from the API with optional category filtering.
   Future<void> _fetchResources() async {
     setState(() => _isLoading = true);
     const storage = FlutterSecureStorage();

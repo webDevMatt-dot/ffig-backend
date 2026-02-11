@@ -23,6 +23,9 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
     _initChat();
   }
 
+  /// Initializes the community chat.
+  /// - Checks permissions via `MembershipService`.
+  /// - Fetches the community conversation ID from `/chat/community/`.
   Future<void> _initChat() async {
     // 1. Check Permissions
     if (!MembershipService.canCommunityChat) {

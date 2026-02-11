@@ -3,6 +3,9 @@ import '../../../../shared_widgets/user_avatar.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../models/founder_profile.dart';
 
+/// Displays a detailed card for the "Founder of the Week".
+/// - Shows Avatar, Name, Business, Country, and Bio.
+/// - Used in the Bento Grid and modal dialogs.
 class FounderCard extends StatelessWidget {
   final FounderProfile profile;
 

@@ -16,8 +16,14 @@ import 'core/services/version_service.dart';
 final themeController = ThemeController();
 
 
-
-  void main() async {
+/// Application Entry Point.
+/// 
+/// **Responsibilities:**
+/// 1. Initialize Flutter Bindings.
+/// 2. Initialize Firebase (if not on Web, or configured).
+/// 3. Initialize Notification Services.
+/// 4. Launch the `FFIGApp`.
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     // on Web, we skip Firebase unless configured (to avoid crash)
@@ -33,6 +39,13 @@ final themeController = ThemeController();
   runApp(const FFIGApp());
 }
 
+/// The Root Widget of the Application.
+///
+/// Sets up:
+/// - `OverlaySupport` for in-app notifications.
+/// - `MaterialApp` with global configurations.
+/// - System-wide Theme (Light/Dark).
+/// - Initial Route (`SplashScreen`).
 class FFIGApp extends StatelessWidget {
   const FFIGApp({super.key});
 
@@ -74,6 +87,9 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkSession();
   }
 
+  /// Checks for an existing session token.
+  /// - If valid, navigates to `DashboardScreen` (Authenticated).
+  /// - If invalid/missing, navigates to `DashboardScreen` (Guest Mode).
   Future<void> _checkSession() async {
     // Just wait for splash animation/branding
     await Future.delayed(const Duration(seconds: 3));

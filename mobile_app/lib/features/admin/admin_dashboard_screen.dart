@@ -13,6 +13,12 @@ import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
 import 'moderation/admin_reports_screen.dart';
 
+/// The main dashboard for Administrators.
+///
+/// **Features:**
+/// - Overview of all admin functions (Homepage content, Events, Resources, Users).
+/// - Displays notification badges for pending Approvals and Reports.
+/// - Adaptive layout for Mobile vs. Desktop/Web.
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -30,15 +36,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _fetchNotificationCounts();
   }
 
+  /// Fetches counts for pending items (Reports, Approvals).
+  /// - Updates `_reportsCount` (Moderation).
+  /// - Updates `_approvalsCount` (Business + Marketing requests).
   Future<void> _fetchNotificationCounts() async {
     try {
       final api = AdminApiService();
       // Fetch Reports -> Count PENDING
       try {
         final reports = await api.fetchItems('moderation/reports');
-        // If the endpoint returns raw list, filter. If it's already filtered, just length.
-        // Assuming endpoint returns all, filter for pending/open statuses if applicable.
-        // AdminReportsScreen logic suggests 'status' field.
         final pendingReports = reports.where((r) => r['status'] != 'RESOLVED').length;
         if (mounted) setState(() => _reportsCount = pendingReports);
       } catch (e) {

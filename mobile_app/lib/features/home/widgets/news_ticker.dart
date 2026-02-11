@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:marquee/marquee.dart';
 
+/// A horizontal scrolling text ticker for news updates.
+/// - Uses `marquee` package.
+/// - Displays joined list of news strings.
 class NewsTicker extends StatelessWidget {
   final List<String> newsItems;
 

@@ -10,6 +10,16 @@ import '../../../core/api/constants.dart';
 
 import '../../../shared_widgets/user_avatar.dart';
 
+/// A full-screen viewer for user stories, similar to Instagram/Snapchat.
+///
+/// **Features:**
+/// - Plays images (5s) and videos (full duration).
+/// - Top progress bars indicate current story and progress.
+/// - Tap left/right to navigate between stories.
+/// - Long press to pause.
+/// - Swipe down to close.
+/// - Swipe up (for owner) to see viewers.
+/// - Reply text field for viewers to send messages.
 class StoryViewer extends StatefulWidget {
   final List<dynamic> stories; // List of all user's stories (if multiple) or just the one clicked
   final int initialIndex;
@@ -65,6 +75,9 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     super.dispose();
   }
 
+  /// Handle Focus Change on Reply Input.
+  /// - Pauses story/video when typing.
+  /// - Resumes when focus is lost (keyboard closed).
   void _onReplyFocusChange() {
     if (_replyFocusNode.hasFocus) {
       _animController.stop();
@@ -79,6 +92,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
+  /// Loads and plays the story at [index].
+  /// - Disposes previous controllers.
+  /// - Determines media type (Image vs Video).
+  /// - Sets animation duration (5s for image, video duration for video).
+  /// - Advances to next story upon completion.
   void _loadStory({required int index, bool animateToPage = false}) {
     if (_isClosed) return;
     if (index < 0 || index >= widget.stories.length) {
@@ -176,6 +194,10 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
+  /// Sends a reply to the story author via DM.
+  /// - Pauses playback.
+  /// - Hits backend API `/members/stories/{id}/reply/`.
+  /// - Resumes playback on completion.
   Future<void> _sendReply() async {
     if (_replyController.text.isEmpty) return;
     
@@ -220,6 +242,8 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
+  /// Shows the Viewers Sheet (Owner only).
+  /// - Pauses playback while open.
   void _showViewers() {
     _animController.stop();
     _videoController?.pause();
@@ -476,6 +500,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   }
 }
 
+/// Displays the segmented progress bars at the top of the story viewer.
+///
+/// - **Filled Bar:** Stories already viewed.
+/// - **Active Bar:** Currently viewing story (animates from 0 to 1).
+/// - **Empty Bar:** Future stories.
 class StoryProgressBar extends StatelessWidget {
   final AnimationController animController;
   final int position;
@@ -522,6 +551,9 @@ class StoryProgressBar extends StatelessWidget {
   }
 }
 
+/// A bottom sheet that displays the list of users who have viewed a specific story.
+///
+/// Only visible to the owner of the story. Allows deleting the story.
 class StoryViewersSheet extends StatelessWidget {
   final int storyId;
   const StoryViewersSheet({super.key, required this.storyId});
@@ -539,6 +571,8 @@ class StoryViewersSheet extends StatelessWidget {
       return [];
   }
 
+  /// Deletes the story via API.
+  /// - Prompts for confirmation.
   Future<void> _deleteStory(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,

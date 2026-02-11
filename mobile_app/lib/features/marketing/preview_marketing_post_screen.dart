@@ -8,6 +8,13 @@ import '../../core/utils/dialog_utils.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
+/// A Preview Screen for Marketing Requests (Ads/Promotions).
+///
+/// **Features:**
+/// - Simulates the feed card appearance (Like/Comment buttons, Header).
+/// - Plays video preview using Chewie.
+/// - Handles final submission to `AdminApiService`.
+/// - Supports different media types (File, Bytes, URL).
 class PreviewMarketingPostScreen extends StatefulWidget {
   final Map<String, dynamic> formData; // title, link, type
   final dynamic mediaFile; // File, CroppedFile, Uint8List (web), or String (URL)
@@ -70,6 +77,10 @@ class _PreviewMarketingPostScreenState extends State<PreviewMarketingPostScreen>
     super.dispose();
   }
 
+  /// Submits the Final Request to the Backend.
+  /// - Converts `CroppedFile` to `File` (Mobile) or `Uint8List` (Web).
+  /// - Calls `createMarketingRequestWithMedia`.
+  /// - Navigates back to the main list on success.
   Future<void> _submitFormat() async {
     setState(() => _isLoading = true);
     try {

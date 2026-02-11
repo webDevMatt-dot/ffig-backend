@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../features/premium/locked_screen.dart';
 
+/// A promotional dialog that encourages users to upgrade their membership.
+/// - **Trigger:** Displayed when a user tries to access a restricted feature (e.g., VVIP content, Member Directory).
+/// - **Actions:** 'Maybe Later' (Dismiss) or 'Upgrade Now' (Navigates to LockedScreen/Premium options).
 class UpgradeModal extends StatelessWidget {
   final String message;
   const UpgradeModal({super.key, required this.message});

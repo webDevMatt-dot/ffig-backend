@@ -9,6 +9,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:intl/intl.dart';
 
+/// Displays a list of All Events (Upcoming and Past).
+///
+/// **Features:**
+/// - Fetches events from `events/` endpoint.
+/// - Separates events into "Upcoming" and "Past" sections based on date.
+/// - Displays generic event cards with image, date, and location.
+/// - Navigates to `EventDetailScreen` on tap.
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
 
@@ -26,6 +33,10 @@ class _EventsScreenState extends State<EventsScreen> {
     _fetchEvents();
   }
 
+  /// Fetches all events from the backend.
+  /// - Uses `FlutterSecureStorage` for auth token.
+  /// - Sets `_events` state on success.
+  /// - Handles loading state `_isLoading`.
   Future<void> _fetchEvents() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
@@ -58,11 +69,15 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
+  /// Builds the main list view.
+  /// - Splits events into Upcoming and Past.
+  /// - Renders grouped sections.
   Widget _buildEventsList() {
     final now = DateTime.now();
     final upcomingEvents = <dynamic>[];
     final pastEvents = <dynamic>[];
 
+    // Partition events
     for (final event in _events) {
       try {
         final eventDate = DateTime.parse(event['date']);
@@ -96,6 +111,9 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
+  /// Generates a list of event cards for a section.
+  /// - `events`: List of event data.
+  /// - `title`: Section header title.
   List<Widget> _buildEventSection(
       List<dynamic> events, String title, BuildContext context) {
     return [

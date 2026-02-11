@@ -3,6 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 enum ModerationType { warning, suspend, block, delete }
 
+/// A dialog used to inform users about their account status (Warned, Suspended, Blocked).
+///
+/// **Usage:**
+/// - **Warning:** Dismissible, serves as a gentle reminder or policy notice.
+/// - **Suspend:** Blocking (cannot dismiss), shows duration.
+/// - **Block:** Blocking (cannot dismiss), permanent ban.
+/// - **Delete:** Blocking, account removal notice.
 class ModerationDialog extends StatelessWidget {
   final ModerationType type;
   final String? message;
@@ -21,6 +28,7 @@ class ModerationDialog extends StatelessWidget {
     Color iconColor;
     String title;
     String defaultMessage;
+    // Determines if the user can close the dialog or is locked out
     bool isBlocking = true;
 
     switch (type) {
@@ -74,6 +82,7 @@ class ModerationDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Close button only for warnings
               if (type == ModerationType.warning)
                 Align(
                   alignment: Alignment.topRight,
@@ -105,10 +114,8 @@ class ModerationDialog extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               
-              // Action Buttons?
+              // Placeholder for future actions (e.g., Logout, Contact Support)
               if (isBlocking)
-                 // Maybe a logout button? Or just nothing?
-                 // "The user must see the dialog". Typically we might allow them to Logout.
                  TextButton(
                    onPressed: () { 
                       // Provide a callback or let parent handle 'Logout'
@@ -123,3 +130,4 @@ class ModerationDialog extends StatelessWidget {
     );
   }
 }
+

@@ -11,6 +11,12 @@ import '../../core/api/constants.dart';
 import '../../core/utils/dialog_utils.dart';
 import 'edit_marketing_request_screen.dart';
 
+/// The main screen for managing Marketing Requests (Ads, Promotions).
+///
+/// **Features:**
+/// - Lists user's existing requests with status (Pending, Approved, Rejected).
+/// - Allows creating new requests for Business Ads or Promotions.
+/// - Allows editing or deleting pending requests.
 class MarketingRequestsScreen extends StatefulWidget {
   const MarketingRequestsScreen({super.key});
 
@@ -30,6 +36,9 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
     _fetchMyRequests();
   }
 
+  /// Fetches the current user's marketing requests.
+  /// - Queries `/members/me/marketing/list/`.
+  /// - Updates the local list `_myRequests`.
   Future<void> _fetchMyRequests() async {
     setState(() => _isLoading = true);
     final token = await _storage.read(key: 'access_token');
@@ -66,6 +75,9 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
      _fetchMyRequests();
   }
 
+  /// Deletes a request by ID.
+  /// - Requires user confirmation.
+  /// - Uses `AdminApiService.deleteMarketingRequest`.
   Future<void> _deleteRequest(int id) async {
     final confirmed = await DialogUtils.showConfirmation(context, "Delete Request", "Are you sure you want to delete this request?");
     if (confirmed != true) return;

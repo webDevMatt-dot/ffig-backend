@@ -11,6 +11,14 @@ import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/moderation_dialog.dart';
 
+/// The Main Authentication Entry Point.
+///
+/// **Features:**
+/// - User Login (Email/Username & Password).
+/// - Secure Token Storage (`access`, `refresh`) via `FlutterSecureStorage`.
+/// - Admin Status Check (`is_staff`).
+/// - Account Moderation Checks (Block/Suspend).
+/// - Version Display.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -38,6 +46,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
 
 
+  /// Authenticates the user with the backend.
+  /// - Validates credentials.
+  /// - Stores tokens and user roles securely.
+  /// - Performs Moderation Checks:
+  ///   - **Blocked:** Shows `ModerationDialog` (blocking) and prevents login.
+  ///   - **Suspended:** Shows `ModerationDialog` with expiry date.
+  /// - Navigates to `DashboardScreen` on success.
   Future<void> _login() async {
     setState(() => _isLoading = true);
 

@@ -3,10 +3,17 @@ import '../../shared_widgets/upgrade_modal.dart';
 
 enum UserTier { free, standard, premium }
 
+/// A Static Service Helper for managing User Tiers and Permissions (RBAC).
+///
+/// **Role Hierarchy:**
+/// - **Free (Guest):** Read-only access to public content.
+/// - **Standard:** Access to Events and Community Chat.
+/// - **Premium (VVIP):** Full access including Inbox, Advertising, and Business Profile.
+/// - **Admin:** Superuser access to everything.
 class MembershipService {
   static UserTier currentTier = UserTier.free;
 
-  // Set Tier from String (Backend Response)
+  /// Sets the current user tier based on the backend response string.
   static void setTier(String? tierName) {
     if (tierName == 'PREMIUM') {
       currentTier = UserTier.premium;
@@ -19,25 +26,35 @@ class MembershipService {
 
   static bool isAdmin = false;
 
+  // --- Tier Getters ---
   static bool get isFree => !isAdmin && currentTier == UserTier.free;
   static bool get isStandard => isAdmin || currentTier == UserTier.standard;
   static bool get isPremium => isAdmin || currentTier == UserTier.premium;
 
-  // Permissions Logic based on Matrix
-  static bool get canCommunityChat => !isFree; // Standard & Premium
-  static bool get canInbox => isPremium; // Premium only ('Inbox or email members directly')
+  // --- Feature Permissions (Gatekeepers) ---
   
-  static bool get canBuyTickets => !isFree; // Standard & Premium ('Attend and buy tickets')
+  /// Can access community chat? (Standard+)
+  static bool get canCommunityChat => !isFree; 
   
-  static bool get canAdvertise => isPremium; // Premium only
-  static bool get canCreateBusinessProfile => isPremium; // Premium only
+  /// Can use direct messaging? (Premium only)
+  static bool get canInbox => isPremium;
   
-  // Directory: Standard sees "limited info", Premium sees all.
-  // We'll treat "View Full Directory" as the ability to see contact info or interact.
-  static bool get canViewFullDirectory => isPremium; // Premium only
-  static bool get canViewLimitedDirectory => isPremium; // Premium only
+  /// Can buy event tickets? (Standard+)
+  static bool get canBuyTickets => !isFree;
+  
+  /// Can post VVIP Reels/Ads? (Premium only)
+  static bool get canAdvertise => isPremium;
+  
+  /// Can create a business directory profile? (Premium only)
+  static bool get canCreateBusinessProfile => isPremium;
+  
+  /// Can view full member directory details? (Premium only)
+  static bool get canViewFullDirectory => isPremium;
+  
+  /// Can view limited member directory? (Premium only - currently restricted)
+  static bool get canViewLimitedDirectory => isPremium;
 
-  // Helper to show dialog
+  /// Helper used by UI to show an "Upgrade Required" dialog for locked features.
   static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {
     String message = "Unlock '$feature' by becoming an FFIG Member. Choose Standard or Premium to access.";
 
@@ -51,3 +68,4 @@ class MembershipService {
     );
   }
 }
+

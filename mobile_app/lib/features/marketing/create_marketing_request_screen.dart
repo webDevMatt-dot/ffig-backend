@@ -7,6 +7,13 @@ import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
 import 'preview_marketing_post_screen.dart'; 
 
+/// Screen for creating a new Marketing Request (Ad or Promotion).
+///
+/// **Features:**
+/// - Supports Image and Video uploads.
+/// - Integrated Image Cropper (16:9 ratio for consistency).
+/// - Form for Title, Link, and Category (Ad vs Promotion).
+/// - Navigates to `PreviewMarketingPostScreen` for final review.
 class CreateMarketingRequestScreen extends StatefulWidget {
   final String type; // 'Ad' or 'Promotion'
   const CreateMarketingRequestScreen({super.key, required this.type});
@@ -31,6 +38,9 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
     _selectedType = widget.type;
   }
 
+  /// Picks media (Image or Video) from the gallery.
+  /// - **Images:** Enforces 16:9 cropping to ensure high-quality feed display.
+  /// - **Videos:** Selected as-is (no cropping supported yet).
   Future<void> _pickMedia(bool pickVideo) async {
     final picker = ImagePicker();
     final xfile = pickVideo 

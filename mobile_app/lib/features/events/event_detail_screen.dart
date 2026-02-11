@@ -4,6 +4,13 @@ import 'ticket_flow/ticket_selection_screen.dart';
 import '../../core/services/membership_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+/// Displays detailed information about a specific Event.
+///
+/// **Features:**
+/// - Parallax Header with Event Image.
+/// - Tabbed Interface: Overview, Agenda, Speakers, FAQ.
+/// - Ticket Purchase Logic (In-App Selection or External URL).
+/// - Gatekeeping: Uses `MembershipService` to restrict ticket buying to non-Free users.
 class EventDetailScreen extends StatelessWidget {
   final Map<String, dynamic> event;
 
@@ -20,6 +27,11 @@ class EventDetailScreen extends StatelessWidget {
     }
   }
 
+  /// Handles the "Get Tickets" button action.
+  /// - Checks permissions via `MembershipService.canBuyTickets`.
+  /// - Shows Upgrade Dialog if user is Free tier.
+  /// - Navigates to `TicketSelectionScreen` if in-app tiers exist.
+  /// - Launches external URL fallback otherwise.
   void _onGetTickets(BuildContext context) {
     if (!MembershipService.canBuyTickets) {
       MembershipService.showUpgradeDialog(context, "Ticket Purchase");
@@ -121,6 +133,9 @@ class EventDetailScreen extends StatelessWidget {
     );
   }
 
+  /// Builds the Overview tab content.
+  /// - Displays Date, Location, and Virtual Link.
+  /// - Shows Description and Price.
   Widget _buildOverview(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -200,6 +215,7 @@ class EventDetailScreen extends StatelessWidget {
     );
   }
 
+  /// Builds the Agenda tab content list.
   Widget _buildAgenda(List agenda) {
     if (agenda.isEmpty) return const Center(child: Text("Agenda coming soon."));
     return ListView.builder(
@@ -223,6 +239,7 @@ class EventDetailScreen extends StatelessWidget {
     );
   }
 
+  /// Builds the Speakers tab content list.
   Widget _buildSpeakers(List speakers) {
      if (speakers.isEmpty) return const Center(child: Text("Speakers to be announced."));
      return ListView.builder(
@@ -262,6 +279,7 @@ class EventDetailScreen extends StatelessWidget {
      );
   }
 
+  /// Builds the FAQ tab content as expansion tiles.
   Widget _buildFAQ(List faqs) {
     if (faqs.isEmpty) return const Center(child: Text("No FAQs yet."));
     return ListView.builder(

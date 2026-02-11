@@ -1,7 +1,11 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/hero_item.dart';
 
+/// Displays a rotating carousel of highlight items at the top of the Home Dashboard.
+/// - Supports tap actions (external links).
+/// - Fallback images and gradients for text readability.
 class HeroCarousel extends StatelessWidget {
   final List<HeroItem> items;
 
@@ -33,13 +37,8 @@ class HeroCarousel extends StatelessWidget {
                   if (url.contains('ffig-mobile-app.onrender.com')) {
                      url = url.replaceAll('ffig-mobile-app.onrender.com', 'femalefoundersinitiativeglobal.onrender.com');
                   }
-                  // Need to import url_launcher at top of file
-                  // But wait, I need to check imports first.
-                  // Assuming I can add import or it exists? It DOES NOT exist in HeroCarousel.dart.
-                  // I will need to add import too. 
-                  // I'll do that in a separate step or try to add it now?
-                  // Providing just the block is risky if import missing.
-                  // I'll assume import needs adding.
+                  
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
                 }
               },
               child: Container(

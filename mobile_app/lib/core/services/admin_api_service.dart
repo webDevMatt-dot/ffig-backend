@@ -6,6 +6,14 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import '../api/constants.dart';
 
+/// The centralized Service for interacting with the Admin and Member APIs.
+/// 
+/// **Key Responsibilities:**
+/// - Fetches Homepage Content (Hero, Founder, Alerts).
+/// - Manages Events (CRUD for Admin, Fetch for Users).
+/// - Handles Member features (Profile, Business, Marketing).
+/// - Manages Admin Approvals (Ads/Business Profiles).
+/// - Handles Authentication headers via `FlutterSecureStorage`.
 class AdminApiService {
   static final String _baseUrl = '${baseUrl}home';
   static final String _membersBaseUrl = '${baseUrl}members';
@@ -15,6 +23,8 @@ class AdminApiService {
     return await _storage.read(key: 'access_token');
   }
 
+  // --- HOMEPAGE CONTENT MANAGEMENT ---
+  
   // Generic GET
   Future<List<dynamic>> fetchItems(String endpoint) async {
     final token = await _getToken();
@@ -84,7 +94,7 @@ class AdminApiService {
     await _patchJson('ticker', id, data);
   }
 
-  // --- EVENTS ---
+  // --- EVENTS MANAGEMENT ---
   static final String _eventsBaseUrl = '${baseUrl}events';
 
   Future<List<dynamic>> fetchEvents() async {
@@ -200,7 +210,8 @@ class AdminApiService {
   }
 
 
-  // --- MEMBER SUBMISSIONS (RBAC) ---
+  // --- MEMBER FEATURES (VVIP) ---
+  // Includes Business Profile, Marketing Requests, and Stories.
   // static const String _membersBaseUrl = '${baseUrl}members'; // Removed duplicate
 
   Future<Map<String, dynamic>?> fetchMyBusinessProfile() async {
@@ -421,7 +432,7 @@ class AdminApiService {
     }
   }
 
-  // --- APPROVALS ---
+  // --- ADMIN APPROVALS ---
   
   Future<List<dynamic>> fetchBusinessApprovals() async {
       return await _fetchApprovals('business');

@@ -16,6 +16,15 @@ import '../home/dashboard_screen.dart';
 import '../../core/services/membership_service.dart';
 import '../marketing/business_profile_editor_screen.dart';
 
+/// Displays the Application Settings and User Preferences.
+///
+/// **Features:**
+/// - Theme Toggling (Light/Dark/System).
+/// - User Profile Management (Edit Profile, Change Password).
+/// - Privacy Settings (Read Receipts, Blocked Users).
+/// - Admin Notice Display.
+/// - Guest Mode: Shows limited options (Login/Sign Up).
+/// - Danger Zone: Account Deletion.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -59,6 +68,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _appVersion = info.version);
   }
 
+  /// Fetches the current user's info to populate settings.
+  /// - Determines if user is Guest or Member via `access_token`.
+  /// - Loads Tiers, Admin Notices, and Preferences.
   Future<void> _fetchUserInfo() async {
       try {
         const storage = FlutterSecureStorage();

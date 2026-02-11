@@ -7,6 +7,12 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
 
+/// Screen to manage VIP Resources (Magazines, Masterclasses, etc).
+///
+/// **Features:**
+/// - List existing resources with search and filter.
+/// - Add/Edit resources via a bottom sheet form.
+/// - Toggle visibility (active/inactive) or delete resources.
 class ResourceManagementScreen extends StatefulWidget {
   const ResourceManagementScreen({super.key});
 
@@ -51,6 +57,9 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
     }
   }
 
+  /// Fetches resources from all categories.
+  /// - Iterates through ['MAG', 'CLASS', 'NEWS', 'GEN'].
+  /// - Aggregates results into `_resources`.
   Future<void> _fetchResources() async {
     setState(() => _isLoading = true);
     try {
@@ -198,6 +207,10 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
     );
   }
 
+  /// Submits the add/edit form.
+  /// - Validates input.
+  /// - Determines if creating (POST) or updating (PUT).
+  /// - Refreshes list on success.
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(context);

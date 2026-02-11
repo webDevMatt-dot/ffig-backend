@@ -9,6 +9,12 @@ import 'dart:async';
 import '../../core/api/constants.dart';
 import 'package:flutter/foundation.dart';
 
+/// The dashboard for Standard members.
+///
+/// **Features:**
+/// - Displays current membership status.
+/// - Shows specific actions available to Standard members (Community Chat, Events).
+/// - Displays an upsell card to upgrade to Premium/VVIP.
 class StandardScreen extends StatefulWidget {
   const StandardScreen({super.key});
 
@@ -33,6 +39,9 @@ class _StandardScreenState extends State<StandardScreen> {
     super.dispose();
   }
 
+  /// Fetches the unread count for the Community Chat.
+  /// - Polls every 10 seconds (via `_chatTimer`).
+  /// - Updates the badge count in the UI.
   Future<void> _fetchCommunityUnread() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');

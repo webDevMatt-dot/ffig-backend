@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../../core/theme/ffig_theme.dart';
 
+/// A specialized animated navigation bar with a glassmorphism effect.
+///
+/// **Features:**
+/// - Floating design with rounded corners and shadow.
+/// - Frosted glass effect using `BackdropFilter` and `ImageFilter.blur`.
+/// - Animated selection state (pill shape background).
+/// - Supports customizable icons and labels.
 class GlassNavBar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;

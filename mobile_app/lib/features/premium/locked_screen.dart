@@ -6,7 +6,10 @@ class LockedScreen extends StatelessWidget {
   const LockedScreen({super.key});
 
   // Your specific payment links
+  /// Payment URL for Standard Plan
   final String _standardPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiJhZDQwMzVkZi04MzA0LTRhMjctODZlNi0yY2ExMDNlNTNlNWIiLCJjaGVja291dEZsb3dJZCI6Ijk3ZjRiMjcwLTA5ZTUtNDIxOS1iYzNkLWE3ZjIxNWMwNTJjMCJ9";
+  
+  /// Payment URL for Premium Plan
   final String _premiumPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiI5YWQ4OTNlNi03ZTIzLTQ2NTAtYWY1OS1lMWNiMTU5NDA5OTQiLCJjaGVja291dEZsb3dJZCI6IjAwMTZmN2QxLTc2MzgtNDgyOS1hODVjLTU5MTYwYTdjMjYxNyJ9";
 
   Future<void> _launchURL(BuildContext context, String urlString) async {

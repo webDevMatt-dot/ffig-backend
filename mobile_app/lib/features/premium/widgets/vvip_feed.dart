@@ -11,6 +11,14 @@ import 'stories_bar.dart'; // Import local widget
 import '../../../shared_widgets/user_avatar.dart';
 import 'full_screen_media_viewer.dart';
 
+/// The main feed for VVIP content, styled like TikTok/Reels.
+///
+/// **Features:**
+/// - Vertical scrolling PageView.
+/// - Autoplays videos using `Chewie` and `VideoPlayer`.
+/// - Integrated Social features: Like, Comment, Share.
+/// - Auto-hiding Stories Bar on scroll.
+/// - "Caught Up" page at the end of the feed.
 class VVIPFeed extends StatefulWidget {
   final PageController? controller;
   const VVIPFeed({super.key, this.controller});
@@ -32,6 +40,9 @@ class _VVIPFeedState extends State<VVIPFeed> {
     _loadReels();
   }
 
+  /// Fetches the marketing feed (Reels) from the backend.
+  /// - Uses `AdminApiService.fetchMarketingFeed`.
+  /// - Updates UI state variables.
   Future<void> _loadReels() async {
     try {
       final data = await _api.fetchMarketingFeed();
@@ -75,9 +86,11 @@ class _VVIPFeedState extends State<VVIPFeed> {
         ),
         
         // Stories Bar (Scrolls away)
+        // Uses AnimatedBuilder to listen to the main page controller.
+        // As the user scrolls down to the first reel, the stories bar fades out and moves up.
         Positioned(
-            // CHANGED: Moved down to 80 to clear the new Header
-            top: 80, 
+            // CHANGED: Moved up to 70 to condense space
+            top: 70, 
             left: 0, 
             right: 0,
             child: AnimatedBuilder(
@@ -160,6 +173,9 @@ class _CaughtUpPage extends StatelessWidget {
 }
 
 
+/// Individual Reel Item Widget.
+///
+/// Handles video initialization, playback control, double-tap to like, and social overlay.
 class _ReelItem extends StatefulWidget {
   final Map<String, dynamic> item;
   final int index;
@@ -201,6 +217,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       _commentsCount = widget.item['comments_count'] ?? 0;
   }
 
+  /// Initializes the media player (Video or Image).
+  /// - Handles URL correction (relative paths, localhost for Android emulator).
+  /// - Initializes `VideoPlayerController` and `ChewieController` for videos.
+  /// - Sets auto-play and looping for immersive experience.
   Future<void> _initMedia() async {
     var videoUrl = widget.item['video'];
     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
@@ -249,6 +269,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     super.dispose();
   }
   
+  /// Toggles the 'Like' status of the reel.
+  /// - Optimistically updates UI.
+  /// - Sends request to backend via `AdminApiService`.
+  /// - Reverts on failure.
   Future<void> _toggleLike() async {
       final prevLiked = _isLiked;
       setState(() {
@@ -275,6 +299,9 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       }
   }
   
+  /// Handles double-tap interaction.
+  /// - Triggers 'Like' if not already liked.
+  /// - Shows a floating heart animation overlay.
   void _onDoubleTap() {
     // Only trigger like if not already liked
     if (!_isLiked) {
@@ -291,6 +318,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     });
   }
   
+  /// Opens the Comments Sheet.
   void _showComments() {
       showModalBottomSheet(
           context: context,
@@ -303,6 +331,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       });
   }
   
+  /// Opens the Share Sheet.
+  /// - Options: External Share (system) or In-App Share (Chat).
   void _share() {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
@@ -374,10 +404,12 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
     final bool hasVideo = _chewieController != null;
     
-    // CHANGED: Increased top padding from 110 to 150 to clear the StoriesBar (115 height + margins)
+    // CHANGED: Reduced top padding to clear the StoriesBar
+    // The first item needs more padding to push it below the fixed StoriesBar and Header.
+    // Subsequent items are full screen.
     return Padding( 
-      // CHANGED: Increased top padding to 200 (Header + Stories Bar space)
-      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 200 : 0), 
+      // CHANGED: Reduced top padding to 180 (Header + Stories Bar space)
+      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 180 : 0), 
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF161B22), // Obsidian lighter

@@ -7,6 +7,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
 
+/// A bottom sheet to share content directly to a chat conversation.
+///
+/// **Features:**
+/// - Search for users to message.
+/// - Sends a pre-formatted message with a link to the content.
+/// - Uses `chat/messages/send/` endpoint.
 class ShareToChatSheet extends StatefulWidget {
   final Map<String, dynamic> item;
   const ShareToChatSheet({super.key, required this.item});
@@ -26,6 +32,8 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
       // Optionally load recent conversations here
   }
 
+  /// Searches for users by username.
+  /// - Queries the `/chat/search/` endpoint.
   Future<void> _search(String query) async {
       if (query.isEmpty) {
           setState(() => _users = []);
@@ -51,6 +59,9 @@ class _ShareToChatSheetState extends State<ShareToChatSheet> {
       }
   }
 
+  /// Sends the content link to the selected user.
+  /// - Constructs a message with title, type, and link.
+  /// - Sends via POST to `/chat/messages/send/`.
   Future<void> _send(dynamic user) async {
        // Send Message
        setState(() => _isLoading = true);

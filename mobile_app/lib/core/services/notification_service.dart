@@ -2,6 +2,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 
+/// Service wrapper for Push Notifications (FCM) and Local Notifications.
+///
+/// **Functionality:**
+/// - Initializes Firebase Messaging.
+/// - Requests User Permissions (iOS).
+/// - Configures Local Notifications (for foreground display).
+/// - Listens for incoming messages in Foreground/Background.
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -12,6 +19,10 @@ class NotificationService {
 
   bool _isInitialized = false;
 
+  /// Initializes the Notification Service.
+  /// 1. Requests permissions.
+  /// 2. Sets up Local Notification channels (Android).
+  /// 3. Listens for foreground messages.
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -67,10 +78,12 @@ class NotificationService {
     _isInitialized = true;
   }
   
+  /// Retrieves the FCM Device Token for backend targeting.
   Future<String?> getDeviceToken() async {
     return await _firebaseMessaging.getToken();
   }
 
+  /// Displays a Local Notification when the app is in the foreground.
   Future<void> _showLocalNotification(RemoteMessage message) async {
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
@@ -89,6 +102,7 @@ class NotificationService {
             priority: Priority.high,
             showWhen: true,
             onlyAlertOnce: true, // Prevent re-sounding on updates
+            playSound: true,
           ),
           iOS: DarwinNotificationDetails(),
         ),
@@ -96,3 +110,4 @@ class NotificationService {
     }
   }
 }
+

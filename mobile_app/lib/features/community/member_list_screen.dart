@@ -12,6 +12,14 @@ import '../../shared_widgets/user_avatar.dart';
 import '../../core/services/membership_service.dart';
 import 'public_profile_screen.dart';
 
+/// Displays the Community Member Directory.
+///
+/// **Features:**
+/// - Searchable list of members.
+/// - Filter by Industry and Sort by Name/Industry.
+/// - "Premium Only" toggle.
+/// - Admin features: Long-press to reset password.
+/// - Navigates to `PublicProfileScreen` (or `ChatScreen` implicitly via profile).
 class MemberListScreen extends StatefulWidget {
   const MemberListScreen({super.key});
 
@@ -76,6 +84,10 @@ class _MemberListScreenState extends State<MemberListScreen> {
   }
 
   // --- API CALL ---
+  /// Fetches members from the backend based on filters.
+  /// - Supports Search (`?search=query`).
+  /// - Supports Industry filtering (`&industry=TECH`).
+  /// - Performs client-side sorting to prioritize Premium members (`is_premium`).
   Future<void> _fetchMembers() async {
     // Avoid setting loading to true on every keystroke to prevent flickering, 
     // but useful for initial load or major filter changes.

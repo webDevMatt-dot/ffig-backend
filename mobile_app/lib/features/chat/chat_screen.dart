@@ -14,6 +14,14 @@ import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../community/public_profile_screen.dart';
 
+/// The Main Chat Interface.
+///
+/// **Features:**
+/// - Real-time messaging (via 5s polling).
+/// - Message Grouping by Date.
+/// - In-Chat Search.
+/// - Reply, Copy, Report, and Block functionality.
+/// - Supports both 1-on-1 DMs and Community Chat functionality.
 class ChatScreen extends StatefulWidget {
   final int? conversationId;
   final int? recipientId;
@@ -88,6 +96,9 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// Groups messages by Date for the UI.
+  /// - Inserts 'header' items into `_groupedMessages`.
+  /// - Assumes input `_messages` is sorted.
   void _groupMessages() {
     final List<dynamic> grouped = [];
     DateTime? lastDate;
@@ -116,6 +127,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return DateFormat('MMMM d, yyyy').format(date);
   }
 
+  /// Fetches messages for the active conversation.
+  /// - Resolves `conversationId` if only `recipientId` is known.
+  /// - Groups messages by date for UI rendering.
+  /// - Polls every 5 seconds for updates (if `silent` is true).
   Future<void> _fetchMessages({bool silent = false}) async {
     // 1. Resolve ID if missing
     if (_activeConversationId == null && widget.recipientId != null) {
@@ -172,6 +187,11 @@ class _ChatScreenState extends State<ChatScreen> {
       return null;
   }
 
+  /// Sends a message.
+  /// - Handles optimistic local update (TODO).
+  /// - Posts to `/chat/messages/send/`.
+  /// - Updates conversation ID if it was new.
+  /// - Auto-scrolls to bottom.
   Future<void> _sendMessage() async {
     if (_controller.text.isEmpty) return;
     final text = _controller.text;
@@ -228,6 +248,9 @@ class _ChatScreenState extends State<ChatScreen> {
       });
   }
 
+  /// Performs local search within the chat history.
+  /// - Scans `_groupedMessages`.
+  /// - Populates `_searchResults` with indices.
   void _performInChatSearch(String query) {
       if (query.isEmpty) {
           setState(() => _searchResults.clear());
@@ -296,6 +319,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
 
+  /// Scrolls to a specific message ID or Index.
+  /// - `idOrIndex`: Message ID or List Index (depending on `indexMode`).
+  /// - Calculates reverse-list index.
+  /// - Highlights the message temporarily.
   void _scrollToMessage(int idOrIndex, {bool indexMode = false}) {
       // Find the message in our list
       int indexInData = -1;

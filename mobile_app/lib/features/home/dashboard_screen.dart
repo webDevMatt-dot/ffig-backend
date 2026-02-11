@@ -44,6 +44,18 @@ import 'widgets/news_ticker.dart';
 
 import '../../shared_widgets/moderation_dialog.dart';
 
+// --- NEW IMPORTS FOR CREATION MENU ---
+import '../marketing/create_marketing_request_screen.dart';
+import '../premium/create_story_screen.dart';
+
+/// The Main App Home Screen & Navigation Controller.
+///
+/// **Features:**
+/// - **Role & Access Control:** Checks User/Premium/Admin status on load.
+/// - **Dynamic Content:** Loads Hero Carousel, Founder Profile, Flash Alerts, and News Ticker.
+/// - **Navigation:** Bottom Tab Bar switching (Home, Events, Network, VVIP, Admin).
+/// - **Creation Hub:** Creation menu for Stories/Ads (VVIP only).
+/// - **Notifications:** Polls for unread messages and admin alerts.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -53,24 +65,32 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  // ... (Keep existing state variables)
+    
+  // --- Navigation & State ---
+  // Controls the active tab (0: Home, 1: Events, 2: Network, 3: VVIP, 4: Admin)
   int _selectedIndex = 0;
+  
+  // Controls the main PageView for smooth swiping between tabs
+  final PageController _pageController = PageController();
+
+  // --- Data ---
   List<dynamic> _events = [];
+  List<HeroItem> _heroItems = [];
+  List<String> _newsTickerItems = [];
+  FounderProfile? _founderProfile;
+  FlashAlert? _flashAlert;
+  
+  // --- User & Role Management ---
+  // Fetched from API to determine UI layout and access rights
   bool _isLoading = true;
   bool _isPremium = false;
   bool _isAdmin = false;
-  Timer? _notificationTimer;
+  Map<String, dynamic>? _userProfile; // Full profile data for Avatar/Moderation
 
+  // --- Notifications ---
+  Timer? _notificationTimer; // Periodically checks for new messages/alerts
   int _lastUnreadCount = 0;
   int _lastNotificationId = 0;
-
-  // New Data Sources (Mocked for now)
-  List<HeroItem> _heroItems = [];
-  FounderProfile? _founderProfile;
-  FlashAlert? _flashAlert;
-  List<String> _newsTickerItems = [];
-  Map<String, dynamic>? _userProfile;
-  final PageController _pageController = PageController();
 
   @override
   void initState() {
@@ -101,6 +121,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Polls for unread messages and admin notifications.
+  /// - Checks chat unread count (if Premium).
+  /// - Checks admin notifications (if Admin).
   Future<void> _checkUnreadMessages() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
@@ -132,6 +155,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Fetches and displays new admin notifications.
+  /// - Compares ID with persisted `last_notif_id`.
+  /// - Shows in-app overlay notification if new.
+  /// - Plays a distinct sound for admins.
   Future<void> _checkAdminNotifications(String? token) async {
     try {
       final response = await http.get(
@@ -201,6 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Marks a specific notification as read.
   Future<void> _markNotificationRead(int id, String? token) async {
     try {
       await http.post(
@@ -212,11 +240,23 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+    // --- Check Premium / Role Status ---
+    // This is the core gatekeeper. It checks:
+    // 1. Is the token valid? (Guest vs User)
+    // 2. Is the user Premium/VVIP? (Unlocks Index 3)
+    // 3. Is the user Admin? (Unlocks Index 4)
+    // 4. Sets Global MembershipService state for use across the app.
+  /// Verifies User Status & Access Level.
+  /// - **Guest:** Restricted access, prompts login.
+  /// - **Premium/VVIP:** Unlocks exclusive tabs (VVIP).
+  /// - **Admin:** Unlocks Admin Dashboard.
+  /// - **Moderation:** Checks for block/suspension status and shows dialogs.
+  /// - Updates global `MembershipService` state.
   Future<void> _checkPremiumStatus() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
-    // Guest Mode
+    // Guest Mode: Reset everything to restricted state
     if (token == null) {
       if (mounted) {
         setState(() {
@@ -300,6 +340,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Checks for account moderation flags (Block, Suspension, Warning).
+  /// - Shows varying dialogs based on severity.
+  /// - Block/Suspend dialogs are non-dismissible.
   void _checkModerationStatus() {
     if (_userProfile == null) return;
 
@@ -341,6 +384,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Fetches all events to display in the Trending section.
+  /// - Used to populate the horizontal list on Home tab.
   Future<void> _fetchEvents() async {
     // Renamed from _fetchFeaturedEvents
     const storage = FlutterSecureStorage();
@@ -382,6 +427,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     }).toList();
   }
 
+  /// Loads core Homepage Content in parallel.
+  /// - **Hero Items:** Carousel images.
+  /// - **Founder Profile:** Top-level founder feature.
+  /// - **Flash Alerts:** Urgent scrolling banners.
+  /// - **News Ticker:** Scrolling text updates.
   Future<void> _loadHomepageContent() async {
     final api = AdminApiService();
     try {
@@ -473,6 +523,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   // Update check removed as per user request
   // Future<void> _checkForUpdates() async { ... }
 
+  /// Prompts the user to login for restricted features.
   void _showLoginDialog() {
     showDialog(
       context: context,
@@ -503,7 +554,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // Logout Function
+  /// Logs out the user.
+  /// - Deletes secure storage token.
+  /// - Resets app state to Guest.
   Future<void> _logout() async {
     // 1. Delete the token
     const storage = FlutterSecureStorage();
@@ -519,6 +572,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Checks if running on Mobile Web and prompts for App download.
   void _checkMobileWeb() {
     // If on Web AND (Android OR iOS)
     if (kIsWeb &&
@@ -561,6 +615,72 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  // --- Creation Menu (VVIP Only) ---
+  // Displays a bottom sheet with options to:
+  // 1. Add to Story (24h ephemeral content)
+  // 2. Post VVIP Reel / Ad (Permanent content, subject to approval)
+  //
+  // Triggered by the "+" button in the AppBar when on the VVIP tab.
+  void _showCreationMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161B22), // Obsidian lighter
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
+                ),
+                const Text(
+                  "Create Content",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: FfigTheme.primaryBrown.withOpacity(0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.history_edu, color: FfigTheme.primaryBrown),
+                  ),
+                  title: const Text("Add to Story", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: const Text("Share a quick update (24h)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateStoryScreen()));
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.cyan.withOpacity(0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.video_library, color: Colors.cyan),
+                  ),
+                  title: const Text("Post VVIP Reel / Ad", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: const Text("Promote your business or share value", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateMarketingRequestScreen(type: 'Ad')));
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -575,8 +695,17 @@ class _DashboardScreenState extends State<DashboardScreen>
         );
       },
       child: Scaffold(
-      extendBody: true, // Allow body to flow behind the floating nav bar
+      extendBody: true,
       appBar: AppBar(
+        // --- NEW: Leading Button Logic ---
+        // Only shows when VVIP tab (Index 3) is selected
+        leading: _selectedIndex == 3
+            ? IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: FfigTheme.primaryBrown, size: 28),
+                onPressed: _showCreationMenu,
+              )
+            : null,
+            
         title: Text(
           "MEMBER PORTAL",
           style: GoogleFonts.inter(
@@ -601,12 +730,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
               },
             )
           else
@@ -617,32 +741,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: const Icon(Icons.email_outlined),
               ),
               onPressed: () {
-                // Reset count on tap instantly for better UX
                 setState(() => _lastUnreadCount = 0);
                 if (MembershipService.canInbox) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const InboxScreen(),
-                    ),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
                 } else {
                   MembershipService.showUpgradeDialog(context, "Inbox");
                 }
               },
             ),
 
-          // Profile Avatar or Login Button (Top Right)
+          // Profile Avatar or Login Button
           if (_userProfile != null)
             InkWell(
               onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-                // Refresh profile on return in case edited
+                await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
                 _checkPremiumStatus();
               },
               child: Container(
@@ -653,9 +765,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   border: Border.all(color: FfigTheme.primaryBrown, width: 1.5),
                 ),
                 child: UserAvatar(
-                  radius: 16, // Small for AppBar
-                  imageUrl:
-                      _userProfile!['photo'] ?? _userProfile!['photo_url'],
+                  radius: 16,
+                  imageUrl: _userProfile!['photo'] ?? _userProfile!['photo_url'],
                   firstName: _userProfile!['first_name'] ?? '',
                   lastName: _userProfile!['last_name'] ?? '',
                   username: _userProfile!['username'] ?? 'M',
@@ -666,17 +777,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (c) => const LoginScreen()),
-                ),
-                child: const Text(
-                  "Login",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: FfigTheme.primaryBrown,
-                  ),
-                ),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const LoginScreen())),
+                child: const Text("Login", style: TextStyle(fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
               ),
             ),
         ],
@@ -696,34 +798,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ? const StandardScreen()
                     : const LockedScreen()),
           if (_isAdmin)
-            const AdminDashboardScreen(), // Allow swiping to Admin if Admin
+            const AdminDashboardScreen(),
         ],
       ),
       bottomNavigationBar: GlassNavBar(
         selectedIndex: _selectedIndex,
         onItemSelected: (index) {
-          // Handle Admin Tab Logic or Restrictions first
           if (!_isAdmin && index == 4) return;
 
-          // RBAC: Network/Members Tab (Index 2)
           if (index == 2) {
-            if (_userProfile == null) {
-              _showLoginDialog();
-              return;
-            }
-            if (!MembershipService.canViewLimitedDirectory) {
-              MembershipService.showUpgradeDialog(context, "Member Directory");
-              return;
-            }
+            if (_userProfile == null) { _showLoginDialog(); return; }
+            if (!MembershipService.canViewLimitedDirectory) { MembershipService.showUpgradeDialog(context, "Member Directory"); return; }
           }
 
-          // RBAC: VVIP (Index 3)
-          if (index == 3 && _userProfile == null) {
-            _showLoginDialog();
-            return;
-          }
+          if (index == 3 && _userProfile == null) { _showLoginDialog(); return; }
 
-          // Animate to page
           _pageController.animateToPage(
             index,
             duration: const Duration(milliseconds: 300),
@@ -731,40 +820,21 @@ class _DashboardScreenState extends State<DashboardScreen>
           );
         },
         items: [
-          GlassNavItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home,
-            label: "Home",
-          ),
-          GlassNavItem(
-            icon: Icons.calendar_month_outlined,
-            activeIcon: Icons.calendar_month,
-            label: "Events",
-          ),
-          GlassNavItem(
-            icon: Icons.people_outline,
-            activeIcon: Icons.people,
-            label: "Network",
-          ),
-          GlassNavItem(
-            icon: Icons.diamond_outlined,
-            activeIcon: Icons.diamond,
-            label: "VVIP",
-          ),
+          GlassNavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: "Home"),
+          GlassNavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: "Events"),
+          GlassNavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: "Network"),
+          GlassNavItem(icon: Icons.diamond_outlined, activeIcon: Icons.diamond, label: "VVIP"),
           if (_isAdmin)
-            GlassNavItem(
-              icon: Icons.admin_panel_settings_outlined,
-              activeIcon: Icons.admin_panel_settings,
-              label: "Admin",
-            ),
+            GlassNavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: "Admin"),
         ],
       ),
     ),
     );
   }
 
+  /// Refreshes all homepage data.
   Future<void> _onRefresh() async {
-    // Determine if we need to show loading indicators or just refresh silently
+    // Determine if need to show loading indicators or just refresh silently
     // For pull-to-refresh, we usually just want to await the results
     await Future.wait([
       _fetchEvents(), // Changed from _fetchFeaturedEvents
@@ -773,6 +843,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     ]);
   }
 
+  /// Counts upcoming events for the Bento Tile.
   int _getUpcomingCount() {
     final now = DateTime.now();
     // Normalize to start of day to include events happening "today"
@@ -789,6 +860,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     }).length;
   }
 
+  /// Builds the 'Home' tab content (Index 0).
+  /// - Includes Editorial Header, Hero Carousel, Bento Grid, and Trending Events.
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: _onRefresh,
@@ -966,11 +1039,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(32),
                             boxShadow: [
-                               BoxShadow(
-                                 color: Colors.black.withOpacity(0.3),
-                                 blurRadius: 20,
-                                 offset: const Offset(0, 10),
-                               ),
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
                             ],
                           ),
                           child: ClipRRect(

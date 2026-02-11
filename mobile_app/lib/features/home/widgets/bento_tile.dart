@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; // For ImageFilter
 import '../../../core/theme/ffig_theme.dart';
 
+/// A reusable tile component for the Bento Grid layout.
+/// - Supports custom background colors or Glassmorphism.
+/// - Configurable title, subtitle, icon, and tap action.
 class BentoTile extends StatelessWidget {
   final String title;
   final String? subtitle;
