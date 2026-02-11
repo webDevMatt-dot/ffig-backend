@@ -114,6 +114,7 @@ urlpatterns = [
     # Stories
     path('api/members/stories/', StoryViewSet.as_view({'get': 'list', 'post': 'create'}), name='story-list'),
     path('api/members/stories/<int:pk>/', StoryViewSet.as_view({'delete': 'destroy'}), name='story-detail'),
+    path('api/members/stories/<int:pk>/reply/', StoryViewSet.as_view({'post': 'reply'}), name='story-reply'),
 
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),

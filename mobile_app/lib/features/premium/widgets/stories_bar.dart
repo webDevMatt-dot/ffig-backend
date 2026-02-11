@@ -60,7 +60,12 @@ class _StoriesBarState extends State<StoriesBar> {
              // 1. Fix User Photo URL (On the Group Object)
              if (group['user_photo'] != null) {
                String photo = group['user_photo'].toString();
-               if (photo.startsWith('/')) {
+               if (photo.contains('localhost')) {
+                  try {
+                    final uri = Uri.parse(photo);
+                    group['user_photo'] = '$domain${uri.path}';
+                  } catch (_) {}
+               } else if (photo.startsWith('/')) {
                  group['user_photo'] = '$domain$photo';
                } else if (!photo.startsWith('http')) {
                   group['user_photo'] = '$domain/media/$photo'; 
@@ -72,7 +77,12 @@ class _StoriesBarState extends State<StoriesBar> {
                 for (var s in group['stories']) {
                    if (s['media_url'] != null) {
                      String url = s['media_url'].toString();
-                     if (url.startsWith('/')) {
+                     if (url.contains('localhost')) {
+                        try {
+                          final uri = Uri.parse(url);
+                          s['media_url'] = '$domain${uri.path}';
+                        } catch (_) {}
+                     } else if (url.startsWith('/')) {
                        s['media_url'] = '$domain$url';
                      } else if (!url.startsWith('http')) {
                         s['media_url'] = '$domain/media/$url';

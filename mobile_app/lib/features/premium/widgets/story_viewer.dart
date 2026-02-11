@@ -210,7 +210,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: 'access_token');
       
-      await http.post(
+      final response = await http.post(
         Uri.parse('${baseUrl}members/stories/${story['id']}/reply/'),
         headers: {
           'Authorization': 'Bearer $token',
@@ -219,16 +219,22 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         body: jsonEncode({'message': _replyController.text}),
       );
 
-      if (mounted) {
-        _replyController.clear();
-        FocusScope.of(context).unfocus(); // Close keyboard
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reply sent!'), duration: Duration(seconds: 2)),
-        );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (mounted) {
+          _replyController.clear();
+          FocusScope.of(context).unfocus(); // Close keyboard
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reply sent!'), duration: Duration(seconds: 2)),
+          );
+        }
+      } else {
+        throw Exception('Failed to send reply: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+         // Show a more readable error if possible, or log it
+         debugPrint("Reply Error: $e");
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send reply. Please try again.')));
       }
     } finally {
       if (mounted) {
