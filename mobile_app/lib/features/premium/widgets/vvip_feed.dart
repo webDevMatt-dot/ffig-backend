@@ -76,7 +76,8 @@ class _VVIPFeedState extends State<VVIPFeed> {
         
         // Stories Bar (Scrolls away)
         Positioned(
-            top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            // CHANGED: Moved down to 80 to clear the new Header
+            top: 80, 
             left: 0, 
             right: 0,
             child: AnimatedBuilder(
@@ -373,8 +374,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
     final bool hasVideo = _chewieController != null;
     
-    return Padding( // Wrapper for the "Card" effect
-      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 110 : 0), 
+    // CHANGED: Increased top padding from 110 to 150 to clear the StoriesBar (115 height + margins)
+    return Padding( 
+      // CHANGED: Increased top padding to 200 (Header + Stories Bar space)
+      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 200 : 0), 
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF161B22), // Obsidian lighter
