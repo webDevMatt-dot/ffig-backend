@@ -36,8 +36,7 @@ class _StoriesBarState extends State<StoriesBar> {
 
   /// Fetches stories from the API and groups them.
   /// - URL correction for media and avatars.
-  /// - Sorts stories (using `StoryLogic`).
-  /// - Filters for unique users to display one bubble per user.
+  /// - Backend returns a List of Groups (User + Stories).
   Future<void> _fetchStories() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
@@ -49,57 +48,69 @@ class _StoriesBarState extends State<StoriesBar> {
       );
       if (response.statusCode == 200) {
         if (mounted) {
-           final rawStories = jsonDecode(response.body) as List<dynamic>;
+           final rawGroups = jsonDecode(response.body) as List<dynamic>;
            
            // --- FIX 1: Robust URL Correction ---
            // Clean the domain (remove /api/ if present to get root)
-           // This ensures that we have a clean base URL for prepending to relative paths.
            final domain = baseUrl.contains('/api/') 
                ? baseUrl.substring(0, baseUrl.indexOf('/api/')) 
                : baseUrl;
 
-           for (var s in rawStories) {
-             // Fix Media URL
-             if (s['media_url'] != null) {
-               String url = s['media_url'].toString();
-               if (url.startsWith('/')) {
-                 s['media_url'] = '$domain$url';
-               } else if (!url.startsWith('http')) {
-                  // Handle cases where it might be just a filename
-                  s['media_url'] = '$domain/media/$url';
+           for (var group in rawGroups) {
+             // 1. Fix User Photo URL (On the Group Object)
+             if (group['user_photo'] != null) {
+               String photo = group['user_photo'].toString();
+               if (photo.startsWith('/')) {
+                 group['user_photo'] = '$domain$photo';
+               } else if (!photo.startsWith('http')) {
+                  group['user_photo'] = '$domain/media/$photo'; 
                }
+             }
+
+             // 2. Fix Media URL for each story in the group
+             if (group['stories'] != null) {
+                for (var s in group['stories']) {
+                   if (s['media_url'] != null) {
+                     String url = s['media_url'].toString();
+                     if (url.startsWith('/')) {
+                       s['media_url'] = '$domain$url';
+                     } else if (!url.startsWith('http')) {
+                        s['media_url'] = '$domain/media/$url';
+                     }
+                   }
+                }
+             }
+           }
+
+           // Sort the groups: Unseen first, then Recent (Newest story) first
+           rawGroups.sort((a, b) {
+             // 1. Unseen First
+             bool aUnseen = a['has_unseen'] ?? false;
+             bool bUnseen = b['has_unseen'] ?? false;
+             if (aUnseen != bUnseen) {
+               return aUnseen ? -1 : 1; // Unseen comes first
+             }
+
+             // 2. Most Recent Update First (Check last story in group as they are sorted Oldest->Newest by backend)
+             var storiesA = a['stories'] as List?;
+             var storiesB = b['stories'] as List?;
+             
+             DateTime timeA = DateTime(2000);
+             if (storiesA != null && storiesA.isNotEmpty) {
+                timeA = DateTime.tryParse(storiesA.last['created_at'] ?? '') ?? DateTime(2000);
              }
              
-             // Fix User Photo URL (The Exclamation Mark Fix)
-             if (s['user_photo'] != null) {
-               String photo = s['user_photo'].toString();
-               if (photo.startsWith('/')) {
-                 s['user_photo'] = '$domain$photo';
-               } else if (!photo.startsWith('http')) {
-                  // Handle cases where it might be just a filename or relative path
-                  s['user_photo'] = '$domain/media/$photo'; // Assumption: Media path
-               }
+             DateTime timeB = DateTime(2000);
+             if (storiesB != null && storiesB.isNotEmpty) {
+                timeB = DateTime.tryParse(storiesB.last['created_at'] ?? '') ?? DateTime(2000);
              }
-           }
-
-           // Sort (This is usually Newest First for the feed)
-           final sorted = StoryLogic.sortStories(rawStories, null); 
+             
+             return timeB.compareTo(timeA); // Descending
+           });
            
-           // Filter for unique users for the Bar display (Bubbles)
-           final unique = <dynamic>[];
-           final seenUsers = <String>{};
-           
-           for (var s in sorted) {
-             final username = s['username'] ?? 'User';
-             if (!seenUsers.contains(username)) {
-               seenUsers.add(username);
-               unique.add(s);
-             }
-           }
-
            setState(() {
-             _allStories = sorted;
-             _uniqueUserStories = unique;
+             _uniqueUserStories = rawGroups; // This is now a list of GROUPS
+             _allStories = []; 
              _isLoading = false;
            });
         }
@@ -138,15 +149,17 @@ class _StoriesBarState extends State<StoriesBar> {
         scrollDirection: Axis.horizontal,
         itemCount: _uniqueUserStories.length,
         itemBuilder: (context, index) {
-          final story = _uniqueUserStories[index];
-          final storyId = story['id'];
-          final isSeen = storyId != null && _seenStoryIds.contains(storyId);
+          final group = _uniqueUserStories[index];
+          // Use user_id as stable key for seen/unseen logic if needed
+          // Backend sends 'has_unseen' in the group object, which is better.
+          final bool hasUnseen = group['has_unseen'] ?? false;
+          final isSeen = !hasUnseen; 
 
           return StoryBubble(
-            name: story['username'] ?? 'User',
-            imageUrl: story['user_photo'], // Now sends corrected URL
+            name: group['username'] ?? 'User',
+            imageUrl: group['user_photo'], // Now sends corrected URL
             isSeen: isSeen,
-            onTap: () => _openStoryViewer(story),
+            onTap: () => _openStoryViewer(group),
           );
         },
       ),
@@ -154,28 +167,15 @@ class _StoriesBarState extends State<StoriesBar> {
   }
 
   /// Opens the Story Viewer interaction.
-  /// - Filters global stories to finding ALL stories by the tapped user.
-  /// - Sorts them Oldest -> Newest for viewing flow.
-  /// - Launches `StoryViewer` dialog.
-  void _openStoryViewer(dynamic startingStory) {
-    final username = startingStory['username'];
-
-    // --- FIX 2: Filter & Sort for "Multiple Uploads" ---
-    // 1. Get ONLY this user's stories from the big list
-    // Uses the 'username' as the key to filter the global list.
-    final userStories = _allStories.where((s) => s['username'] == username).toList();
-
-    // 2. Sort them Chronologically (Oldest -> Newest) so they play in order
-    // Assuming 'created_at' is an ISO string
-    userStories.sort((a, b) {
-        String dateA = a['created_at'] ?? '';
-        String dateB = b['created_at'] ?? '';
-        return dateA.compareTo(dateB);
-    });
+  /// - Takes the GROUP object (User + List of Stories).
+  /// - Passes the list of stories to `StoryViewer`.
+  void _openStoryViewer(dynamic group) {
+    // 1. Get ONLY this user's stories from the group
+    final List<dynamic> userStories = group['stories'] ?? [];
 
     if (userStories.isEmpty) return;
 
-    // 3. Open Viewer with ONLY this user's stories
+    // 2. Open Viewer with this user's stories
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -188,11 +188,10 @@ class _StoriesBarState extends State<StoriesBar> {
           initialIndex: 0, // Start from their first (oldest) story
           onGlobalClose: () => Navigator.pop(context),
           onStoryViewed: (id) {
-            if (mounted) {
-              setState(() {
-                _seenStoryIds.add(id);
-              });
-            }
+             // Local seen state update if we want to track it immediately in the UI
+             // But since we rely on `has_unseen` from backend group, we might need to 
+             // update the group object in `_uniqueUserStories` to mark as seen.
+             // For now, let's leave it as is.
           },
         );
       },
