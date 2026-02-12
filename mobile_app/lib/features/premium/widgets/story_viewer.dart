@@ -194,15 +194,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
-  /// Sends a reply to the story author via DM.
-  /// - Pauses playback.
-  /// - Hits backend API `/members/stories/{id}/reply/`.
-  /// - Resumes playback on completion.
   Future<void> _sendReply() async {
-    if (_replyController.text.isEmpty) return;
+    if (_replyController.text.trim().isEmpty) return;
     
     setState(() => _isReplyLoading = true);
-    _animController.stop(); // Pause story while replying
+    _animController.stop(); // Pause story
     _videoController?.pause();
 
     try {
@@ -210,31 +206,67 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: 'access_token');
       
+      // 1. Identify the Recipient (Story Owner)
+      final ownerId = story['user'] ?? story['user_id']; 
+      
+      if (ownerId == null) {
+         throw Exception("Could not identify story owner.");
+      }
+
+      // 2. Send Message via Chat API (Unified Inbox)
+      // We use the 'send-message' endpoint which handles conversation creation if needed.
       final response = await http.post(
-        Uri.parse('${baseUrl}members/stories/${story['id']}/reply/'),
+        Uri.parse('${baseUrl}chat/messages/send/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'message': _replyController.text}),
+        body: jsonEncode({
+          'recipient_id': ownerId,
+          'text': "Replied to your story: ${_replyController.text}"
+        }),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Success via Chat API
         if (mounted) {
           _replyController.clear();
-          FocusScope.of(context).unfocus(); // Close keyboard
+          FocusScope.of(context).unfocus();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Reply sent!'), duration: Duration(seconds: 2)),
           );
         }
       } else {
-        throw Exception('Failed to send reply: ${response.statusCode} - ${response.body}');
+        // Fallback: If Chat API fails, try the old 'story reply' endpoint 
+        // just in case.
+        debugPrint("Chat API failed (${response.statusCode}), trying legacy endpoint...");
+        final legacyResponse = await http.post(
+          Uri.parse('${baseUrl}members/stories/${story['id']}/reply/'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'message': _replyController.text}),
+        );
+        
+        if (legacyResponse.statusCode >= 200 && legacyResponse.statusCode < 300) {
+           if (mounted) {
+            _replyController.clear();
+            FocusScope.of(context).unfocus();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Reply sent!'), duration: Duration(seconds: 2)),
+            );
+           }
+        } else {
+           throw Exception('Failed to send reply via Chat or Legacy API.');
+        }
       }
     } catch (e) {
+      debugPrint("Reply Error: $e");
       if (mounted) {
-         // Show a more readable error if possible, or log it
-         debugPrint("Reply Error: $e");
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send reply. Please try again.')));
+         ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Failed to send reply. Please try again.'))
+         );
       }
     } finally {
       if (mounted) {
