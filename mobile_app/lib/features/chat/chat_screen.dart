@@ -13,6 +13,8 @@ import '../../core/theme/ffig_theme.dart';
 import '../../core/api/constants.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../community/public_profile_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../premium/widgets/story_viewer.dart';
 
 /// The Main Chat Interface.
 ///
@@ -185,6 +187,64 @@ class _ChatScreenState extends State<ChatScreen> {
           if (kDebugMode) print("Error resolving chat: $e");
       }
       return null;
+  }
+
+  // --- Logic to Open Story from Reply ---
+  Future<void> _checkAndOpenStory(int storyId) async {
+      try {
+          const storage = FlutterSecureStorage();
+          final token = await storage.read(key: 'access_token');
+          
+          final response = await http.get(
+              Uri.parse('${baseUrl}members/stories/$storyId/'),
+              headers: {'Authorization': 'Bearer $token'}
+          );
+
+          if (response.statusCode == 200) {
+              // Story Exists -> Open Viewer
+              final storyData = jsonDecode(response.body);
+              
+              // Normalize URLs
+              final domain = baseUrl.replaceAll('/api/', '');
+              if (storyData['media_url'] != null) {
+                 String url = storyData['media_url'].toString();
+                 if (url.startsWith('/')) storyData['media_url'] = '$domain$url';
+                 else if (url.contains('localhost')) {
+                    try { final uri = Uri.parse(url); storyData['media_url'] = '$domain${uri.path}'; } catch (_) {}
+                 }
+              }
+              if (storyData['user_photo'] != null) {
+                  String photo = storyData['user_photo'].toString();
+                  if (photo.startsWith('/')) storyData['user_photo'] = '$domain$photo';
+                  else if (photo.contains('localhost')) {
+                    try { final uri = Uri.parse(photo); storyData['user_photo'] = '$domain${uri.path}'; } catch (_) {}
+                 }
+              }
+
+              if (mounted) {
+                  showGeneralDialog(
+                      context: context,
+                      barrierDismissible: true,
+                      barrierLabel: 'Story',
+                      barrierColor: Colors.black,
+                      transitionDuration: const Duration(milliseconds: 300),
+                      pageBuilder: (_, __, ___) {
+                        return StoryViewer(
+                          stories: [storyData], // Only this story
+                          initialIndex: 0,
+                          onGlobalClose: () => Navigator.pop(context),
+                        );
+                      },
+                  );
+              }
+          } else if (response.statusCode == 404) {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Story no longer available (expired or deleted).")));
+          } else {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not load story.")));
+          }
+      } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error connecting to server.")));
+      }
   }
 
   /// Sends a message.
@@ -821,6 +881,54 @@ class _ChatScreenState extends State<ChatScreen> {
                                     child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start, 
                                     children: [
+                                      // --- STORY REPLY PREVIEW ---
+                                      if (msg['metadata'] != null && msg['metadata']['type'] == 'story_reply')
+                                        GestureDetector(
+                                            onTap: () {
+                                                final storyId = msg['metadata']['story_id'];
+                                                if (storyId != null) _checkAndOpenStory(storyId);
+                                            },
+                                            child: Container(
+                                                margin: const EdgeInsets.only(bottom: 8),
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border(left: BorderSide(color: isMe ? Colors.white70 : FfigTheme.primaryBrown, width: 4))
+                                                ),
+                                                child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                        // Thumbnail
+                                                        ClipRRect(
+                                                            borderRadius: BorderRadius.circular(4),
+                                                            child: CachedNetworkImage(
+                                                                imageUrl: msg['metadata']['media_url'] ?? '',
+                                                                width: 40,
+                                                                height: 60,
+                                                                fit: BoxFit.cover,
+                                                                errorWidget: (c,u,e) => Container(width: 40, height: 60, color: Colors.grey, child: const Icon(Icons.broken_image, size: 16)),
+                                                            ),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        // Label
+                                                        Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                                Text(
+                                                                    isMe ? "You replied to their story" : "Replied to your story",
+                                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isMe ? Colors.white : Colors.black87),
+                                                                ),
+                                                                const SizedBox(height: 2),
+                                                                if (msg['metadata']['is_video'] == true)
+                                                                    const Icon(Icons.videocam, size: 12, color: Colors.grey)
+                                                            ],
+                                                        )
+                                                    ],
+                                                ),
+                                            ),
+                                        ),
+
                                       // SHOW REPLY CONTEXT
                                       if (replyContext != null)
                                           GestureDetector(

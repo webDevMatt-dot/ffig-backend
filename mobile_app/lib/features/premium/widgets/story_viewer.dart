@@ -213,6 +213,10 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
          throw Exception("Could not identify story owner.");
       }
 
+      // Check if it's a video to mark the type correctly
+      final mediaUrl = story['media_url'].toString();
+      final isVideo = mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+
       // 2. Send Message via Chat API (Unified Inbox)
       // We use the 'send-message' endpoint which handles conversation creation if needed.
       final response = await http.post(
@@ -223,7 +227,13 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         },
         body: jsonEncode({
           'recipient_id': ownerId,
-          'text': "Replied to your story: ${_replyController.text}"
+          'text': _replyController.text,
+          'metadata': {
+            'type': 'story_reply',
+            'story_id': story['id'],
+            'media_url': mediaUrl,
+            'is_video': isVideo,
+          }
         }),
       );
 
