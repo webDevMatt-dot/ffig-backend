@@ -28,8 +28,8 @@ class Profile(models.Model):
     # RBAC Fields
     TIER_CHOICES = [
         ('FREE', 'Free'),
-        ('STANDARD', 'Standard (\$200)'),
-        ('PREMIUM', 'Premium (\$400)'),
+        ('STANDARD', 'Standard ($200)'),
+        ('PREMIUM', 'Premium ($400)'),
     ]
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     subscription_expiry = models.DateTimeField(null=True, blank=True)
