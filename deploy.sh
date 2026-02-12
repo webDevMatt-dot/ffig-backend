@@ -43,6 +43,11 @@ cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
 
 echo "📂 Copying APK to Backend Static Directory (for Root Push)..."
 mkdir -p ../ffig_backend/static/apk
+
+# CLEANUP: Remove old APKs to prevent repo bloat
+echo "🧹 Removing old APKs from backend..."
+rm -f ../ffig_backend/static/apk/*.apk
+
 cp build/app/outputs/flutter-apk/app-release.apk "../ffig_backend/static/apk/app-v$CLEAN_VERSION.apk"
 
 echo "📁 Staging mobile_app files..."
