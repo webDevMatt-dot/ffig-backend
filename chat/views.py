@@ -174,6 +174,7 @@ class SendMessageView(APIView):
 
         # Create the message
         reply_id = request.data.get('reply_to_id')
+        metadata = request.data.get('metadata')
         
         # We can use the Serializer to validate, OR valid manually since we have file handling custom logic in Model
         # Let's create manually for strict control over Blocking logic above, which Serializer doesn't know about easily
@@ -183,7 +184,8 @@ class SendMessageView(APIView):
             text=text, 
             reply_to_id=reply_id,
             attachment=attachment,
-            message_type=message_type
+            message_type=message_type,
+            metadata=metadata
         )
 
         conversation.save() # Update timestamp

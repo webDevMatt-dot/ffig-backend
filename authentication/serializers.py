@@ -120,6 +120,11 @@ class UserSerializer(serializers.ModelSerializer):
         # Custom uniqueness check for username
         if 'username' in data:
             username = data['username']
+            
+            # Optimization: If updating self and username hasn't changed (case-insensitive), skip check
+            if self.instance and self.instance.username.lower() == username.lower():
+                return data
+
             # Check if username exists for ANY OTHER user (exclude self)
             qs = User.objects.filter(username__iexact=username)
             if self.instance:
@@ -127,6 +132,8 @@ class UserSerializer(serializers.ModelSerializer):
             
             if qs.exists():
                 conflict = qs.first()
+                # Debugging print (remove in production)
+                print(f"DEBUG: Conflict found for '{username}'. Me: {self.instance.pk if self.instance else 'None'}, Conflict: {conflict.pk} ({conflict.username})")
                 raise serializers.ValidationError({"username": f"A user with that username already exists (ID: {conflict.id})."})
         
         return data

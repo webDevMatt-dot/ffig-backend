@@ -48,6 +48,9 @@ class Message(models.Model):
     # Media Fields
     attachment = models.FileField(upload_to='chat_media/', blank=True, null=True)
     message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
+    
+    # Metadata for specialized messages (e.g. Story Replies, Forwarded, etc.)
+    metadata = models.JSONField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         # Compression Logic for Images

@@ -41,7 +41,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read', 'message_type', 'attachment', 'attachment_url']
+        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read', 'message_type', 'attachment', 'attachment_url', 'metadata']
 
     def get_attachment_url(self, obj):
         if not obj.attachment:
