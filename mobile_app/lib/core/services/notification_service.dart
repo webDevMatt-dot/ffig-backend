@@ -1,14 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 
-/// Service wrapper for Push Notifications (FCM) and Local Notifications.
-///
-/// **Functionality:**
-/// - Initializes Firebase Messaging.
-/// - Requests User Permissions (iOS).
-/// - Configures Local Notifications (for foreground display).
-/// - Listens for incoming messages in Foreground/Background.
+// 1. TOP-LEVEL BACKGROUND HANDLER
+// This must be outside of any class. It runs in a separate isolate when app is closed.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  // You can also show a local notification here if needed, 
+  // but usually Firebase handles "notification" payloads automatically.
+  if (kDebugMode) {
+    print("Handling a background message: ${message.messageId}");
+  }
+}
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -19,14 +25,10 @@ class NotificationService {
 
   bool _isInitialized = false;
 
-  /// Initializes the Notification Service.
-  /// 1. Requests permissions.
-  /// 2. Sets up Local Notification channels (Android).
-  /// 3. Listens for foreground messages.
   Future<void> init() async {
     if (_isInitialized) return;
 
-    // 1. Request Permissions
+    // 1. Request Permission
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
@@ -37,77 +39,76 @@ class NotificationService {
       if (kDebugMode) print('User granted permission');
     } else {
       if (kDebugMode) print('User declined or has not accepted permission');
-      return; 
+      return;
     }
 
-    // 2. Initialize Local Notifications (for displaying foreground notifications)
+    // 2. Setup Local Notifications (for Foreground display)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher'); // Ensure this icon exists
 
-    const DarwinInitializationSettings initializationSettingsIOS =
+    final DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
       requestSoundPermission: false,
       requestBadgePermission: false,
       requestAlertPermission: false,
     );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    final InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
 
-    await _localNotifications.initialize(initializationSettings);
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap logic here
+        if (kDebugMode) print("Notification tapped: ${response.payload}");
+      },
+    );
 
-    // 3. Handle Foreground Messages
+    // 3. Create Android Channel (High Importance for Heads-up)
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel', // id
+      'High Importance Notifications', // title
+      description: 'This channel is used for important notifications.', // description
+      importance: Importance.max,
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    // 4. Foreground Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (kDebugMode) {
-        print('Got a message whilst in the foreground!');
-        print('Message data: ${message.data}');
-      }
+      RemoteNotification? notification = message.notification;
+      AndroidNotification? android = message.notification?.android;
 
-      if (message.notification != null) {
-        // Show local notification
-        _showLocalNotification(message);
+      // If app is in foreground, Firebase doesn't show notification automatically.
+      // We must show it manually using Local Notifications.
+      if (notification != null && android != null) {
+        _localNotifications.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              icon: '@mipmap/ic_launcher',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
       }
     });
 
-    // 4. Handle Background/Terminated Messages (Data Only or Notification)
-    // Firebase Messaging handles notification display automatically in background
-    // for standard notification messages.
-
+    // 5. Get FCM Token (Send this to your Django Backend)
+    String? token = await _firebaseMessaging.getToken();
+    if (kDebugMode) print("FCM Token: $token");
+    // TODO: Send this token to your backend API to register the device
+    
     _isInitialized = true;
   }
-  
-  /// Retrieves the FCM Device Token for backend targeting.
-  Future<String?> getDeviceToken() async {
-    return await _firebaseMessaging.getToken();
-  }
-
-  /// Displays a Local Notification when the app is in the foreground.
-  Future<void> _showLocalNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      await _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'default_channel_id',
-            'Default Channel',
-            channelDescription: 'Main channel for app notifications',
-            importance: Importance.max,
-            priority: Priority.high,
-            showWhen: true,
-            onlyAlertOnce: true, // Prevent re-sounding on updates
-            playSound: true,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-      );
-    }
-  }
 }
-

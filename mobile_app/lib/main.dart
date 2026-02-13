@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/theme/ffig_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/services/version_service.dart';
@@ -30,7 +31,11 @@ void main() async {
     if (!kIsWeb) {
       // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
       await Firebase.initializeApp();
-       // Initialize Notifications
+      
+      // REGISTER BACKGROUND HANDLER
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Initialize Notifications
       await NotificationService().init();
     }
   } catch (e) {

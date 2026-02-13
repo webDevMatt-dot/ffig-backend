@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1024205422425",
+    "project_id": "ffig-android",
+    "storage_bucket": "ffig-android.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1024205422425:android:1ed5be4a4a0d732f81d648",
+        "android_client_info": {
+          "package_name": "com.ffiglobal.mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhyOmc6Wvy4GEvPgGGIao4vAgbhwTnh38"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

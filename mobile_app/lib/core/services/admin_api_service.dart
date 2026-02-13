@@ -275,16 +275,22 @@ class AdminApiService {
     }
   }
 
-  Future<void> createStory(dynamic file) async {
+  Future<void> createStory(dynamic file, {bool isVideo = false}) async {
       final token = await _getToken();
       var request = http.MultipartRequest('POST', Uri.parse('$_membersBaseUrl/stories/'));
       request.headers['Authorization'] = 'Bearer $token';
 
       if (file != null) {
+          final String fieldName = 'media';
+          final String fileName = isVideo ? 'story.mp4' : 'story.jpg';
+          final MediaType contentType = isVideo 
+              ? MediaType('video', 'mp4') 
+              : MediaType('image', 'jpeg');
+
           if (kIsWeb && file is List<int>) {
-             request.files.add(http.MultipartFile.fromBytes('media', file, filename: 'story.jpg', contentType: MediaType('image', 'jpeg')));
+             request.files.add(http.MultipartFile.fromBytes(fieldName, file, filename: fileName, contentType: contentType));
           } else if (file is File) {
-             request.files.add(await http.MultipartFile.fromPath('media', file.path, contentType: MediaType('image', 'jpeg')));
+             request.files.add(await http.MultipartFile.fromPath(fieldName, file.path, contentType: contentType));
           }
       }
 
