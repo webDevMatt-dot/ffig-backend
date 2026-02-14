@@ -52,6 +52,9 @@ class Profile(models.Model):
     blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
     is_blocked = models.BooleanField(default=False, help_text="Indefinitely blocked by admin")
 
+    # Notifications
+    fcm_token = models.CharField(max_length=255, blank=True, null=True)
+
     # We'll stick to a placeholder image for now to save setup time
     photo_url = models.URLField(blank=True, default="https://ui-avatars.com/api/?background=D4AF37&color=fff&name=Founder")
     photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)

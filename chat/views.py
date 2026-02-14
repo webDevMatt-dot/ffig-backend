@@ -191,6 +191,46 @@ class SendMessageView(APIView):
         conversation.save() # Update timestamp
         
         # Return serialized data including URL
+        
+        # 4. SEND PUSH NOTIFICATION
+        from core.services.fcm_service import send_push_notification
+        
+        # Determine Recipient (In 1-on-1 chat)
+        # If public chat, maybe don't notify everyone yet (too noisy)
+        if not conversation.is_public:
+            recipients = conversation.participants.exclude(id=sender.id)
+            for recipient in recipients:
+                # Check for mute status
+                from .models import ConversationMuteStatus
+                is_muted = ConversationMuteStatus.objects.filter(user=recipient, conversation=conversation, is_muted=True).exists()
+                
+                # 4.1 Create Database Notification (So it shows in the list)
+                # We do this regardless of mute? Mute usually suppresses PUSH, but maybe not the list.
+                # Standard behavior: Mute suppresses alerts. List still shows it? 
+                # For now, let's say if it's muted, we MIGHT not want to spam the notifications list either?
+                # Actually, standard is: Mute = No Push / Sound. But it sits in "Unread".
+                # The "Notifications" tab is usually for "Activity".
+                # Let's add it to the DB.
+                
+                # Link to profile or chat? The Notification model is simple (title, message).
+                # We can enhance it later.
+                from members.models import Notification
+                Notification.objects.create(
+                    recipient=recipient,
+                    title=f"Message from {sender.username}",
+                    message=text if text else "Sent an attachment"
+                )
+                
+                if not is_muted:
+                    title = f"Message from {sender.username}"
+                    body = text if text else "Sent an attachment"
+                    data = {
+                        "type": "CHAT_MESSAGE",
+                        "conversation_id": str(conversation.id),
+                        "sender_id": str(sender.id)
+                    }
+                    send_push_notification(recipient, title, body, data)
+
         return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
 
 # 4. Get/Create Global Community Chat

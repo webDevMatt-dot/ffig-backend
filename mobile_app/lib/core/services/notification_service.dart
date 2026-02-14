@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:mobile_app/core/services/admin_api_service.dart';
 
 // 1. TOP-LEVEL BACKGROUND HANDLER
 // This must be outside of any class. It runs in a separate isolate when app is closed.
@@ -107,7 +108,18 @@ class NotificationService {
     // 5. Get FCM Token (Send this to your Django Backend)
     String? token = await _firebaseMessaging.getToken();
     if (kDebugMode) print("FCM Token: $token");
-    // TODO: Send this token to your backend API to register the device
+    
+    // Send to Backend
+    if (token != null) {
+      print("🔔 FCM Token retrieved. Sending to backend...");
+      await AdminApiService().updateFCMToken(token);
+    }
+    
+    // Listen for Token Refresh
+    _firebaseMessaging.onTokenRefresh.listen((newToken) {
+      print("🔔 FCM Token Refreshed. Sending new token to backend...");
+      AdminApiService().updateFCMToken(newToken);
+    });
     
     _isInitialized = true;
   }

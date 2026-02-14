@@ -226,7 +226,36 @@ class AdminApiService {
         }
         return null; // Not found (404)
     } catch (e) {
-        return null;
+      print('Error creating story: $e');
+      return null;
+    }
+  }
+
+  // Update FCM Token
+  Future<void> updateFCMToken(String token) async {
+    final sessionToken = await _storage.read(key: 'access_token');
+    if (sessionToken == null) return;
+    
+    try {
+      print("🔄 Updating FCM Token on Backend...");
+      final response = await http.patch(
+        Uri.parse('$_membersBaseUrl/me/'),
+        headers: {
+          'Authorization': 'Bearer $sessionToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'fcm_token': token,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        print("✅ FCM Token Updated on Backend");
+      } else {
+        print("❌ Failed to update FCM Token: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+       print("❌ Error updating FCM token: $e");
     }
   }
 

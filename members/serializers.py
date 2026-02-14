@@ -25,7 +25,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_other', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_other', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked', 'fcm_token']
 
     def get_admin_notice(self, obj):
         # Only show the notice if the request user IS the profile user
