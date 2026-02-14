@@ -28,8 +28,8 @@ flutter build appbundle
 echo "🔨 Building Web App (Release)..."
 flutter build web --release
 
-echo "📦 Building Android APK (Release)..."
-flutter build apk --release
+#echo "📦 Building Android APK (Release)..."
+#flutter build apk --release
 
 
 echo "📂 Copying APK to Web Source Directory..."
@@ -38,17 +38,18 @@ VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
 CLEAN_VERSION="${VERSION%+*}"
 echo "   Detected Version: $CLEAN_VERSION"
 
-cp build/app/outputs/flutter-apk/app-release.apk web/app.apk
-cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
+# APK Copying commented out since APK build is disabled
+#cp build/app/outputs/flutter-apk/app-release.apk web/app.apk
+#cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
 
-echo "📂 Copying APK to Backend Static Directory (for Root Push)..."
-mkdir -p ../ffig_backend/static/apk
+#echo "📂 Copying APK to Backend Static Directory (for Root Push)..."
+#mkdir -p ../ffig_backend/static/apk
 
 # CLEANUP: Remove old APKs to prevent repo bloat
-echo "🧹 Removing old APKs from backend..."
-rm -f ../ffig_backend/static/apk/*.apk
+#echo "🧹 Removing old APKs from backend..."
+#rm -f ../ffig_backend/static/apk/*.apk
 
-cp build/app/outputs/flutter-apk/app-release.apk "../ffig_backend/static/apk/app-v$CLEAN_VERSION.apk"
+#cp build/app/outputs/flutter-apk/app-release.apk "../ffig_backend/static/apk/app-v$CLEAN_VERSION.apk"
 
 echo "📁 Staging mobile_app files..."
 git add .

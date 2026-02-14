@@ -42,6 +42,7 @@ import 'widgets/bento_tile.dart';
 import '../../shared_widgets/glass_nav_bar.dart';
 import 'widgets/news_ticker.dart';
 
+import '../../core/services/notification_service.dart';
 import '../../shared_widgets/moderation_dialog.dart';
 
 // --- NEW IMPORTS FOR CREATION MENU ---
@@ -149,17 +150,14 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }
 
-    // 2. Check Admin Notifications (New)
-    if (_isAdmin) {
-      _checkAdminNotifications(token);
-    }
+    // 2. Check Notifications (For everyone)
+    _checkNotifications(token);
   }
 
-  /// Fetches and displays new admin notifications.
+  /// Fetches and displays new notifications.
   /// - Compares ID with persisted `last_notif_id`.
   /// - Shows in-app overlay notification if new.
-  /// - Plays a distinct sound for admins.
-  Future<void> _checkAdminNotifications(String? token) async {
+  Future<void> _checkNotifications(String? token) async {
     try {
       final response = await http.get(
         Uri.parse('${baseUrl}notifications/'),
@@ -299,6 +297,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
           // Check Moderation Status
           _checkModerationStatus();
+
+          // FORCE FCM TOKEN SYNC (Backend needs token for Push Notifications)
+          NotificationService().forceTokenSync();
         }
       } else {
         // ERROR HANDLER

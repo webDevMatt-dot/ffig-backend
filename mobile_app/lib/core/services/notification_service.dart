@@ -123,4 +123,18 @@ class NotificationService {
     
     _isInitialized = true;
   }
+
+  /// Forces a token sync with the backend.
+  /// user-initiated or post-login.
+  Future<void> forceTokenSync() async {
+    try {
+      String? token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        print("🔔 Forcing FCM Token Sync...");
+        await AdminApiService().updateFCMToken(token);
+      }
+    } catch (e) {
+      print("Error forcing token sync: $e");
+    }
+  }
 }
