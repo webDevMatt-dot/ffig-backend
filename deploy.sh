@@ -1,88 +1,65 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+IFS=$'\n\t'
 
-# Get the directory where this script is located (repo root)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 
-echo "🚀 STARTING FULL DEPLOYMENT: BUILD & PUSH..."
+echo "🚀 STARTING FULL DEPLOYMENT..."
 
-# --- 0. Bump Version ---
+command -v flutter >/dev/null || { echo "Flutter not installed"; exit 1; }
+command -v git >/dev/null || { echo "Git not installed"; exit 1; }
+
+COMMIT_MSG="${1:-build(release): web update}"
+
+# --- Version bump ---
 if [ -f "./bump_version.sh" ]; then
-    chmod +x ./bump_version.sh
-    ./bump_version.sh
-else
-    echo "⚠️  bump_version.sh not found. Skipping version bump."
+  chmod +x ./bump_version.sh
+  ./bump_version.sh
 fi
 
-# --- 1. Build & Push mobile_app ---
-echo "📂 Entering mobile_app directory..."
+echo "📂 Entering mobile_app..."
 cd mobile_app
 
-echo "🧹 Cleaning previous builds..."
-flutter clean
 flutter pub get
 
-echo "📦 Building Android App Bundle (Release)..."
-flutter build appbundle
+if git diff --quiet HEAD -- lib web pubspec.yaml; then
+  echo "⚡ No Flutter changes detected. Skipping build."
+else
+  echo "� Building release apps..."
+  flutter build appbundle
+  flutter build web --release
+fi
 
-echo "🔨 Building Web App (Release)..."
-flutter build web --release
+VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+CLEAN_VERSION="${VERSION%%+*}"
+echo "Version: $CLEAN_VERSION"
 
-#echo "📦 Building Android APK (Release)..."
-#flutter build apk --release
-
-
-echo "📂 Copying APK to Web Source Directory..."
-# Extract Version from pubspec.yaml
-VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-CLEAN_VERSION="${VERSION%+*}"
-echo "   Detected Version: $CLEAN_VERSION"
-
-# APK Copying commented out since APK build is disabled
-#cp build/app/outputs/flutter-apk/app-release.apk web/app.apk
-#cp build/app/outputs/flutter-apk/app-release.apk "web/app-v$CLEAN_VERSION.apk"
-
-#echo "📂 Copying APK to Backend Static Directory (for Root Push)..."
-#mkdir -p ../ffig_backend/static/apk
-
-# CLEANUP: Remove old APKs to prevent repo bloat
-#echo "🧹 Removing old APKs from backend..."
-#rm -f ../ffig_backend/static/apk/*.apk
-
-#cp build/app/outputs/flutter-apk/app-release.apk "../ffig_backend/static/apk/app-v$CLEAN_VERSION.apk"
-
-echo "📁 Staging mobile_app files..."
+echo "� Committing mobile_app..."
 git add .
 
-echo "💾 Committing mobile_app..."
-# Allow optional commit message argument, default to "build(release): web and apk update"
-COMMIT_MSG="${1:-build(release): web and apk update}"
-git commit -m "$COMMIT_MSG" || echo "⚠️  No changes to commit in mobile_app"
+if ! git diff --cached --quiet; then
+  git commit -m "$COMMIT_MSG"
+  git push
+else
+  echo "⚠️ Nothing to commit"
+fi
 
-echo "⬆️  Pushing mobile_app to remote..."
-git push
-
-# --- 2. Push Root Repo ---
-echo "📂 Returning to root directory..."
 cd ..
 
-echo "📁 Staging root files..."
-git add ffig_backend/ manage.py requirements.txt
+echo "📁 Committing root..."
 git add .
 
-echo "💾 Committing root..."
-git commit -m "$COMMIT_MSG" || echo "⚠️  No changes to commit in root"
-
-echo "⬆️  Pushing root to remote..."
-git push
-
-echo "🎉 SUCCESS: Code built and pushed!"
-
-# --- 3. Version Update ---
-echo "🔄 Checking for Version Update..."
-if [ -f "auto_update_version.sh" ]; then
-    chmod +x auto_update_version.sh
-    ./auto_update_version.sh
+if ! git diff --cached --quiet; then
+  git commit -m "$COMMIT_MSG"
+  git push
 else
-    echo "⚠️  auto_update_version.sh not found. Skipping backend update."
+  echo "⚠️ Nothing to commit"
 fi
+
+if [ -f "auto_update_version.sh" ]; then
+  chmod +x auto_update_version.sh
+  ./auto_update_version.sh
+fi
+
+echo "🎉 DEPLOYMENT COMPLETE"

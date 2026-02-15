@@ -397,6 +397,15 @@ class AdminModerationActionView(APIView):
             
         return Response({'error': 'Invalid action'}, status=400)
 
+        return Response({'error': 'Invalid action'}, status=400)
+
+class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    queryset = User.objects.all()
+    # Lazy import or direct import if possible, but let's try direct first
+    from authentication.serializers import UserSerializer
+    serializer_class = UserSerializer
+
 # --- NOTIFICATIONS (Admin Only for now) ---
 
 

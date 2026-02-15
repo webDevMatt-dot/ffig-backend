@@ -46,7 +46,7 @@ from members.views import (
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
-    StoryViewSet
+    StoryViewSet, AdminUserUpdateView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
@@ -100,6 +100,11 @@ urlpatterns = [
     path('api/admin/moderation/reports/', AdminContentReportListView.as_view(), name='admin-report-list'),
     path('api/admin/moderation/reports/<int:pk>/', AdminContentReportDetailView.as_view(), name='admin-report-detail'),
     path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
+
+    path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
+    
+    # Admin User Management
+    path('api/admin/users/<int:pk>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
 
     # User Submissions
     path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
