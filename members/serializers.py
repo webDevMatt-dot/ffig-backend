@@ -302,11 +302,19 @@ class StorySerializer(serializers.ModelSerializer):
     media_url = serializers.SerializerMethodField()
     user_photo = serializers.SerializerMethodField()
     seen = serializers.SerializerMethodField()
+    is_active = serializers.BooleanField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Story
-        fields = ['id', 'user', 'username', 'user_photo', 'media', 'media_url', 'created_at', 'seen']
+        fields = ['id', 'user', 'username', 'user_photo', 'media', 'media_url', 'created_at', 'seen', 'is_active', 'is_owner']
         read_only_fields = ['user', 'created_at']
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.user == request.user
+        return False
 
     def get_seen(self, obj):
         # This will be populated by the ViewSet efficiently
@@ -317,7 +325,19 @@ class StorySerializer(serializers.ModelSerializer):
             # Re-use logic or quick access
             p = obj.user.profile
             if p.photo:
-                return p.photo.url
+                # Basic check, ideally use the profile logic but simple URL is fine for now
+                if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                     try:
+                        request = self.context.get('request')
+                        if request: return request.build_absolute_uri(p.photo.url)
+                     except: pass
+                     return p.photo.url
+                     
+                # S3 Presign (Duplicate logic from ProfileSerializer to avoid circular dep or heavy refactor)
+                try:
+                    s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
+                    return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': p.photo.name}, ExpiresIn=3600)
+                except: return p.photo_url
             return p.photo_url
         return None
 
@@ -358,15 +378,6 @@ class StorySerializer(serializers.ModelSerializer):
             print(f"Error generating presigned URL: {e}")
             try: return obj.media.url
             except: return None
-    
-    def get_seen(self, obj):
-        # This will be populated by the ViewSet efficiently
-        return getattr(obj, 'is_seen', False)
-
-    class Meta:
-        model = Story
-        fields = ['id', 'user', 'media', 'media_url', 'created_at', 'is_active', 'user_photo', 'username', 'seen']
-        read_only_fields = ['user', 'created_at']
 
 
 class StoryViewSerializer(serializers.ModelSerializer):

@@ -334,7 +334,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     
     // Simple way: We need to know if it's ME.
     // I will try to use a safe check.
-    bool isMyStory = story['username'] == 'You'; 
+    bool isMyStory = (story['is_owner'] ?? false) || (story['username'] == 'You');
     // If we are testing and backend sends "Matthew", this might fail. 
     // Let's add a safe fallback: if I can see "views", it's me.
         
