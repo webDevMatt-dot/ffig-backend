@@ -13,6 +13,10 @@ def send_fcm_notification(sender, instance, created, **kwargs):
     Sends a push notification to the recipient via FCM.
     """
     if created:
+        # Check if the instance has a flag to skip FCM (e.g. set by Chat View)
+        if getattr(instance, 'skip_fcm', False):
+            return
+
         try:
             # 1. Get User's FCM Token
             user_profile = getattr(instance.recipient, 'profile', None)

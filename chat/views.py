@@ -215,11 +215,15 @@ class SendMessageView(APIView):
                 # Link to profile or chat? The Notification model is simple (title, message).
                 # We can enhance it later.
                 from members.models import Notification
-                Notification.objects.create(
+                
+                # Create Notification but SKIP the signal (avoid duplicate push)
+                notif = Notification(
                     recipient=recipient,
                     title=f"Message from {sender.username}",
                     message=text if text else "Sent an attachment"
                 )
+                notif.skip_fcm = True
+                notif.save()
                 
                 if not is_muted:
                     title = f"Message from {sender.username}"
