@@ -228,12 +228,25 @@ class SendMessageView(APIView):
                 if not is_muted:
                     title = f"Message from {sender.username}"
                     body = text if text else "Sent an attachment"
-                    data = {
-                        "type": "CHAT_MESSAGE",
+                    
+                    # 4.2 Send Push
+                    # Using 'tag' from conversation.id to group messages from this chat
+                    data_payload = {
+                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                        "id": str(notif.id),
+                        "type": "chat_message",
                         "conversation_id": str(conversation.id),
-                        "sender_id": str(sender.id)
+                        "sender_id": str(sender.id),
+                        "sender_name": sender.username
                     }
-                    send_push_notification(recipient, title, body, data)
+                    
+                    send_push_notification(
+                        recipient, 
+                        title, 
+                        body, 
+                        data=data_payload,
+                        tag=str(conversation.id) 
+                    )
 
         return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
 

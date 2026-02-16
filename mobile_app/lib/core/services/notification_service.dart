@@ -2,15 +2,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:mobile_app/core/services/admin_api_service.dart';
+import '../../main.dart'; // Global Navigator Key
+import '../../features/chat/chat_screen.dart';
 
 // 1. TOP-LEVEL BACKGROUND HANDLER
-// This must be outside of any class. It runs in a separate isolate when app is closed.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // You can also show a local notification here if needed, 
-  // but usually Firebase handles "notification" payloads automatically.
   if (kDebugMode) {
     print("Handling a background message: ${message.messageId}");
   }
@@ -36,16 +37,14 @@ class NotificationService {
       sound: true,
     );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      if (kDebugMode) print('User granted permission');
-    } else {
+    if (settings.authorizationStatus != AuthorizationStatus.authorized) {
       if (kDebugMode) print('User declined or has not accepted permission');
       return;
     }
 
     // 2. Setup Local Notifications (for Foreground display)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher'); // Ensure this icon exists
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     final DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
@@ -62,8 +61,15 @@ class NotificationService {
     await _localNotifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap logic here
-        if (kDebugMode) print("Notification tapped: ${response.payload}");
+        // Handle foreground notification tap
+        if (response.payload != null) {
+           try {
+             final data = jsonDecode(response.payload!);
+             _handleNotificationData(data);
+           } catch (e) {
+             if (kDebugMode) print("Error parsing notification payload: $e");
+           }
+        }
       },
     );
 
@@ -101,11 +107,15 @@ class NotificationService {
               priority: Priority.high,
             ),
           ),
+          payload: jsonEncode(message.data), // Pass data payload for tap handling
         );
       }
     });
 
-    // 5. Get FCM Token (Send this to your Django Backend)
+    // 5. Setup Interacted Message (Background / Terminated taps)
+    _setupInteractedMessage();
+
+    // 6. Get FCM Token (Send this to your Django Backend)
     String? token = await _firebaseMessaging.getToken();
     if (kDebugMode) print("FCM Token: $token");
     
@@ -124,8 +134,49 @@ class NotificationService {
     _isInitialized = true;
   }
 
+  /// Sets up interactions for Background and Terminated states.
+  Future<void> _setupInteractedMessage() async {
+    // 1. Terminated State
+    RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleMessage(initialMessage);
+    }
+
+    // 2. Background State
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+  }
+
+  void _handleMessage(RemoteMessage message) {
+    _handleNotificationData(message.data);
+  }
+
+  void _handleNotificationData(Map<String, dynamic> data) {
+    if (kDebugMode) print("🔔 Notification Data: $data");
+    
+    // Normalize data keys (background messages sometimes come as Map<Object?, Object?>)
+    final params = Map<String, dynamic>.from(data);
+
+    if (params['type'] == 'chat_message') {
+       final conversationId = int.tryParse(params['conversation_id']?.toString() ?? '');
+       final recipientId = int.tryParse(params['sender_id']?.toString() ?? ''); 
+       final name = params['sender_name']?.toString() ?? 'Chat';
+
+       if (conversationId != null) {
+           // Navigate to Chat Screen using Global Key
+           navigatorKey.currentState?.push(
+             MaterialPageRoute(
+               builder: (_) => ChatScreen(
+                 conversationId: conversationId,
+                 recipientId: recipientId,
+                 recipientName: name, 
+               ),
+             ),
+           );
+       }
+    }
+  }
+
   /// Forces a token sync with the backend.
-  /// user-initiated or post-login.
   Future<void> forceTokenSync() async {
     try {
       String? token = await _firebaseMessaging.getToken();

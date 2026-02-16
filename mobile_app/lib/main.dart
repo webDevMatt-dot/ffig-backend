@@ -16,6 +16,9 @@ import 'core/services/version_service.dart';
 // Global access to theme controller (Simple dependency injection)
 final themeController = ThemeController();
 
+// Global Navigator Key for Services
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 
 /// Application Entry Point.
 /// 
@@ -61,6 +64,7 @@ class FFIGApp extends StatelessWidget {
       builder: (context, child) {
         return OverlaySupport.global(
           child: MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'Female Founders Initiative Global Mobile',
             debugShowCheckedModeBanner: false,
             // Mode

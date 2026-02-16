@@ -28,15 +28,22 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"❌ Firebase Init Error: {e}")
 
-def send_push_notification(user, title, body, data=None):
+def send_push_notification(user, title, body, data=None, tag=None):
     """
     Send a push notification to a specific user via FCM.
+    :param tag: Android Notification Tag (for grouping/replacing)
     """
     if not hasattr(user, 'profile') or not user.profile.fcm_token:
         # print(f"Skipping notification for {user.username}: No FCM Token")
         return False
         
     try:
+        android_config = None
+        if tag:
+            android_config = messaging.AndroidConfig(
+                notification=messaging.AndroidNotification(tag=tag)
+            )
+
         message = messaging.Message(
             notification=messaging.Notification(
                 title=title,
@@ -44,6 +51,7 @@ def send_push_notification(user, title, body, data=None):
             ),
             data=data or {},
             token=user.profile.fcm_token,
+            android=android_config
         )
         response = messaging.send(message)
         # print(f"Successfully sent message to {user.username}: {response}")
