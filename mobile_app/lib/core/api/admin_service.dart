@@ -8,7 +8,7 @@ class AdminService {
 
   Future<bool> resetUserPassword(int userId, String newPassword) async {
     final token = await _storage.read(key: 'access_token');
-    final url = Uri.parse('${baseUrl}auth/admin/reset-password/');
+    final url = Uri.parse('${baseUrl}admin/reset-password/');
 
     try {
       final response = await http.post(

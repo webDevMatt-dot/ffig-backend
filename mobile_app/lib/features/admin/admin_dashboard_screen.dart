@@ -8,6 +8,7 @@ import 'home_management/manage_hero_screen.dart';
 import 'home_management/manage_founder_screen.dart';
 import 'home_management/manage_alerts_screen.dart';
 import 'home_management/manage_ticker_screen.dart';
+import 'home_management/manage_business_screen.dart'; // NEW
 import 'events_management/manage_events_screen.dart';
 import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
@@ -116,6 +117,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           title: "Founder Spotlight",
           subtitle: "Update the Founder of the Week",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageFounderScreen())),
+        ),
+         _buildAdminTile(
+          context,
+          icon: Icons.storefront, 
+          title: "Business of Month",
+          subtitle: "Update the Business of the Month",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageBusinessScreen())),
         ),
         _buildAdminTile(
           context,
@@ -247,6 +255,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   "Founder Spotlight", 
                   Icons.star_border, 
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageFounderScreen()))
+                ),
+                 _buildWideTile(
+                  context, 
+                  "Business of Month", 
+                  Icons.storefront, 
+                  () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageBusinessScreen()))
                 ),
                  _buildWideTile(
                   context, 

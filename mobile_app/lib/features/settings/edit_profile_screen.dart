@@ -297,7 +297,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               readOnly: true, 
               style: Theme.of(context).textTheme.bodyLarge,
               decoration: const InputDecoration(
-                labelText: "Location", 
+                labelText: "Country", 
                 prefixIcon: Icon(Icons.location_on),
                 suffixIcon: Icon(Icons.arrow_drop_down),
               ),
@@ -306,7 +306,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   context: context,
                   onSelect: (Country country) {
                     setState(() {
-                      _locationController.text = country.displayNameNoCountryCode; 
+                      _locationController.text = "${country.flagEmoji} ${country.displayNameNoCountryCode}"; 
                     });
                   },
                 );

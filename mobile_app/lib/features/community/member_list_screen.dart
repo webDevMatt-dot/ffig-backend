@@ -332,12 +332,16 @@ class _MemberListScreenState extends State<MemberListScreen> {
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            "${member['industry_label'] ?? member['industry'] ?? 'Unknown'} • ${member['location'] ?? ''}",
+                            "${member['industry_label'] ?? member['industry'] ?? 'Unknown'} • ${member['location'] ?? member['country'] ?? ''}",
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                           ),
                         ),
                         trailing: const Icon(Icons.arrow_forward, size: 16),
                         onTap: () {
+                            if (!MembershipService.canViewCommunityProfile) {
+                                MembershipService.showUpgradeDialog(context, "Community Profiles", requiredTier: UserTier.standard);
+                                return;
+                            }
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -393,7 +397,10 @@ class _MemberListScreenState extends State<MemberListScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
                  Navigator.pop(context); // Close dialog
-                 final success = await AdminService().resetUserPassword(member['user_id'], passController.text);
+                 final password = passController.text.trim();
+                 if (password.isEmpty) return; // Silent fail if empty
+                 
+                 final success = await AdminService().resetUserPassword(member['user_id'], password);
                  if (mounted) {
                    ScaffoldMessenger.of(context).showSnackBar(
                      SnackBar(

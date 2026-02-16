@@ -51,8 +51,14 @@ class MembershipService {
   /// Can view full member directory details? (Premium only)
   static bool get canViewFullDirectory => isPremium;
   
-  /// Can view limited member directory? (Premium only - currently restricted)
+  /// Can view full member directory details? (Premium only - currently restricted)
   static bool get canViewLimitedDirectory => isPremium;
+
+  /// Can view community member profiles? (Standard+)
+  static bool get canViewCommunityProfile => !isFree;
+
+  /// Can message community members? (Premium only)
+  static bool get canMessageCommunityMember => isPremium;
 
   /// Helper used by UI to show an "Upgrade Required" dialog for locked features.
   static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {

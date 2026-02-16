@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 // for kIsWeb
 import '../../core/api/constants.dart';
+import 'package:country_picker/country_picker.dart';
+
 
 /// The User Registration Screen.
 ///
@@ -26,6 +28,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   final _industryOtherController = TextEditingController();
+  final _countryController = TextEditingController(); // NEW
   bool _isLoading = false;
   String _selectedIndustry = 'OTH';
 
@@ -64,6 +67,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
          return;
     }
 
+    if (_countryController.text.trim().isEmpty) {
+         _showError("Please select your country.");
+         setState(() => _isLoading = false);
+         return;
+    }
+
     // 2. Determine URL
     final url = '${baseUrl}auth/register/';
 
@@ -80,6 +89,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'password2': _confirmController.text,
           'industry': _selectedIndustry,
           'industry_other': _selectedIndustry == 'OTH' ? _industryOtherController.text.trim() : '',
+          'location': _countryController.text.trim(), // NEW
         }),
       );
 
@@ -167,6 +177,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 _buildTextField("SPECIFY INDUSTRY", _industryOtherController, Icons.edit, action: TextInputAction.next),
                 const SizedBox(height: 16),
             ],
+
+            // Country Picker
+            GestureDetector(
+              onTap: () {
+                showCountryPicker(
+                  context: context,
+                  showPhoneCode: false,
+                  onSelect: (Country country) {
+                    setState(() {
+                      _countryController.text = "${country.flagEmoji} ${country.name}"; 
+                    });
+                  },
+                );
+              },
+              child: AbsorbPointer(
+                child: _buildTextField("COUNTRY", _countryController, Icons.public, action: TextInputAction.next),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             _buildTextField("PASSWORD", _passwordController, Icons.lock_outline, isObscure: true, action: TextInputAction.next),
             const SizedBox(height: 16),

@@ -6,6 +6,7 @@ class FounderProfile {
   final String country;
   final String businessName;
   final bool isPremium;
+  final int? userId; // NEW: For chat linkage
 
   FounderProfile({
     required this.id,
@@ -15,6 +16,7 @@ class FounderProfile {
     required this.country,
     required this.businessName,
     this.isPremium = false,
+    this.userId,
   });
 
   factory FounderProfile.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class FounderProfile {
       country: json['country'] ?? '',
       businessName: json['business_name'] ?? '',
       isPremium: json['is_premium'] ?? false,
+      userId: json['user_id'] ?? json['user'], // Handle both int or obj if needed, but usually flat ID
     );
   }
 }

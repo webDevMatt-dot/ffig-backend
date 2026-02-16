@@ -158,8 +158,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                ElevatedButton.icon(
                    onPressed: () {
                      if (userId == null) return;
-                     if (!MembershipService.canInbox) {
-                         MembershipService.showUpgradeDialog(context, "Messaging");
+                     if (!MembershipService.canMessageCommunityMember) {
+                         MembershipService.showUpgradeDialog(context, "Direct Messaging", requiredTier: UserTier.premium);
                          return;
                      }
                       Navigator.push(

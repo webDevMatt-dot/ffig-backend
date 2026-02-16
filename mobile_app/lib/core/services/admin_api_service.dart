@@ -74,6 +74,18 @@ class AdminApiService {
     await _uploadWithImage('founder', fields, imageFile, 'photo', id: id, method: 'PATCH');
   }
 
+  // Upload Business of the Month
+  Future<void> createHomepageBusiness(Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('business', fields, imageFile, 'image'); // Field name 'image' or 'photo'? Check backend. Assuming 'image' based on HeroItem.
+    // Founder uses 'photo'. Let's stick with 'image' as per BusinessProfile model which maps 'image_url' or 'photo_url'.
+    // If backend expects 'image', we use 'image'.
+  }
+
+  // Update Business of the Month
+  Future<void> updateHomepageBusiness(String id, Map<String, String> fields, dynamic imageFile) async {
+    await _uploadWithImage('business', fields, imageFile, 'image', id: id, method: 'PATCH');
+  }
+
   // Create Flash Alert (JSON)
   Future<void> createFlashAlert(Map<String, dynamic> data) async {
     await _postJson('alerts', data);

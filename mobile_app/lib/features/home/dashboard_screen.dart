@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../community/member_list_screen.dart';
+import '../chat/chat_screen.dart'; // NEW
 import '../community/profile_screen.dart';
 import '../resources/resources_screen.dart';
 import '../events/events_screen.dart';
@@ -39,6 +40,8 @@ import 'widgets/hero_carousel.dart';
 import 'widgets/founder_card.dart';
 import 'widgets/flash_alert_banner.dart';
 import 'widgets/bento_tile.dart';
+import 'models/business_profile.dart'; // NEW
+import 'widgets/business_card.dart'; // NEW
 import '../../shared_widgets/glass_nav_bar.dart';
 import 'widgets/news_ticker.dart';
 
@@ -79,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   List<HeroItem> _heroItems = [];
   List<String> _newsTickerItems = [];
   FounderProfile? _founderProfile;
+  BusinessProfile? _businessProfile; // NEW
   FlashAlert? _flashAlert;
   
   // --- User & Role Management ---
@@ -276,7 +280,17 @@ class _DashboardScreenState extends State<DashboardScreen>
         headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        var data = jsonDecode(response.body);
+        // Handle case where backend returns a List (e.g. [user]) instead of Map
+        if (data is List) {
+          if (data.isNotEmpty) {
+            data = data.first;
+          } else {
+            // Empty list, treat as guest/error?
+            return; 
+          }
+        }
+        
         if (mounted) {
           setState(() {
             _isPremium = data['is_premium'] ?? false;
@@ -442,6 +456,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         api.fetchItems('founder'),
         api.fetchItems('alerts'),
         api.fetchItems('ticker'),
+        api.fetchItems('business'), // NEW: Fetch Business of the Month
       ]);
 
       if (mounted) {
@@ -514,6 +529,26 @@ class _DashboardScreenState extends State<DashboardScreen>
           final tickers = results[3];
           // Map 'text' to string
           _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
+
+          // 5. Business of the Month (NEW)
+          if (results.length > 4) {
+             final businesses = results[4];
+             if (businesses.isNotEmpty) {
+                final Map<String, dynamic> data = Map<String, dynamic>.from(businesses.first);
+                data['id'] = data['id'].toString();
+                // Ensure image URL is absolute
+                final domain = baseUrl.replaceAll('/api/', '');
+                if (data['image_url'] != null && data['image_url'] != 'null') {
+                   var url = data['image_url'].toString();
+                   if (url.startsWith('/')) {
+                      data['image_url'] = '$domain$url';
+                   }
+                }
+                _businessProfile = BusinessProfile.fromJson(data);
+             } else {
+                _businessProfile = null;
+             }
+          }
         });
       }
     } catch (e) {
@@ -971,7 +1006,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   // ROW 2: MAIN FEATURE (FIND FOUNDER)
                   BentoTile(
                     title: "Network",
-                    subtitle: "Connect with Global Founders",
+                    subtitle: "Connect with Our Community Global Founders",
                     height: 180,
                     isGlass: true,
                     icon: const Icon(
@@ -1129,13 +1164,39 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         ),
                                       ),
                                       const SizedBox(height: 2),
-                                      Text(
-                                        _founderProfile!.country,
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white70,
-                                          fontSize: 14,
+
+                                      const SizedBox(height: 12),
+                                      // Chat Button
+                                      SizedBox(
+                                        height: 36,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                             if (_isPremium) {
+                                                 if (_founderProfile?.userId != null) {
+                                                     Navigator.push(
+                                                         context, 
+                                                         MaterialPageRoute(builder: (context) => ChatScreen(
+                                                             recipientId: _founderProfile!.userId,
+                                                             recipientName: _founderProfile!.name,
+                                                         ))
+                                                     );
+                                                 } else {
+                                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chat not available for this user")));
+                                                 }
+                                             } else {
+                                                 MembershipService.showUpgradeDialog(context, "Chat with Founder");
+                                             }
+                                          },
+                                          icon: const Icon(Icons.chat_bubble_outline, size: 16, color: Colors.white),
+                                          label: const Text("Chat", style: TextStyle(color: Colors.white)),
+                                          style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFD4AF37), // Gold
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+                                          ),
                                         ),
-                                      ),
+                                      )
                                     ],
                                   ),
                                 )
@@ -1147,6 +1208,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
 
                   if (_founderProfile != null) const SizedBox(height: 16),
+
+                  // ROW 3.5: BUSINESS OF THE MONTH (NEW)
+                  if (_businessProfile != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: BusinessCard(profile: _businessProfile!),
+                    ),
+
+                  if (_businessProfile != null) const SizedBox(height: 16),
 
                   // ROW 4: RESOURCES & INBOX
                   Row(
