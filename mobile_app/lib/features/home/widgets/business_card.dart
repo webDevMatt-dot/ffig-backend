@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui'; // For ImageFilter
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../shared_widgets/user_avatar.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../models/business_profile.dart';
 import '../business_detail_screen.dart';
 
-/// Displays a detailed card for the "Business of the Month".
-/// - Shows Logo, Name, Location, Description, and Website link.
+/// Displays a premium, featured card for the "Business of the Month".
+/// - Matches the "Founder of the Week" aesthetic.
+/// - Uses a background image with gradient overlay.
+/// - Glassmorphic badge and navigation to Detail Screen.
 class BusinessCard extends StatelessWidget {
   final BusinessProfile profile;
 
@@ -16,176 +21,151 @@ class BusinessCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
-    // Define colors relative to Theme
-    final cardColor = theme.cardColor;
-    final borderColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
-    final shadowColor = isDark ? Colors.transparent : Colors.black.withOpacity(0.05);
-    final badgeBg = isDark ? Colors.blue.withOpacity(0.2) : Colors.blue.withOpacity(0.1);
-    final badgeText = Colors.blue;
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: AspectRatio(
+            aspectRatio: 1.6, // Featured look
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. Background Image
+                if (profile.imageUrl.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: profile.imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: theme.cardColor),
+                    errorWidget: (context, url, error) => Container(
+                      color: theme.cardColor,
+                      child: const Icon(Icons.business, size: 48, color: Colors.grey),
+                    ),
+                  )
+                else
+                  Container(color: theme.cardColor),
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () {
-           Navigator.push(
-             context,
-             MaterialPageRoute(
-               builder: (context) => BusinessDetailScreen(profile: profile),
-             ),
-           );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               // Header: Logo + Info
-               Row(
-                 children: [
-                   Container(
-                     padding: const EdgeInsets.all(2),
-                     decoration: BoxDecoration(
-                       shape: BoxShape.circle,
-                       border: Border.all(color: Colors.blue, width: 2),
-                     ),
-                     child: UserAvatar(
-                       radius: 28,
-                       imageUrl: profile.imageUrl,
-                       firstName: profile.name.isNotEmpty ? profile.name[0] : 'B',
-                       lastName: '',
-                     ),
-                   ),
-                   const SizedBox(width: 16),
-                   Expanded(
-                     child: Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         Row(
-                           children: [
-                             Flexible(
-                               child: Text(
-                                 profile.name, 
-                                 style: theme.textTheme.titleMedium?.copyWith(
-                                   fontWeight: FontWeight.bold,
-                                   fontSize: 18,
-                                 ),
-                               ),
-                             ),
-                             if (profile.isPremium) ...[
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified, color: Colors.blue, size: 16),
-                             ]
-                           ],
+                // 2. Gradient Overlay for Text Readability
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.8),
+                      ],
+                      stops: const [0.4, 1.0],
+                    ),
+                  ),
+                ),
+
+                // 3. Top-Left Badge: Spotlight
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        color: Colors.white.withOpacity(0.15),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: Color(0xFFD4AF37), size: 14), // Gold star
+                            const SizedBox(width: 8),
+                            Text(
+                              "BUSINESS OF THE MONTH",
+                              style: GoogleFonts.inter(
+                                color: Colors.white, 
+                                fontSize: 10, 
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 4. Content Content
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (context) => BusinessDetailScreen(profile: profile),
                          ),
-                         const SizedBox(height: 4),
-                         if (profile.location.isNotEmpty)
-                         Row(
-                           children: [
-                             Icon(Icons.location_on_outlined, size: 14, color: theme.hintColor),
-                             const SizedBox(width: 4),
-                             Text(
-                               profile.location, 
-                               style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
-                             ),
-                           ],
-                         ),
-                         if (profile.website.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Row(
-                              children: [
-                                Icon(Icons.language, size: 14, color: theme.primaryColor),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    profile.website,
-                                    style: theme.textTheme.bodySmall?.copyWith(color: theme.primaryColor),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                       );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  profile.name,
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+                              ),
+                              if (profile.isPremium) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.verified, color: Colors.amber, size: 20),
                               ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            profile.location.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFFD4AF37), // Gold
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5
                             ),
                           ),
-                       ],
-                     ),
-                   ),
-                 ],
-               ),
-               
-               const SizedBox(height: 16),
-               
-               // Badge
-               Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                 decoration: BoxDecoration(
-                   color: badgeBg,
-                   borderRadius: BorderRadius.circular(20),
-                 ),
-                 child: Row(
-                   mainAxisSize: MainAxisSize.min,
-                   children: [
-                     Icon(Icons.storefront, color: badgeText, size: 16),
-                     const SizedBox(width: 6),
-                     Text(
-                       "BUSINESS OF THE MONTH",
-                       style: TextStyle(
-                         color: badgeText, 
-                         fontSize: 11, 
-                         fontWeight: FontWeight.bold, 
-                         letterSpacing: 0.5
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-               
-               const SizedBox(height: 12),
-               
-               // Description
-               Text(
-                 profile.description,
-                 maxLines: 4,
-                 overflow: TextOverflow.ellipsis,
-                 style: theme.textTheme.bodyMedium?.copyWith(
-                   height: 1.5,
-                   color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
-                 ),
-               ),
-               
-               const SizedBox(height: 16),
-               
-               // Tap indicator
-               Row(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: [
-                   Text(
-                     "SEE MORE DETAILS",
-                     style: TextStyle(
-                       color: theme.primaryColor,
-                       fontSize: 11,
-                       fontWeight: FontWeight.bold,
-                       letterSpacing: 1.0,
-                     ),
-                   ),
-                   const SizedBox(width: 4),
-                   Icon(Icons.arrow_forward_ios, size: 10, color: theme.primaryColor),
-                 ],
-               ),
-            ],
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Text(
+                                "See Details",
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.arrow_outward, 
+                                size: 14, 
+                                color: Colors.white.withOpacity(0.8)
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
