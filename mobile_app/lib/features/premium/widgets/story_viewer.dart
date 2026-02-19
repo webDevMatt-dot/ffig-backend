@@ -124,8 +124,12 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       widget.onStoryViewed?.call(story['id']);
     }
 
-    final mediaUrl = story['media_url'];
-    final isVideo = mediaUrl != null && (mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov')); // Simple check, better use MIME type
+    final mediaUrl = story['media_url']?.toString() ?? '';
+    final urlLower = mediaUrl.toLowerCase();
+    final isVideo = urlLower.endsWith('.mp4') || 
+                    urlLower.endsWith('.mov') || 
+                    urlLower.endsWith('.m4v') || 
+                    urlLower.endsWith('.3gp');
 
     if (isVideo) {
       _videoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl))
@@ -138,6 +142,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                _animController.forward();
              }
           }
+        }).catchError((error) {
+           debugPrint("Video Init Error: $error");
+           if (mounted) {
+             setState(() {}); // Trigger rebuild to show error icon if needed
+           }
         });
     } else {
       // Image: 5 seconds duration
@@ -215,7 +224,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
       // Check if it's a video to mark the type correctly
       final mediaUrl = story['media_url'].toString();
-      final isVideo = mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+      final urlLower = mediaUrl.toLowerCase();
+      final isVideo = urlLower.endsWith('.mp4') || 
+                      urlLower.endsWith('.mov') || 
+                      urlLower.endsWith('.m4v') || 
+                      urlLower.endsWith('.3gp');
 
       // 2. Send Message via Chat API (Unified Inbox)
       // We use the 'send-message' endpoint which handles conversation creation if needed.
@@ -375,17 +388,36 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                 final url = s['media_url'];
                 if (url == null) return const Center(child: Icon(Icons.error, color: Colors.white));
                 
-                final isVideo = url.endsWith('.mp4') || url.endsWith('.mov');
+                final urlLower = url.toString().toLowerCase();
+                final isVideo = urlLower.endsWith('.mp4') || 
+                                urlLower.endsWith('.mov') || 
+                                urlLower.endsWith('.m4v') || 
+                                urlLower.endsWith('.3gp');
                 
-                if (index == _currentIndex && isVideo && _videoController != null && _videoController!.value.isInitialized) {
-                  return Center(
-                    child: AspectRatio(
-                      aspectRatio: _videoController!.value.aspectRatio,
-                      child: VideoPlayer(_videoController!),
-                    ),
-                  );
-                } else if (isVideo) {
-                   return const Center(child: CircularProgressIndicator(color: Colors.white));
+                if (index == _currentIndex && isVideo) {
+                  if (_videoController != null && _videoController!.value.isInitialized) {
+                    return Center(
+                      child: AspectRatio(
+                        aspectRatio: _videoController!.value.aspectRatio,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                    );
+                  } else if (_videoController != null && _videoController!.value.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Failed to load video",
+                            style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator(color: Colors.white));
                 }
 
                 return Center(

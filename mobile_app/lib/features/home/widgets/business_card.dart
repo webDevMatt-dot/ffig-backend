@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared_widgets/user_avatar.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../models/business_profile.dart';
+import '../business_detail_screen.dart';
 
 /// Displays a detailed card for the "Business of the Month".
 /// - Shows Logo, Name, Location, Description, and Website link.
@@ -38,7 +39,12 @@ class BusinessCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-           // Navigation placeholder or launchUrl for website
+           Navigator.push(
+             context,
+             MaterialPageRoute(
+               builder: (context) => BusinessDetailScreen(profile: profile),
+             ),
+           );
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
@@ -158,6 +164,26 @@ class BusinessCard extends StatelessWidget {
                    height: 1.5,
                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
                  ),
+               ),
+               
+               const SizedBox(height: 16),
+               
+               // Tap indicator
+               Row(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   Text(
+                     "SEE MORE DETAILS",
+                     style: TextStyle(
+                       color: theme.primaryColor,
+                       fontSize: 11,
+                       fontWeight: FontWeight.bold,
+                       letterSpacing: 1.0,
+                     ),
+                   ),
+                   const SizedBox(width: 4),
+                   Icon(Icons.arrow_forward_ios, size: 10, color: theme.primaryColor),
+                 ],
                ),
             ],
           ),

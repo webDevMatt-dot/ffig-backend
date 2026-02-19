@@ -2,6 +2,9 @@ from django.db import models
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 class HeroItem(models.Model):
     TYPE_CHOICES = [
@@ -178,6 +181,7 @@ class BusinessOfMonth(models.Model):
     is_premium = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='businesses_of_month')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

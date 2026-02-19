@@ -6,6 +6,9 @@ class BusinessProfile {
   final String location;
   final String website;
   final bool isPremium;
+  final int? ownerId;
+  final String? ownerName;
+  final String? ownerPhoto;
 
   BusinessProfile({
     required this.id,
@@ -15,6 +18,9 @@ class BusinessProfile {
     required this.location,
     required this.website,
     this.isPremium = false,
+    this.ownerId,
+    this.ownerName,
+    this.ownerPhoto,
   });
 
   factory BusinessProfile.fromJson(Map<String, dynamic> json) {
@@ -26,6 +32,9 @@ class BusinessProfile {
       location: json['location'] ?? json['country'] ?? '',
       website: json['website'] ?? '',
       isPremium: json['is_premium'] ?? false,
+      ownerId: json['owner_id'],
+      ownerName: json['owner_name'],
+      ownerPhoto: json['owner_photo'],
     );
   }
 }
