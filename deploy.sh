@@ -28,7 +28,7 @@ if git diff --quiet HEAD -- lib web pubspec.yaml; then
 else
   echo "� Building release apps..."
   flutter build appbundle
-  flutter build web --release
+  flutter build web --release --no-tree-shake-icons
 fi
 
 VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')

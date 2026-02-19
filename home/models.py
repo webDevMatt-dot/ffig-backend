@@ -114,6 +114,9 @@ class FounderProfile(models.Model):
 
         super().save(*args, **kwargs)
 
+    class Meta:
+        ordering = ['-created_at']
+
     def __str__(self):
         return self.name
 
@@ -132,6 +135,9 @@ class FlashAlert(models.Model):
     type = models.CharField(max_length=50, choices=TYPE_CHOICES, default='Alert')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.title} - {self.expiry_time}"
@@ -162,3 +168,41 @@ class AppVersion(models.Model):
 
     def __str__(self):
         return f"{self.platform} - {self.latest_version}"
+
+class BusinessOfMonth(models.Model):
+    name = models.CharField(max_length=200)
+    image = models.ImageField(upload_to='business_logos/')
+    website = models.URLField(blank=True)
+    location = models.CharField(max_length=200)
+    description = models.TextField()
+    is_premium = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Businesses of the Month"
+        ordering = ['order', '-created_at']
+
+    def save(self, *args, **kwargs):
+        # Compression Logic (Consistent with HeroItem)
+        if self.image:
+             try:
+                img = Image.open(self.image)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize max dimension to 1024
+                img.thumbnail((1024, 1024))
+                
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                
+                self.image = ContentFile(output.read(), name=self.image.name.split('/')[-1])
+             except Exception:
+                pass 
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name

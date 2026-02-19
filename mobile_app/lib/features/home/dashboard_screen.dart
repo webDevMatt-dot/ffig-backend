@@ -491,20 +491,22 @@ class _DashboardScreenState extends State<DashboardScreen>
             // The serializer returns photo_url directly, but ensure it's properly formatted
             if (data['photo_url'] != null && data['photo_url'] != 'null') {
               var url = data['photo_url'].toString();
-              if (url.isNotEmpty && !url.startsWith('http')) {
-                // If it's a relative path, make it absolute
-                if (url.startsWith('/')) {
-                  data['photo_url'] = '$domain$url';
-                }
-              }
-            } else if (data['photo'] != null) {
-              // Fallback: if photo field exists (raw upload), use that
-              var url = data['photo'].toString();
-              if (url.isNotEmpty && url != "null") {
+              if (url.isNotEmpty && !url.contains('http')) {
+                final domain = baseUrl.replaceAll('/api/', '');
                 if (url.startsWith('/')) {
                   data['photo_url'] = '$domain$url';
                 } else {
-                  data['photo_url'] = url;
+                  data['photo_url'] = '$domain/$url';
+                }
+              }
+            } else if (data['photo'] != null && data['photo'] != 'null') {
+              var url = data['photo'].toString();
+              if (url.isNotEmpty && !url.contains('http')) {
+                final domain = baseUrl.replaceAll('/api/', '');
+                if (url.startsWith('/')) {
+                  data['photo_url'] = '$domain$url';
+                } else {
+                  data['photo_url'] = '$domain/$url';
                 }
               }
             }

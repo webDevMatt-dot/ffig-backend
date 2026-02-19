@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion, BusinessOfMonth
 import boto3
 from django.conf import settings
 
@@ -77,3 +77,27 @@ class NewsTickerItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = NewsTickerItem
         fields = '__all__'
+
+class BusinessOfMonthSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BusinessOfMonth
+        fields = ['id', 'name', 'image', 'image_url', 'website', 'location', 'description', 'is_premium', 'is_active', 'order', 'created_at']
+
+    def get_image_url(self, obj):
+        if not obj.image: return None
+        request = self.context.get('request')
+        try:
+             url = obj.image.url
+             # Always return absolute URLs for consistency
+             if request and url.startswith('/'):
+                 return request.build_absolute_uri(url)
+             # If no request context, construct absolute URL manually
+             if url.startswith('/') and not request:
+                 from django.conf import settings
+                 import os
+                 domain = os.environ.get('SITE_URL', 'https://ffig-backend-ti5w.onrender.com')
+                 return f"{domain}{url}"
+             return url
+        except: return None

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion, BusinessOfMonth
 
 @admin.register(AppVersion)
 class AppVersionAdmin(admin.ModelAdmin):
@@ -39,4 +39,11 @@ class FlashAlertAdmin(admin.ModelAdmin):
 class NewsTickerItemAdmin(admin.ModelAdmin):
     list_display = ('text', 'is_active', 'order')
     list_editable = ('is_active', 'order')
+    ordering = ('order', '-created_at')
+
+@admin.register(BusinessOfMonth)
+class BusinessOfMonthAdmin(admin.ModelAdmin):
+    list_display = ('name', 'website', 'location', 'is_active', 'order')
+    list_editable = ('is_active', 'order')
+    search_fields = ('name', 'location', 'description')
     ordering = ('order', '-created_at')

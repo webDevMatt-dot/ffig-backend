@@ -1,9 +1,10 @@
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion
+from .models import HeroItem, FounderProfile, FlashAlert, NewsTickerItem, AppVersion, BusinessOfMonth
 from .serializers import (
     HeroItemSerializer, FounderProfileSerializer, 
-    FlashAlertSerializer, NewsTickerItemSerializer, AppVersionSerializer
+    FlashAlertSerializer, NewsTickerItemSerializer, AppVersionSerializer,
+    BusinessOfMonthSerializer
 )
 from django.utils import timezone
 
@@ -27,6 +28,7 @@ class HeroItemViewSet(BaseHomeViewSet):
 class FounderProfileViewSet(BaseHomeViewSet):
     serializer_class = FounderProfileSerializer
     parser_classes = (MultiPartParser, FormParser, JSONParser)
+    ordering = ['-created_at']
     
     def get_queryset(self):
         if self.request.user and self.request.user.is_staff:
@@ -49,6 +51,15 @@ class NewsTickerItemViewSet(BaseHomeViewSet):
         if self.request.user and self.request.user.is_staff:
             return NewsTickerItem.objects.all()
         return NewsTickerItem.objects.filter(is_active=True)
+
+class BusinessOfMonthViewSet(BaseHomeViewSet):
+    serializer_class = BusinessOfMonthSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+    
+    def get_queryset(self):
+        if self.request.user and self.request.user.is_staff:
+            return BusinessOfMonth.objects.all()
+        return BusinessOfMonth.objects.filter(is_active=True)
 
 class AppVersionViewSet(BaseHomeViewSet):
     """
