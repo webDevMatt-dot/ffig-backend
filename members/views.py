@@ -558,62 +558,101 @@ class StoryViewSet(viewsets.ModelViewSet):
 
 
 
-# --- WIX WEBHOOK INTEGRATION ---
+# --- WIX WEBHOOK INTEGRATION (Ultra-Robust Debug Version) ---
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny]) # Webhook comes from Wix, verified by secret
+@permission_classes([permissions.AllowAny]) 
 def wix_webhook(request):
     """
-    Listener for Wix Webhooks to sync user roles.
-    Wix sends a JSON payload when a contact is updated or a plan is purchased.
+    Ultra-robust listener for Wix Webhooks with deep logging.
+    Designed to catch sync issues by logging the raw payload and headers.
     """
-    import json
     import os
+    import json
     
-    # 1. Security Check: Verify Wix Webhook Secret
-    # In Wix, you add a 'secret' header or query param. Here we check a header.
+    # 1. Detailed Logging for Debugging
+    print("--- [WIX WEBHOOK START] ---")
+    print(f"Headers: {dict(request.headers)}")
+    
+    # 2. Security Check
     wix_secret = os.environ.get('WIX_WEBHOOK_SECRET', 'test_secret_123')
     received_secret = request.headers.get('X-Wix-Secret') or request.GET.get('secret')
     
     if received_secret != wix_secret:
+        print(f"❌ [Wix Webhook] AUTH FAILED. Expected: {wix_secret}, Received: {received_secret}")
         return Response({"error": "Unauthorized"}, status=403)
 
     try:
         data = request.data
-        # Wix payload structure varies by trigger. 
-        # Usually, it's under 'data' or top level.
-        # We need: email and labels
+        print(f"📩 [Wix Webhook] Raw Payload: {json.dumps(data)}")
         
-        # Example structure from Wix Contact Updated:
-        # { "slug": "contact_updated", "data": { "contact": { "emails": [{"email": "..."}], "labels": ["..."] } } }
-        
-        slug = data.get('slug')
-        payload = data.get('data', {})
-        contact = payload.get('contact', {})
-        
-        emails = contact.get('emails', [])
+        # 3. Greedy Email Detection (Nested search)
         email = None
-        if emails:
-            email = emails[0].get('email')
-        elif 'email' in contact:
-            email = contact['email']
-            
-        labels = contact.get('labels', [])
         
-        if not email:
-            return Response({"error": "No email found in payload"}, status=400)
+        def find_email(obj):
+            if isinstance(obj, dict):
+                # Check direct fields
+                for key in ['email', 'emailAddress', 'emails']:
+                    val = obj.get(key)
+                    if val:
+                        if isinstance(val, list) and len(val) > 0:
+                            if isinstance(val[0], dict): return val[0].get('email')
+                            return val[0]
+                        if isinstance(val, str): return val
+                # Recurse
+                for v in obj.values():
+                    found = find_email(v)
+                    if found: return found
+            elif isinstance(obj, list):
+                for item in obj:
+                    found = find_email(item)
+                    if found: return found
+            return None
 
-        # 2. Logic: Update User Profile
+        email = find_email(data)
+        
+        # 4. Greedy Label Detection
+        labels = []
+        def find_labels(obj):
+            if isinstance(obj, dict):
+                if 'labels' in obj and isinstance(obj['labels'], list):
+                    return obj['labels']
+                for v in obj.values():
+                    found = find_labels(v)
+                    if found: return found
+            elif isinstance(obj, list):
+                for item in obj:
+                    found = find_labels(item)
+                    if found: return found
+            return []
+
+        labels = find_labels(data)
+        
+        print(f"🔍 [Wix Webhook] Syncing Email: {email}, Labels: {labels}")
+
+        if not email:
+            print("❌ [Wix Webhook] CRITICAL: No email found in payload.")
+            return Response({"error": "No email found"}, status=400)
+
+        # 5. Logic: Update User Profile
         try:
+            # Match user by email
             user = User.objects.get(email__iexact=email)
-            profile = user.profile
             
-            # Simple keyword matching for Wix Labels
+            # Ensure profile exists
+            if not hasattr(user, 'profile'):
+                print(f"📝 [Wix Webhook] Profile missing for {user.username}. Creating...")
+                Profile.objects.create(user=user)
+            
+            profile = user.profile
             old_tier = profile.tier
             new_tier = 'FREE'
             
-            labels_str = ",".join(labels).upper()
-            
+            # Convert labels to uppercase string for matching
+            labels_str = "|".join([str(l).upper() for l in labels])
+            print(f"🏷️ [Wix Webhook] Processing Labels String: {labels_str}")
+
+            # Flexible matching: search for 'PREMIUM' or 'STANDARD' anywhere in labels
             if "PREMIUM" in labels_str:
                 new_tier = 'PREMIUM'
             elif "STANDARD" in labels_str:
@@ -624,18 +663,26 @@ def wix_webhook(request):
                 profile.is_premium = (new_tier == 'PREMIUM')
                 profile.save()
                 
-                # Notify User
+                print(f"✅ [Wix Webhook] SUCCESS: {email} updated from {old_tier} to {new_tier}")
+                
                 Notification.objects.create(
                     recipient=user,
                     title="Account Upgraded",
-                    message=f"Your account has been synced with Wix. You are now a {new_tier} member!"
+                    message=f"Success! Your membership has been synced with Wix. You are now a {new_tier} member."
                 )
                 return Response({"status": "success", "updated": True, "new_tier": new_tier})
-                
-            return Response({"status": "success", "updated": False, "message": "Tier already correct"})
+            
+            print(f"ℹ️ [Wix Webhook] No change needed. {email} is already {old_tier}")
+            return Response({"status": "success", "updated": False})
 
         except User.DoesNotExist:
-            return Response({"status": "ignored", "message": f"User {email} not registered in app yet"})
+            print(f"⚠️ [Wix Webhook] User {email} not found in App DB. Sync ignored.")
+            return Response({"status": "ignored", "message": "User not found in app"})
 
     except Exception as e:
+        print(f"🔥 [Wix Webhook] INTERNAL ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return Response({"error": str(e)}, status=500)
+    finally:
+        print("--- [WIX WEBHOOK END] ---")
