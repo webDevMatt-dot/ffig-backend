@@ -43,7 +43,8 @@ class NewsTickerItemAdmin(admin.ModelAdmin):
 
 @admin.register(BusinessOfMonth)
 class BusinessOfMonthAdmin(admin.ModelAdmin):
-    list_display = ('name', 'website', 'location', 'is_active', 'order')
+    list_display = ('name', 'owner', 'website', 'location', 'is_active', 'order')
     list_editable = ('is_active', 'order')
-    search_fields = ('name', 'location', 'description')
+    list_filter = ('is_active', 'owner')
+    search_fields = ('name', 'location', 'description', 'owner__username', 'owner__first_name', 'owner__last_name')
     ordering = ('order', '-created_at')

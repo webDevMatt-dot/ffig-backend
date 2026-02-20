@@ -23,9 +23,8 @@ class BusinessCard extends StatelessWidget {
     
     return RepaintBoundary(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(32),
           child: AspectRatio(
             aspectRatio: 1.6, // Featured look
             child: Stack(
