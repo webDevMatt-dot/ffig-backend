@@ -46,7 +46,7 @@ from members.views import (
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
-    StoryViewSet, AdminUserUpdateView
+    StoryViewSet, AdminUserUpdateView, wix_webhook
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
@@ -149,4 +149,7 @@ urlpatterns = [
     # Notifications
     path('api/notifications/', NotificationListView.as_view(), name='notification-list'),
     path('api/notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
+
+    # Wix Webhooks
+    path('api/webhooks/wix/', wix_webhook, name='wix-webhook'),
 ]

@@ -557,3 +557,85 @@ class StoryViewSet(viewsets.ModelViewSet):
         return Response(data)
 
 
+
+# --- WIX WEBHOOK INTEGRATION ---
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny]) # Webhook comes from Wix, verified by secret
+def wix_webhook(request):
+    """
+    Listener for Wix Webhooks to sync user roles.
+    Wix sends a JSON payload when a contact is updated or a plan is purchased.
+    """
+    import json
+    import os
+    
+    # 1. Security Check: Verify Wix Webhook Secret
+    # In Wix, you add a 'secret' header or query param. Here we check a header.
+    wix_secret = os.environ.get('WIX_WEBHOOK_SECRET', 'test_secret_123')
+    received_secret = request.headers.get('X-Wix-Secret') or request.GET.get('secret')
+    
+    if received_secret != wix_secret:
+        return Response({"error": "Unauthorized"}, status=403)
+
+    try:
+        data = request.data
+        # Wix payload structure varies by trigger. 
+        # Usually, it's under 'data' or top level.
+        # We need: email and labels
+        
+        # Example structure from Wix Contact Updated:
+        # { "slug": "contact_updated", "data": { "contact": { "emails": [{"email": "..."}], "labels": ["..."] } } }
+        
+        slug = data.get('slug')
+        payload = data.get('data', {})
+        contact = payload.get('contact', {})
+        
+        emails = contact.get('emails', [])
+        email = None
+        if emails:
+            email = emails[0].get('email')
+        elif 'email' in contact:
+            email = contact['email']
+            
+        labels = contact.get('labels', [])
+        
+        if not email:
+            return Response({"error": "No email found in payload"}, status=400)
+
+        # 2. Logic: Update User Profile
+        try:
+            user = User.objects.get(email__iexact=email)
+            profile = user.profile
+            
+            # Simple keyword matching for Wix Labels
+            old_tier = profile.tier
+            new_tier = 'FREE'
+            
+            labels_str = ",".join(labels).upper()
+            
+            if "PREMIUM" in labels_str:
+                new_tier = 'PREMIUM'
+            elif "STANDARD" in labels_str:
+                new_tier = 'STANDARD'
+                
+            if old_tier != new_tier:
+                profile.tier = new_tier
+                profile.is_premium = (new_tier == 'PREMIUM')
+                profile.save()
+                
+                # Notify User
+                Notification.objects.create(
+                    recipient=user,
+                    title="Account Upgraded",
+                    message=f"Your account has been synced with Wix. You are now a {new_tier} member!"
+                )
+                return Response({"status": "success", "updated": True, "new_tier": new_tier})
+                
+            return Response({"status": "success", "updated": False, "message": "Tier already correct"})
+
+        except User.DoesNotExist:
+            return Response({"status": "ignored", "message": f"User {email} not registered in app yet"})
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
