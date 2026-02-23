@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -135,14 +136,22 @@ class _StoriesBarState extends State<StoriesBar> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Container(
-        height: 115,
-        margin: const EdgeInsets.only(top: 4, bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: 6,
-          itemBuilder: (_, __) => const ShimmerStoryBubble(),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 115,
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 4, bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            color: Colors.white.withOpacity(0.05),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 6,
+              itemBuilder: (_, __) => const ShimmerStoryBubble(),
+            ),
+          ),
         ),
       );
     }
@@ -151,27 +160,35 @@ class _StoriesBarState extends State<StoriesBar> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      height: 115,
-      margin: const EdgeInsets.only(top: 4, bottom: 12),
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: _uniqueUserStories.length,
-        itemBuilder: (context, index) {
-          final group = _uniqueUserStories[index];
-          // Use user_id as stable key for seen/unseen logic if needed
-          // Backend sends 'has_unseen' in the group object, which is better.
-          final bool hasUnseen = group['has_unseen'] ?? false;
-          final isSeen = !hasUnseen; 
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 115,
+            color: Colors.white.withOpacity(0.05),
+            margin: const EdgeInsets.only(top: 4, bottom: 12),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: _uniqueUserStories.length,
+              itemBuilder: (context, index) {
+                final group = _uniqueUserStories[index];
+                final bool hasUnseen = group['has_unseen'] ?? false;
+                final isSeen = !hasUnseen; 
 
-          return StoryBubble(
-            name: group['username'] ?? 'User',
-            imageUrl: group['user_photo'], // Now sends corrected URL
-            isSeen: isSeen,
-            onTap: () => _openStoryViewer(group),
-          );
-        },
+                return StoryBubble(
+                  name: group['username'] ?? 'User',
+                  imageUrl: group['user_photo'], 
+                  isSeen: isSeen,
+                  onTap: () => _openStoryViewer(group),
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }

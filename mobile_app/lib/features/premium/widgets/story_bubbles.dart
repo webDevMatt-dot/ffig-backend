@@ -60,14 +60,12 @@ class StoryBubble extends StatelessWidget {
                     // BORDER LOGIC:
                     // - White/Transparent border for "Add"
                     // - Grey border for "Seen"
-                    border: (isAdd || isSeen)
-                        ? Border.all(
-                            color: isAdd 
-                                ? Colors.white.withOpacity(0.15) 
-                                : Colors.grey.shade700,
-                            width: 1.5,
-                          )
-                        : null,
+                    border: Border.all(
+                      color: isAdd 
+                          ? Colors.white.withOpacity(0.15) 
+                          : (isSeen ? Colors.grey.shade700 : const Color(0xFFD4AF37)),
+                      width: isSeen ? 1.5 : 2.5,
+                    ),
                   ),
                   child: CircleAvatar(
                     radius: 32,

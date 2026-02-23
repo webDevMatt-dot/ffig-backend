@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -250,14 +252,23 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             aspectRatio: _videoController!.value.aspectRatio,
             showControls: false, // Clean look like Reels/TikTok
         );
-         if (mounted) setState(() => _isInit = true);
+         if (mounted) {
+           setState(() => _isInit = true);
+           HapticFeedback.lightImpact(); // Haptic on new video load
+         }
       } catch (e) {
          debugPrint("Video Init Error: $e");
          _videoController = null; // Fallback to image
-         if (mounted) setState(() => _isInit = true);
+         if (mounted) {
+           setState(() => _isInit = true);
+           HapticFeedback.lightImpact();
+         }
       }
     } else {
-        if (mounted) setState(() => _isInit = true);
+        if (mounted) {
+          setState(() => _isInit = true);
+          HapticFeedback.lightImpact();
+        }
     }
   }
 
@@ -286,7 +297,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             setState(() {
                _isLiked = res['status'] == 'liked';
                _likesCount = res['count'];
-          });
+            });
+            if (_isLiked) HapticFeedback.mediumImpact();
           }
       } catch (e) {
           // Revert
@@ -425,11 +437,14 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             // Media Layer
             Positioned.fill(
                 child: IgnorePointer(
-                    child: hasVideo
-                        ? Chewie(controller: _chewieController!)
-                        : (imageUrl != null
-                            ? Image.network(imageUrl, fit: BoxFit.contain)
-                            : Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))))
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      child: hasVideo
+                          ? Chewie(key: ValueKey('video_${widget.item['id']}'), controller: _chewieController!)
+                          : (imageUrl != null
+                              ? Image.network(imageUrl, key: ValueKey('image_${widget.item['id']}'), fit: BoxFit.contain)
+                              : Container(key: const ValueKey('broken_image'), color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white)))),
+                    )
                 )
             ),
 
@@ -447,7 +462,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               child: Container(color: Colors.transparent),
             ),
             
-             // Floating Heart Animation
+            // Floating Heart Animation
             if (_showHeartAnimation)
               Center(
                 child: ScaleTransition(
@@ -458,31 +473,39 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
                       CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
                     ),
-                    child: const Icon(Icons.favorite, color: Colors.white, size: 100), // White heart looks premium
+                    child: AnimatedScale(
+                      scale: _showHeartAnimation ? 1.4 : 1.0,
+                      duration: const Duration(milliseconds: 250),
+                      child: const Icon(Icons.favorite, color: Colors.redAccent, size: 100), // Premium red heart
+                    ),
                   ),
                 ),
               ),
-
-            // Top Glass Header (Tag)
             Positioned(
                 top: 24,
                 left: 24,
-                child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.1))
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.1))
+                        ),
+                        child: Row(
+                            children: [
+                                Container(width: 8, height: 8, decoration: const BoxDecoration(color: FfigTheme.primaryBrown, shape: BoxShape.circle)), // Gold dot
+                                const SizedBox(width: 8),
+                                Text((widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
+                                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)
+                                ),
+                            ],
+                        ),
                     ),
-                    child: Row(
-                        children: [
-                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: FfigTheme.primaryBrown, shape: BoxShape.circle)), // Gold dot
-                            const SizedBox(width: 8),
-                            Text((widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
-                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)
-                            ),
-                        ],
-                    ),
+                  ),
                 ),
             ),
 
@@ -493,12 +516,11 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               bottom: 0,
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 60, 24, 90),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.transparent, Color(0xE60D1117)], // Fade to Obsidian
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.4]
+                    colors: [Colors.black.withOpacity(0.85), Colors.transparent], 
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
                   )
                 ),
                 child: Column(
@@ -511,7 +533,27 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     const SizedBox(height: 12),
                     Row(
                         children: [
-                             Text((widget.item['username'] ?? 'VVIP Member').toUpperCase(), style: const TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+                             ClipRRect(
+                               borderRadius: BorderRadius.circular(12),
+                               child: BackdropFilter(
+                                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                 child: Container(
+                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                   decoration: BoxDecoration(
+                                     color: Colors.black.withOpacity(0.35),
+                                     borderRadius: BorderRadius.circular(12),
+                                   ),
+                                   child: Row(
+                                     mainAxisSize: MainAxisSize.min,
+                                     children: [
+                                       Text((widget.item['username'] ?? 'VVIP Member').toUpperCase(), style: const TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+                                       const SizedBox(width: 6),
+                                       const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 14), // VVIP Gold Check
+                                     ]
+                                   ),
+                                 ),
+                               ),
+                             ),
                              Container(margin: const EdgeInsets.symmetric(horizontal: 12), width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
                              Text(() {
                                  final dateStr = widget.item['created_at'];
@@ -605,7 +647,20 @@ class _SocialButton extends StatelessWidget {
             onTap: onTap,
             child: Row(
                 children: [
-                    Icon(icon, color: isActive ? Colors.red : Colors.white, size: 26),
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.08),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedScale(
+                        scale: isActive ? 1.1 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(icon, color: isActive ? Colors.redAccent : Colors.white, size: 22)
+                      ),
+                    ),
                     if (label.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))

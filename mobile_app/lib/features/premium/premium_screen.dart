@@ -27,7 +27,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117), // Theme Background
+      backgroundColor: const Color(0xFF0A0C10), // Layered depth VVIP Background
       body: VVIPFeed(controller: _pageController),
     );
   }
