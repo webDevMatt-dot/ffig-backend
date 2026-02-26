@@ -39,8 +39,8 @@ class MembershipService {
   /// Can use direct messaging? (Premium only)
   static bool get canInbox => isPremium;
   
-  /// Can buy event tickets? (Standard+)
-  static bool get canBuyTickets => !isFree;
+  /// Can buy event tickets? (Available to all users, including Free)
+  static bool get canBuyTickets => true;
   
   /// Can post VVIP Reels/Ads? (Premium only)
   static bool get canAdvertise => isPremium;

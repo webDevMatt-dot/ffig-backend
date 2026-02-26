@@ -280,15 +280,18 @@ class _DashboardScreenState extends State<DashboardScreen>
         headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
+        dynamic rawData = jsonDecode(response.body);
+        Map<String, dynamic> data;
         // Handle case where backend returns a List (e.g. [user]) instead of Map
-        if (data is List) {
-          if (data.isNotEmpty) {
-            data = data.first;
+        if (rawData is List) {
+          if (rawData.isNotEmpty) {
+            data = Map<String, dynamic>.from(rawData.first);
           } else {
             // Empty list, treat as guest/error?
             return; 
           }
+        } else {
+            data = Map<String, dynamic>.from(rawData);
         }
         
         if (mounted) {
