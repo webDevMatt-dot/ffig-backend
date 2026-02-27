@@ -39,6 +39,29 @@ else
   echo "⚠️  No backend changes to push."
 fi
 
+# --- Bump Version ---
+echo "🔢 Bumping version..."
+cd mobile_app
+CURRENT_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '[:space:]')
+# e.g. 1.0.297+297
+SEMVER="${CURRENT_VERSION%+*}"        # 1.0.297
+BUILD="${CURRENT_VERSION##*+}"        # 297
+PATCH="${SEMVER##*.}"                 # 297
+PREFIX="${SEMVER%.*}"                 # 1.0
+NEW_PATCH=$((PATCH + 1))
+NEW_BUILD=$((BUILD + 1))
+NEW_VERSION="${PREFIX}.${NEW_PATCH}+${NEW_BUILD}"
+sed -i '' "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
+echo "✅ Version bumped: ${CURRENT_VERSION} → ${NEW_VERSION}"
+
+# Commit the version bump
+git add pubspec.yaml
+git commit -m "chore: bump version to ${NEW_VERSION}"
+echo "🛡️  Syncing with remote..."
+git pull --rebase origin main
+git push origin main
+cd ..
+
 # --- Multi-platform Builds ---
 echo "🚀 STARTING BUILDS..."
 cd mobile_app
