@@ -45,7 +45,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final api = AdminApiService();
       // Fetch Reports -> Count PENDING
       try {
-        final reports = await api.fetchItems('moderation/reports');
+        final reports = await api.fetchReports();
         final pendingReports = reports.where((r) => r['status'] != 'RESOLVED').length;
         if (mounted) setState(() => _reportsCount = pendingReports);
       } catch (e) {

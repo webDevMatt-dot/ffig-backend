@@ -737,7 +737,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       },
       child: Scaffold(
       extendBody: true,
+      extendBodyBehindAppBar: true, 
       appBar: AppBar(
+
         // --- NEW: Leading Button Logic ---
         // Only shows when VVIP tab (Index 3) is selected
         leading: _selectedIndex == 3
@@ -916,7 +918,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
             // 1. Editorial Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+              padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 16, 24, 24),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

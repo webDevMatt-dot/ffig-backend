@@ -80,11 +80,22 @@ class _EventsScreenState extends State<EventsScreen> {
     // Partition events
     for (final event in _events) {
       try {
-        final eventDate = DateTime.parse(event['date']);
-        if (eventDate.isAfter(now)) {
-          upcomingEvents.add(event);
-        } else {
+        final date = DateTime.parse(event['date']);
+        final endDateStr = event['end_date'];
+        DateTime effectiveEndDate = date;
+        
+        if (endDateStr != null && endDateStr.isNotEmpty) {
+           effectiveEndDate = DateTime.parse(endDateStr);
+        }
+
+        // An event is past if the effective end date is BEFORE today (at midnight)
+        final today = DateTime(now.year, now.month, now.day);
+        final eventDay = DateTime(effectiveEndDate.year, effectiveEndDate.month, effectiveEndDate.day);
+        
+        if (eventDay.isBefore(today)) {
           pastEvents.add(event);
+        } else {
+          upcomingEvents.add(event);
         }
       } catch (_) {
         upcomingEvents.add(event);
@@ -105,7 +116,7 @@ class _EventsScreenState extends State<EventsScreen> {
         // Past Events Section
         if (pastEvents.isNotEmpty) ...[
           const SizedBox(height: 32),
-          ..._buildEventSection(pastEvents, "PAST EVENTS", context),
+          ..._buildEventSection(pastEvents, "PAST EVENTS", context, isPast: true),
         ],
       ],
     );
@@ -115,7 +126,7 @@ class _EventsScreenState extends State<EventsScreen> {
   /// - `events`: List of event data.
   /// - `title`: Section header title.
   List<Widget> _buildEventSection(
-      List<dynamic> events, String title, BuildContext context) {
+      List<dynamic> events, String title, BuildContext context, {bool isPast = false}) {
     return [
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
@@ -168,6 +179,31 @@ class _EventsScreenState extends State<EventsScreen> {
                       placeholder: (context, url) => Container(color: Colors.grey[200]),
                       errorWidget: (context, url, error) => const Icon(Icons.error),
                     ),
+                    if (isPast)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.4),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: const Text(
+                                "PAST EVENT",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     // Date / Category Label (Top Right)
                     Positioned(
                       top: 12,
@@ -181,8 +217,20 @@ class _EventsScreenState extends State<EventsScreen> {
                           color: Colors.black.withOpacity(0.6),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          "$day-$month-$year",
+                        child: Text(() {
+                            final endStr = event['end_date'];
+                            final startFormatted = "$day-$month-$year";
+                            if (endStr != null && endStr.isNotEmpty) {
+                                try {
+                                    final endDt = DateTime.parse(endStr);
+                                    final endDay = DateFormat('dd').format(endDt);
+                                    final endMonth = DateFormat('MM').format(endDt);
+                                    final endYear = DateFormat('yyyy').format(endDt);
+                                    return "$startFormatted TO $endDay-$endMonth-$endYear";
+                                } catch (_) {}
+                            }
+                            return startFormatted;
+                          }(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

@@ -48,6 +48,21 @@ class EventDetailScreen extends StatelessWidget {
     }
   }
 
+  bool _isConcluded() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    try {
+      final dateStr = (event['end_date'] != null && event['end_date'].toString().isNotEmpty) 
+          ? event['end_date'] 
+          : event['date'];
+      final eventDate = DateTime.parse(dateStr);
+      final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
+      return eventDay.isBefore(today);
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final speakers = event['speakers'] as List? ?? [];
@@ -116,14 +131,14 @@ class EventDetailScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
-              onPressed: (event['is_sold_out'] == true) ? null : () => _onGetTickets(context),
+              onPressed: (event['is_sold_out'] == true || _isConcluded()) ? null : () => _onGetTickets(context),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: (event['is_sold_out'] == true) ? Colors.grey : Theme.of(context).colorScheme.primary,
-                foregroundColor: (event['is_sold_out'] == true) ? Colors.white : Colors.white,
+                backgroundColor: (event['is_sold_out'] == true || _isConcluded()) ? Colors.grey : Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
               ),
               child: Text(
-                (event['is_sold_out'] == true) ? "SOLD OUT" : "GET TICKETS",
+                _isConcluded() ? "EVENT CONCLUDED" : (event['is_sold_out'] == true ? "SOLD OUT" : "GET TICKETS"),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
@@ -150,13 +165,21 @@ class EventDetailScreen extends StatelessWidget {
                Expanded(
                    child: Text(
                        () {
-                          try {
-                              final dt = DateTime.parse(event['date']);
-                              return "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
-                          } catch (_) {
-                              // If already formatted or raw text
-                              return "${event['date']}";
-                          }
+                           try {
+                               final dt = DateTime.parse(event['date']);
+                               final startStr = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+                               
+                               final endStr = event['end_date'];
+                               if (endStr != null && endStr.isNotEmpty) {
+                                   try {
+                                       final endDt = DateTime.parse(endStr);
+                                       return "$startStr to ${endDt.day.toString().padLeft(2, '0')}-${endDt.month.toString().padLeft(2, '0')}-${endDt.year}";
+                                   } catch (_) {}
+                               }
+                               return startStr;
+                           } catch (_) {
+                               return "${event['date']}";
+                           }
                        }(), 
                        style: const TextStyle(fontWeight: FontWeight.bold)
                    )

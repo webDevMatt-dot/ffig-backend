@@ -45,6 +45,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   
   // For Video
   VideoPlayerController? _videoController;
+  VideoPlayerController? _nextVideoController;
   
   // For Reply
   final TextEditingController _replyController = TextEditingController();
@@ -72,6 +73,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     _pageController.dispose();
     _animController.dispose();
     _videoController?.dispose();
+    _nextVideoController?.dispose();
     super.dispose();
   }
 
@@ -97,6 +99,28 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   /// - Determines media type (Image vs Video).
   /// - Sets animation duration (5s for image, video duration for video).
   /// - Advances to next story upon completion.
+  Future<void> _markStoryAsSeen(int storyId) async {
+    try {
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'access_token');
+      if (token == null) return;
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}members/stories/$storyId/seen/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        widget.onStoryViewed?.call(storyId);
+      }
+    } catch (e) {
+      debugPrint("Error marking story as seen: $e");
+    }
+  }
+
   void _loadStory({required int index, bool animateToPage = false}) {
     if (_isClosed) return;
     if (index < 0 || index >= widget.stories.length) {
@@ -121,7 +145,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     
     // Mark as seen
     if (story['id'] != null) {
-      widget.onStoryViewed?.call(story['id']);
+      _markStoryAsSeen(story['id']);
     }
 
     final mediaUrl = story['media_url']?.toString() ?? '';
@@ -132,27 +156,55 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                     urlLower.endsWith('.3gp');
 
     if (isVideo) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl))
-        ..initialize().then((_) {
-          if (mounted && !_isClosed) {
+      // Use preloaded controller if available
+      if (_nextVideoController != null && _nextVideoController!.dataSource == mediaUrl) {
+         _videoController = _nextVideoController;
+         _nextVideoController = null;
+         
+         if (mounted && !_isClosed) {
              setState(() {});
              if (_videoController!.value.isInitialized) {
                _animController.duration = _videoController!.value.duration;
                _videoController!.play();
                _animController.forward();
+             } else {
+               // If it's still initializing, wait
+               _videoController!.initialize().then((_) {
+                  if (mounted && _videoController == _videoController && !_isClosed) {
+                     setState(() {});
+                     _animController.duration = _videoController!.value.duration;
+                     _videoController!.play();
+                     _animController.forward();
+                  }
+               });
              }
-          }
-        }).catchError((error) {
-           debugPrint("Video Init Error: $error");
-           if (mounted) {
-             setState(() {}); // Trigger rebuild to show error icon if needed
-           }
-        });
+         }
+      } else {
+        _videoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl))
+          ..initialize().then((_) {
+            if (mounted && !_isClosed) {
+               setState(() {});
+               if (_videoController!.value.isInitialized) {
+                 _animController.duration = _videoController!.value.duration;
+                 _videoController!.play();
+                 _animController.forward();
+               }
+            }
+          }).catchError((error) {
+             debugPrint("Video Init Error: $error");
+             if (mounted) {
+               setState(() {}); // Trigger rebuild to show error icon if needed
+             }
+          });
+      }
     } else {
       // Image: 5 seconds duration
       _animController.duration = const Duration(seconds: 5);
       _animController.forward();
     }
+
+    // Proactively preload next story
+    _preloadNextStory(index + 1);
 
     _animController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -160,6 +212,41 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       }
     });
   }
+
+  /// Preloads the next story in the list (image cache or video warm-up).
+  void _preloadNextStory(int nextIndex) {
+    if (nextIndex >= widget.stories.length) return;
+    
+    final nextStory = widget.stories[nextIndex];
+    final String? mediaUrl = nextStory['media_url']?.toString();
+    if (mediaUrl == null) return;
+    
+    final urlLower = mediaUrl.toLowerCase();
+    final bool isVideo = urlLower.endsWith('.mp4') || 
+                        urlLower.endsWith('.mov') || 
+                        urlLower.endsWith('.m4v') || 
+                        urlLower.endsWith('.3gp');
+                        
+    if (isVideo) {
+      // Dispose old preloaded controller if it was for a different URL
+      if (_nextVideoController != null && _nextVideoController!.dataSource != mediaUrl) {
+        _nextVideoController?.dispose();
+        _nextVideoController = null;
+      }
+      
+      // Warm up video
+      if (_nextVideoController == null) {
+        _nextVideoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl));
+        _nextVideoController!.initialize().then((_) {
+          debugPrint("Next Video Warmed: $mediaUrl");
+        }).catchError((e) => debugPrint("Next Video Warmup failed: $e"));
+      }
+    } else {
+      // Precache Image
+      precacheImage(CachedNetworkImageProvider(mediaUrl), context);
+    }
+  }
+
 
   void _close() {
     if (!_isClosed) {

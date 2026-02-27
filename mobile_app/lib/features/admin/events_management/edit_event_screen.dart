@@ -16,6 +16,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _dateController = TextEditingController();
+  final _endDateController = TextEditingController(); // NEW
   final _locationController = TextEditingController();
   final _priceLabelController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -44,6 +45,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
       } catch (_) {
           _dateController.text = rawDate;
       }
+      
+      final rawEndDate = widget.event!['end_date'] ?? '';
+      try {
+          if (rawEndDate.isNotEmpty) {
+              final dt = DateTime.parse(rawEndDate);
+              _endDateController.text = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+          }
+      } catch (_) {
+          _endDateController.text = rawEndDate;
+      }
       _locationController.text = widget.event!['location'] ?? '';
       _priceLabelController.text = widget.event!['price_label'] ?? '';
       _descriptionController.text = widget.event!['description'] ?? '';
@@ -66,6 +77,14 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  return "${parts[2]}-${parts[1]}-${parts[0]}";
              }
              return _dateController.text;
+         }(),
+        'end_date': () {
+             if (_endDateController.text.isEmpty) return null;
+             final parts = _endDateController.text.split('-');
+             if (parts.length == 3) {
+                 return "${parts[2]}-${parts[1]}-${parts[0]}";
+             }
+             return _endDateController.text;
          }(),
         'location': _locationController.text,
         'price_label': _priceLabelController.text,
@@ -378,6 +397,41 @@ class _EditEventScreenState extends State<EditEventScreen> {
                      }
                    },
                    validator: (v) => v!.isEmpty ? "Required" : null,
+                 ),
+                 const SizedBox(height: 12),
+                 TextFormField(
+                   controller: _endDateController,
+                   decoration: InputDecoration(
+                     labelText: "End Date (Optional)", 
+                     prefixIcon: const Icon(Icons.calendar_month, color: FfigTheme.primaryBrown),
+                     filled: true,
+                     fillColor: Colors.grey[50], 
+                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 2)),
+                   ),
+                   readOnly: true,
+                   onTap: () async {
+                     DateTime? picked = await showDatePicker(
+                       context: context,
+                       initialDate: DateTime.now(),
+                       firstDate: DateTime(2000),
+                       lastDate: DateTime(2100),
+                       builder: (context, child) {
+                           return Theme(
+                               data: Theme.of(context).copyWith(
+                                   colorScheme: const ColorScheme.light(primary: FfigTheme.primaryBrown),
+                               ), 
+                               child: child!
+                           );
+                       }
+                     );
+                     if (picked != null) {
+                       setState(() {
+                         _endDateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
+                       });
+                     }
+                   },
                  ),
                  const SizedBox(height: 12),
                  _buildStyledTextField(_locationController, "Location"),

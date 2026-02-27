@@ -61,6 +61,7 @@ class BentoTile extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

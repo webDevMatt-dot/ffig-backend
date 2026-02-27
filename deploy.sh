@@ -28,6 +28,7 @@ if git diff --quiet HEAD -- lib web pubspec.yaml; then
 else
   echo "� Building release apps..."
   flutter build appbundle
+  flutter build ios --release --no-codesign
   flutter build web --release --no-tree-shake-icons
 fi
 

@@ -25,6 +25,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   final _titleController = TextEditingController();
   final _locController = TextEditingController();
   final _dateController = TextEditingController(); 
+  final _endDateController = TextEditingController(); // NEW
   final _imgController = TextEditingController();
   
   @override
@@ -78,11 +79,24 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
          _dateController.text = '';
       }
       _imgController.text = event['image_url'] ?? '';
+      
+      final rawEndDate = event['end_date'] ?? '';
+      if (rawEndDate.isNotEmpty) {
+          try {
+             final dt = DateTime.parse(rawEndDate);
+             _endDateController.text = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+          } catch (_) {
+             _endDateController.text = rawEndDate;
+          }
+      } else {
+         _endDateController.text = '';
+      }
     } else {
       _editingId = null;
       _titleController.clear();
       _locController.clear();
       _dateController.clear();
+      _endDateController.clear();
       _imgController.clear();
     }
 
@@ -142,6 +156,29 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         validator: (v) => v!.isEmpty ? "Required" : null,
                     ),
                     const SizedBox(height: 16),
+                    TextFormField(
+                        controller: _endDateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: "End Date (Optional)",
+                          prefixIcon: Icon(Icons.calendar_month),
+                          border: OutlineInputBorder(),
+                        ),
+                        onTap: () async {
+                           DateTime? picked = await showDatePicker(
+                             context: context,
+                             initialDate: DateTime.now(),
+                             firstDate: DateTime(2000),
+                             lastDate: DateTime(2100),
+                           );
+                             if (picked != null) {
+                               setModalState(() {
+                                 _endDateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
+                               });
+                             }
+                        },
+                    ),
+                    const SizedBox(height: 24),
                     _buildField(_imgController, "Image URL", Icons.image, required: false),
                     const SizedBox(height: 24),
                     
@@ -229,6 +266,14 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                  return "${parts[2]}-${parts[1]}-${parts[0]}";
              }
              return _dateController.text;
+         }(),
+         'end_date': () {
+             if (_endDateController.text.isEmpty) return null;
+             final parts = _endDateController.text.split('-');
+             if (parts.length == 3) {
+                 return "${parts[2]}-${parts[1]}-${parts[0]}";
+             }
+             return _endDateController.text;
          }(),
          'image_url': _imgController.text.isNotEmpty ? _imgController.text : "https://images.unsplash.com/photo-1542744173-8e7e53415bb0"
        };
@@ -382,11 +427,18 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                                             e['title'] ?? 'No Title', 
                                             style: const TextStyle(fontWeight: FontWeight.bold)
                                         ),
-                                        subtitle: Text(
-                                          dt != null 
-                                            ? "${dt.day}/${dt.month}/${dt.year} • ${e['location']}"
-                                            : e['location'] ?? ''
-                                        ),
+                                         subtitle: Text(() {
+                                            final loc = e['location'] ?? '';
+                                            final start = dt != null ? "${dt.day}/${dt.month}/${dt.year}" : '';
+                                            final endStr = e['end_date'];
+                                            if (endStr != null && endStr.isNotEmpty) {
+                                                final endDt = DateTime.tryParse(endStr);
+                                                if (endDt != null) {
+                                                    return "$start to ${endDt.day}/${endDt.month}/${endDt.year} • $loc";
+                                                }
+                                            }
+                                            return "$start • $loc";
+                                          }()),
                                         trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
                                         onTap: () => _showEditor(e),
                                     ),

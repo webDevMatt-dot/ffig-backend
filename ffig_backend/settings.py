@@ -29,9 +29,16 @@ if env_path.exists():
                         value = value[1:-1]
                     elif value.startswith('"') and value.endswith('"'):
                         value = value[1:-1]
-                    os.environ.setdefault(key, value)
+                    os.environ[key] = value
                 except ValueError:
                     pass
+
+# Log the Database Host for verification (Safe for debugging)
+if os.environ.get('DATABASE_URL'):
+    from dj_database_url import parse as db_url_parse
+    db_config = db_url_parse(os.environ.get('DATABASE_URL'))
+    print(f"📡 Database Host: {db_config.get('HOST')}")
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

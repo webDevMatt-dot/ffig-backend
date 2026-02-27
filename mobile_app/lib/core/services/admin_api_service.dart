@@ -42,6 +42,20 @@ class AdminApiService {
     }
   }
 
+  // Fetch Moderation Reports (Uses admin/moderation instead of home/moderation)
+  Future<List<dynamic>> fetchReports() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('${baseUrl}admin/moderation/reports/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load reports: ${response.statusCode}');
+    }
+  }
+
   // Generic DELETE
   Future<void> deleteItem(String endpoint, int id) async {
     final token = await _getToken();

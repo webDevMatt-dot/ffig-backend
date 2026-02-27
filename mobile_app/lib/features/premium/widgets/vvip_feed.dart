@@ -88,37 +88,40 @@ class _VVIPFeedState extends State<VVIPFeed> {
         ),
         
         // Stories Bar (Scrolls away)
-        // Uses AnimatedBuilder to listen to the main page controller.
-        // As the user scrolls down to the first reel, the stories bar fades out and moves up.
         Positioned(
-            // CHANGED: Moved up to 70 to condense space
-            top: 70, 
+            top: 0, 
             left: 0, 
             right: 0,
-            child: AnimatedBuilder(
-                animation: _pageController,
-                builder: (context, child) {
-                    double offset = 0;
-                    try {
-                        if (_pageController.hasClients && _pageController.position.haveDimensions) {
-                             offset = _pageController.page ?? 0;
-                        }
-                    } catch (e) {
-                        // ignore
-                    }
-                    
-                    // Hide after 1 page scroll
-                    if (offset > 1) return const SizedBox.shrink();
-
-                    return Transform.translate(
-                        offset: Offset(0, -offset * 300), // Move up faster than scroll
-                        child: Opacity(
-                            opacity: (1 - offset).clamp(0.0, 1.0), // Fade out
-                            child: child
-                        ),
-                    );
-                },
-                child: const StoriesBar(),
+            child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: kToolbarHeight), // Snaps directly under AppBar content
+                  child: AnimatedBuilder(
+                      animation: _pageController,
+                      builder: (context, child) {
+                          double offset = 0;
+                          try {
+                              if (_pageController.hasClients && _pageController.position.haveDimensions) {
+                                   offset = _pageController.page ?? 0;
+                              }
+                          } catch (e) {
+                              // ignore
+                          }
+                          
+                          // Hide after 1 page scroll
+                          if (offset > 1) return const SizedBox.shrink();
+      
+                          return Transform.translate(
+                              offset: Offset(0, -offset * 300), // Move up faster than scroll
+                              child: Opacity(
+                                  opacity: (1 - offset).clamp(0.0, 1.0), // Fade out
+                                  child: child
+                              ),
+                          );
+                      },
+                      child: const StoriesBar(),
+                  ),
+                ),
             )
         )
       ],
@@ -416,43 +419,45 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
     final bool hasVideo = _chewieController != null;
     
-    // CHANGED: Reduced top padding to clear the StoriesBar
-    // The first item needs more padding to push it below the fixed StoriesBar and Header.
-    // Subsequent items are full screen.
+    final double storiesBarHeight = 110; // Matches StoriesBar height in stories_bar.dart
+    
     return Padding( 
-      // CHANGED: Reduced top padding to 180 (Header + Stories Bar space)
-      padding: EdgeInsets.only(bottom: 24, left: 0, right: 0, top: widget.index == 0 ? 180 : 0), 
+      padding: EdgeInsets.only(
+        bottom: 24, 
+        left: 0, 
+        right: 0, 
+        top: widget.index == 0 ? (MediaQuery.of(context).padding.top + kToolbarHeight + storiesBarHeight + 8) : 0
+      ), 
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF161B22), // Obsidian lighter
+          color: const Color(0xFF0D1117), // Deep Obsidian
           borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, spreadRadius: 0, offset: const Offset(0, -5))
+             BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, spreadRadius: 0, offset: const Offset(0, -10))
           ]
         ),
         clipBehavior: Clip.hardEdge,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Media Layer
+            // --- 0. MEDIA LAYER ---
             Positioned.fill(
                 child: IgnorePointer(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
+                      duration: const Duration(milliseconds: 600),
                       child: hasVideo
                           ? Chewie(key: ValueKey('video_${widget.item['id']}'), controller: _chewieController!)
                           : (imageUrl != null
-                              ? Image.network(imageUrl, key: ValueKey('image_${widget.item['id']}'), fit: BoxFit.contain)
+                              ? Image.network(imageUrl, key: ValueKey('image_${widget.item['id']}'), fit: BoxFit.cover)
                               : Container(key: const ValueKey('broken_image'), color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white)))),
                     )
                 )
             ),
 
-            // Touch Layer
+            // --- 1. TOUCH LAYER (Double Tap for Heart) ---
             GestureDetector(
               onDoubleTap: _onDoubleTap,
               onTap: () {
-                 // Navigate to Full Screen
                  Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenMediaViewer(
                      url: hasVideo ? widget.item['video'] : imageUrl, 
                      isVideo: hasVideo
@@ -462,25 +467,44 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               child: Container(color: Colors.transparent),
             ),
             
-            // Floating Heart Animation
-            if (_showHeartAnimation)
-              Center(
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.3, end: 1.2).animate(
-                    CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
-                  ),
-                  child: FadeTransition(
-                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
-                      CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut),
-                    ),
-                    child: AnimatedScale(
-                      scale: _showHeartAnimation ? 1.4 : 1.0,
-                      duration: const Duration(milliseconds: 250),
-                      child: const Icon(Icons.favorite, color: Colors.redAccent, size: 100), // Premium red heart
-                    ),
+            // --- 2. DEPTH & GRADIENT LAYER ---
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.85),
+                        Colors.black.withOpacity(0.1),
+                        Colors.transparent,
+                      ], 
+                      begin: Alignment.bottomCenter,
+                      end: const Alignment(0, -0.2),
+                    )
                   ),
                 ),
               ),
+            ),
+
+            // --- 3. FLOATING HEART (Double Tap Animation) ---
+            if (_showHeartAnimation)
+              Center(
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 400),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: (1 - value).clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: 0.5 + (value * 1.5),
+                        child: const Icon(Icons.favorite, color: Colors.redAccent, size: 120),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // --- 4. TOP BADGE (AD / EXCLUSIVE) ---
             Positioned(
                 top: 24,
                 left: 24,
@@ -489,18 +513,26 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.35),
+                            color: Colors.black.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.1))
+                            border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3), width: 1)
                         ),
                         child: Row(
                             children: [
-                                Container(width: 8, height: 8, decoration: const BoxDecoration(color: FfigTheme.primaryBrown, shape: BoxShape.circle)), // Gold dot
+                                Container(
+                                  width: 8, 
+                                  height: 8, 
+                                  decoration: const BoxDecoration(
+                                    color: FfigTheme.accentBrown, 
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: FfigTheme.accentBrown, blurRadius: 4)]
+                                  )
+                                ), 
                                 const SizedBox(width: 8),
-                                Text((widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
-                                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)
+                                Text((widget.item['category'] ?? widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
+                                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2.0)
                                 ),
                             ],
                         ),
@@ -509,115 +541,113 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                 ),
             ),
 
-            // Bottom Gradient & Info
+            // --- 5. VERTICAL SOCIAL STACK (TIKTOK STYLE) ---
             Positioned(
-              left: 0,
-              right: 0,
+              right: 16,
               bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 90),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.85), Colors.transparent], 
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                  )
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 110), // Account for GlassNavBar height
+                  child: Column(
+                    children: [
+                       _SocialButton(
+                           icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                           label: "$_likesCount",
+                           isActive: _isLiked,
+                           onTap: _toggleLike,
+                           isVertical: true,
+                       ),
+                       const SizedBox(height: 16),
+                       _SocialButton(
+                           icon: Icons.chat_bubble_outline,
+                           label: "$_commentsCount",
+                           onTap: _showComments,
+                           isVertical: true,
+                       ),
+                       const SizedBox(height: 16),
+                       _SocialButton(
+                           icon: Icons.send_outlined,
+                           label: "",
+                           onTap: _share,
+                           isVertical: true,
+                       ),
+                       const SizedBox(height: 24),
+                       const Icon(Icons.bookmark_outline, color: FfigTheme.accentBrown, size: 30),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                        widget.item['title'] ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.2),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                        children: [
-                             ClipRRect(
-                               borderRadius: BorderRadius.circular(12),
-                               child: BackdropFilter(
-                                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                 child: Container(
-                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                   decoration: BoxDecoration(
-                                     color: Colors.black.withOpacity(0.35),
-                                     borderRadius: BorderRadius.circular(12),
-                                   ),
-                                   child: Row(
-                                     mainAxisSize: MainAxisSize.min,
-                                     children: [
-                                       Text((widget.item['username'] ?? 'VVIP Member').toUpperCase(), style: const TextStyle(color: FfigTheme.primaryBrown, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
-                                       const SizedBox(width: 6),
-                                       const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 14), // VVIP Gold Check
-                                     ]
-                                   ),
-                                 ),
+              ),
+            ),
+
+            // --- 6. BOTTOM INFO (Refined Typography) ---
+            Positioned(
+              left: 24,
+              right: 100, // Leave room for social stack
+              bottom: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 40), // Shifted up slightly above nav
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Premium Poster Info
+                      Row(
+                          children: [
+                               UserAvatar(
+                                 radius: 14,
+                                 imageUrl: widget.item['photo_url'],
+                                 username: widget.item['username'],
                                ),
-                             ),
-                             Container(margin: const EdgeInsets.symmetric(horizontal: 12), width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
-                             Text(() {
-                                 final dateStr = widget.item['created_at'];
-                                 if (dateStr == null) return "";
-                                 try {
-                                     final d = DateTime.parse(dateStr);
-                                     return "${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}";
-                                 } catch (e) { return ""; }
-                             }(), style: const TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
-                        ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Social Hub (Integrated Action Bar)
-                    Container(
-                        padding: const EdgeInsets.only(top: 24),
-                        decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1)))),
-                        child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                                Row(
-                                    children: [
-                                        _SocialButton(
-                                            icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-                                            label: "$_likesCount",
-                                            isActive: _isLiked,
-                                            onTap: _toggleLike
-                                        ),
-                                        const SizedBox(width: 24),
-                                        _SocialButton(
-                                            icon: Icons.chat_bubble_outline,
-                                            label: "$_commentsCount",
-                                            onTap: _showComments
-                                        ),
-                                        const SizedBox(width: 24),
-                                        _SocialButton(
-                                            icon: Icons.send_outlined,
-                                            label: "",
-                                            onTap: _share
-                                        ),
-                                    ],
-                                ),
-                                const Icon(Icons.bookmark_outline, color: FfigTheme.primaryBrown, size: 28)
-                            ],
-                        ),
-                    ),
-                    // Link Button if exists
-                    if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                                onPressed: () => launchUrl(Uri.parse(widget.item['link'])),
-                                style: OutlinedButton.styleFrom(
-                                    foregroundColor: FfigTheme.primaryBrown, side: const BorderSide(color: FfigTheme.primaryBrown),
-                                     padding: const EdgeInsets.symmetric(vertical: 16),
-                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-                                ),
-                                child: const Text("VIEW DETAILS", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                            ),
+                               const SizedBox(width: 10),
+                               Text(
+                                 (widget.item['username'] ?? 'VVIP Member').toUpperCase(), 
+                                 style: const TextStyle(color: FfigTheme.accentBrown, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)
+                               ),
+                               const SizedBox(width: 6),
+                               const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 14), 
+                          ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Title: Limited to 2 lines
+                      Text(
+                          widget.item['title'] ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white, 
+                            fontSize: 24, 
+                            fontWeight: FontWeight.w800, 
+                            height: 1.2,
+                            letterSpacing: -0.5
                           ),
-                        )
-                  ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Metadata
+                      Row(
+                        children: [
+                          Text(
+                            _getFormattedDate(), 
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w500)
+                          ),
+                          if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty) ...[
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () => launchUrl(Uri.parse(widget.item['link'])),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: FfigTheme.accentBrown.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.5))
+                                ),
+                                child: const Text("VIEW LINK", style: TextStyle(color: FfigTheme.accentBrown, fontSize: 10, fontWeight: FontWeight.w900)),
+                              ),
+                            )
+                          ]
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -626,6 +656,15 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       ),
     );
   }
+
+  String _getFormattedDate() {
+      final dateStr = widget.item['created_at'];
+      if (dateStr == null) return "";
+      try {
+          final d = DateTime.parse(dateStr);
+          return "${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}";
+      } catch (e) { return ""; }
+  }
 }
 
 class _SocialButton extends StatelessWidget {
@@ -633,43 +672,48 @@ class _SocialButton extends StatelessWidget {
     final String label;
     final VoidCallback onTap;
     final bool isActive;
+    final bool isVertical;
     
     const _SocialButton({
       required this.icon, 
       required this.label, 
       required this.onTap, 
-      this.isActive = false
+      this.isActive = false,
+      this.isVertical = false,
     });
     
     @override
     Widget build(BuildContext context) {
+        final content = Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.4),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  ),
+                  padding: const EdgeInsets.all(14),
+                  child: AnimatedScale(
+                    scale: isActive ? 1.2 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(icon, color: isActive ? Colors.redAccent : Colors.white, size: 26)
+                  ),
+                ),
+                if (label.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))
+                ]
+            ],
+        );
+
         return GestureDetector(
             onTap: onTap,
-            child: Row(
-                children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.08),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: AnimatedScale(
-                        scale: isActive ? 1.1 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(icon, color: isActive ? Colors.redAccent : Colors.white, size: 22)
-                      ),
-                    ),
-                    if (label.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))
-                    ]
-                ],
-            ),
+            child: content,
         );
     }
 }
+
 
 
 class _CommentsSheet extends StatefulWidget {
