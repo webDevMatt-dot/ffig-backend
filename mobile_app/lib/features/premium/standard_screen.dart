@@ -47,7 +47,7 @@ class _StandardScreenState extends State<StandardScreen> {
     final token = await storage.read(key: 'access_token');
     try {
       final response = await http.get(
-        Uri.parse('${baseUrl}chat/community/'), 
+        Uri.parse('${baseUrl}chat/community/unread-count/'), 
         headers: {'Authorization': 'Bearer $token'}
       );
       if (response.statusCode == 200) {

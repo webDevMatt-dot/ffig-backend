@@ -119,13 +119,15 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
         
-        # Notify Admins
+        # Notify Admins via Direct Push (No in-app record)
+        from core.services.fcm_service import send_push_notification
         admins = User.objects.filter(is_staff=True)
         for admin in admins:
-            Notification.objects.create(
-                recipient=admin,
+            send_push_notification(
+                admin,
                 title="New User Registration",
-                message=f"New user joined: {instance.username} ({instance.email})"
+                body=f"New user joined: {instance.username} ({instance.email})",
+                data={"type": "admin_alert"}
             )
 
 class MarketingLike(models.Model):

@@ -60,3 +60,54 @@ def send_push_notification(user, title, body, data=None, tag=None):
         print(f"Error sending message to {user.username}: {e}")
         # Optional: Invalidate token if error indicates it's invalid
         return False
+def send_topic_notification(topic, title, body, data=None):
+    """
+    Send a push notification to all users subscribed to a topic.
+    """
+    try:
+        # Optimization: Add APNS & Android config for topic messages
+        # ensure they have sound and priority so OS shows them reliably
+        apns_config = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+                "apns-push-type": "alert"
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    alert=messaging.ApsAlert(
+                        title=title,
+                        body=body,
+                    ),
+                    sound="default",
+                    badge=1,
+                    mutable_content=True,
+                    content_available=True,
+                ),
+            ),
+        )
+
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                sound='default',
+                click_action='FLUTTER_NOTIFICATION_CLICK',
+            ),
+        )
+
+        message = messaging.Message(
+            # We still keep the top-level notification for fallback
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data=data or {},
+            topic=topic,
+            apns=apns_config,
+            android=android_config,
+        )
+        response = messaging.send(message)
+        print(f"✅ Successfully sent topic message to '{topic}': {response}")
+        return True
+    except Exception as e:
+        print(f"❌ Error sending topic message to '{topic}': {e}")
+        return False

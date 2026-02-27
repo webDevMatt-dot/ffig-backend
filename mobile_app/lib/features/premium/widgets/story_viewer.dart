@@ -393,10 +393,14 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   /// Shows the Viewers Sheet (Owner only).
   /// - Pauses playback while open.
   void _showViewers() {
+    final story = widget.stories[_currentIndex];
+    bool isMyStory = (story['is_owner'] ?? false) || (story['username'] == 'You');
+
+    if (!isMyStory) return;
+
     _animController.stop();
     _videoController?.pause();
     
-    final story = widget.stories[_currentIndex];
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0D1117),
@@ -458,7 +462,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
             if (_isClosed) return;
             if (details.primaryVelocity! < -200) {
                  // Swipe Up
-                 _showViewers(); 
+                 if (isMyStory) _showViewers(); 
             } else if (details.primaryVelocity! > 200) {
                  _close();
             }

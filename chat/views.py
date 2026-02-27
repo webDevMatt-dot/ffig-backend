@@ -214,26 +214,14 @@ class SendMessageView(APIView):
                 
                 # Link to profile or chat? The Notification model is simple (title, message).
                 # We can enhance it later.
-                from members.models import Notification
-                
-                # Create Notification but SKIP the signal (avoid duplicate push)
-                notif = Notification(
-                    recipient=recipient,
-                    title=f"Message from {sender.username}",
-                    message=text if text else "Sent an attachment"
-                )
-                notif.skip_fcm = True
-                notif.save()
-                
                 if not is_muted:
                     title = f"Message from {sender.username}"
                     body = text if text else "Sent an attachment"
                     
-                    # 4.2 Send Push
-                    # Using 'tag' from conversation.id to group messages from this chat
+                    # 4.2 Send Push Directly (No in-app Notification record created)
                     data_payload = {
                         "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                        "id": str(notif.id),
+                        "id": "chat_" + str(msg.id), # Synthetic ID for click handling
                         "type": "chat_message",
                         "conversation_id": str(conversation.id),
                         "sender_id": str(sender.id),
@@ -247,6 +235,23 @@ class SendMessageView(APIView):
                         data=data_payload,
                         tag=str(conversation.id) 
                     )
+        
+        # Scenario C: Public Conversation (Community Chat)
+        else:
+            from core.services.fcm_service import send_topic_notification
+            title = f"Community Chat: {sender.username}"
+            body = text if text else "Sent an attachment"
+            
+            data_payload = {
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "type": "community_chat",
+                "conversation_id": str(conversation.id),
+                "sender_id": str(sender.id),
+                "sender_name": sender.username
+            }
+            
+            # Send to 'community_chat' topic
+            send_topic_notification("community_chat", title, body, data=data_payload)
 
         return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
 

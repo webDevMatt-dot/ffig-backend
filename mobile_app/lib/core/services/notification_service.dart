@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:mobile_app/core/services/admin_api_service.dart';
 import '../../main.dart'; // Global Navigator Key
 import '../../features/chat/chat_screen.dart';
+import '../../features/chat/community_chat_screen.dart';
 
 // 1. TOP-LEVEL BACKGROUND HANDLER
 @pragma('vm:entry-point')
@@ -87,29 +88,46 @@ class NotificationService {
 
     // 4. Foreground Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
+      if (kDebugMode) {
+        print("🔔 Received foreground message: ${message.messageId}");
+        print("🔔 Message Data: ${message.data}");
+        if (message.from != null) print("🔔 Message From: ${message.from}");
+      }
 
       // If app is in foreground, Firebase doesn't show notification automatically.
       // We must show it manually using Local Notifications.
-      if (notification != null && android != null) {
-        _localNotifications.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              channel.id,
-              channel.name,
-              channelDescription: channel.description,
-              icon: '@mipmap/ic_launcher',
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
+      // Note: topic messages on Android can arrive with notification == null,
+      // so we always fall back to data fields.
+      final notification = message.notification;
+      final String title = notification?.title 
+          ?? (message.data['type'] == 'community_chat' 
+              ? 'Community Chat: ${message.data['sender_name'] ?? 'New message'}' 
+              : 'Message from ${message.data['sender_name'] ?? 'Someone'}');
+      final String body = notification?.body 
+          ?? message.data['text']
+          ?? 'You have a new message';
+
+      _localNotifications.show(
+        message.hashCode,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            icon: '@mipmap/ic_launcher',
+            importance: Importance.max,
+            priority: Priority.high,
           ),
-          payload: jsonEncode(message.data), // Pass data payload for tap handling
-        );
-      }
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: jsonEncode(message.data), // Pass data payload for tap handling
+      );
     });
 
     // 5. Setup Interacted Message (Background / Terminated taps)
@@ -130,6 +148,14 @@ class NotificationService {
       print("🔔 FCM Token Refreshed. Sending new token to backend...");
       AdminApiService().updateFCMToken(newToken);
     });
+
+    // 7. Subscribe to Community Topic
+    try {
+      await _firebaseMessaging.subscribeToTopic('community_chat');
+      if (kDebugMode) print("🔔 Successfully subscribed to 'community_chat' topic");
+    } catch (e) {
+      if (kDebugMode) print("❌ Error subscribing to community_chat topic: $e");
+    }
     
     _isInitialized = true;
   }
@@ -173,6 +199,13 @@ class NotificationService {
              ),
            );
        }
+    } else if (params['type'] == 'community_chat') {
+       // Navigate to Community Chat
+       navigatorKey.currentState?.push(
+         MaterialPageRoute(
+           builder: (_) => const CommunityChatScreen(),
+         ),
+       );
     }
   }
 

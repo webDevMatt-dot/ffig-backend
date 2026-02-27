@@ -12,14 +12,35 @@ command -v git >/dev/null || { echo "❌ Git not installed"; exit 1; }
 
 COMMIT_MSG="${1:-build(release): system update}"
 
-# --- Version bump ---
-if [ -f "./bump_version.sh" ]; then
-  echo "🔢 Bumping version..."
-  chmod +x ./bump_version.sh
-  ./bump_version.sh
+# --- Git Push Frontend ---
+echo "📂 Entering mobile_app (Frontend Repository)..."
+cd mobile_app
+echo "✨ Pushing Frontend changes..."
+git add .
+if ! git diff --cached --quiet; then
+  git commit -m "$COMMIT_MSG"
+  echo "🛡️  Syncing with remote..."
+  git pull --rebase origin main
+  git push origin main
+else
+  echo "⚠️  No frontend changes to push."
+fi
+cd ..
+
+# --- Git Push Backend (Root) ---
+echo "📂 Pushing Backend/Root changes..."
+git add .
+if ! git diff --cached --quiet; then
+  git commit -m "$COMMIT_MSG"
+  echo "🛡️  Syncing with remote..."
+  git pull --rebase origin main
+  git push origin main
+else
+  echo "⚠️  No backend changes to push."
 fi
 
-echo "📂 Entering mobile_app (Frontend Repository)..."
+# --- Multi-platform Builds ---
+echo "🚀 STARTING BUILDS..."
 cd mobile_app
 
 echo "📦 Syncing dependencies..."
@@ -34,31 +55,7 @@ flutter build ios --release --no-codesign
 echo "🏗️  Step 3: Building Web..."
 flutter build web --release --no-tree-shake-icons
 
-# --- Git Push Frontend ---
-echo "✨ Pushing Frontend changes..."
-git add .
-if ! git diff --cached --quiet; then
-  git commit -m "$COMMIT_MSG"
-  echo "🛡️  Syncing with remote..."
-  git pull --rebase origin main
-  git push origin main
-else
-  echo "⚠️  No frontend changes to push."
-fi
-
 cd ..
-
-# --- Git Push Backend (Root) ---
-echo "📂 Pushing Backend/Root changes..."
-git add .
-if ! git diff --cached --quiet; then
-  git commit -m "$COMMIT_MSG"
-  echo "🛡️  Syncing with remote..."
-  git pull --rebase origin main
-  git push origin main
-else
-  echo "⚠️  No backend changes to push."
-fi
 
 if [ -f "auto_update_version.sh" ]; then
   echo "🔄 Updating server version..."

@@ -62,10 +62,14 @@ class GlassNavBar extends StatelessWidget {
                   ) : null,
                   child: Row(
                     children: [
-                      Icon(
-                        isSelected ? item.activeIcon : item.icon,
-                        color: isSelected ? FfigTheme.primaryBrown : Colors.grey,
-                        size: 24,
+                      Badge(
+                        isLabelVisible: item.badgeCount > 0,
+                        label: Text('${item.badgeCount}'),
+                        child: Icon(
+                          isSelected ? item.activeIcon : item.icon,
+                          color: isSelected ? FfigTheme.primaryBrown : Colors.grey,
+                          size: 24,
+                        ),
                       ),
                       if (isSelected) ...[
                         const SizedBox(width: 8),
@@ -94,6 +98,12 @@ class GlassNavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final int badgeCount;
 
-  GlassNavItem({required this.icon, required this.activeIcon, required this.label});
+  GlassNavItem({
+    required this.icon, 
+    required this.activeIcon, 
+    required this.label,
+    this.badgeCount = 0,
+  });
 }

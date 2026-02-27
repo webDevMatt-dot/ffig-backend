@@ -184,12 +184,18 @@ class MarketingLikeView(APIView):
             like.delete()
             return Response({'status': 'unliked', 'count': marketing_request.likes.count()})
         else:
-            # Notify creator
+            # Notify creator via Direct Push
             if marketing_request.user != request.user:
-                 Notification.objects.create(
-                     recipient=marketing_request.user,
+                 from core.services.fcm_service import send_push_notification
+                 send_push_notification(
+                     marketing_request.user,
                      title="New Like",
-                     message=f"{request.user.username} liked your post."
+                     body=f"{request.user.username} liked your post: {marketing_request.title}",
+                     data={
+                         "type": "post_like",
+                         "post_id": str(marketing_request.id),
+                         "sender_name": request.user.username
+                     }
                  )
             return Response({'status': 'liked', 'count': marketing_request.likes.count()})
 
@@ -207,12 +213,18 @@ class MarketingCommentView(generics.ListCreateAPIView):
         marketing_request = get_object_or_404(MarketingRequest, id=self.kwargs['pk'])
         serializer.save(user=self.request.user, marketing_request=marketing_request)
         
-        # Notify creator
+        # Notify creator via Direct Push
         if marketing_request.user != self.request.user:
-                Notification.objects.create(
-                    recipient=marketing_request.user,
+                from core.services.fcm_service import send_push_notification
+                send_push_notification(
+                    marketing_request.user,
                     title="New Comment",
-                    message=f"{self.request.user.username} commented on your post."
+                    body=f"{self.request.user.username} commented on your post: {marketing_request.title}",
+                    data={
+                        "type": "post_comment",
+                        "post_id": str(marketing_request.id),
+                        "sender_name": self.request.user.username
+                    }
                 )
 
 class ContentReportCreateView(generics.CreateAPIView):
@@ -222,13 +234,15 @@ class ContentReportCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         report = serializer.save(reporter=self.request.user)
         
-        # Notify Admins
+        # Notify Admins via Direct Push
+        from core.services.fcm_service import send_push_notification
         admins = User.objects.filter(is_staff=True)
         for admin in admins:
-            Notification.objects.create(
-                recipient=admin,
+            send_push_notification(
+                admin,
                 title="New Content Report Filed",
-                message=f"{self.request.user.username} reported a {report.get_reported_item_type_display()}: {report.reason}",
+                body=f"{self.request.user.username} reported a {report.get_reported_item_type_display()}: {report.reason}",
+                data={"type": "admin_report"}
             )
             
         # AUTO-SUSPENSION LOGIC
@@ -324,6 +338,30 @@ class AdminMarketingRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MarketingRequest.objects.all()
     serializer_class = AdminMarketingRequestSerializer
 
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        instance = serializer.save()
+        new_status = instance.status
+
+        # If approved, notify ALL users (New Post notification)
+        if old_status != 'APPROVED' and new_status == 'APPROVED':
+            from core.services.fcm_service import send_push_notification
+            from django.contrib.auth.models import User
+            
+            # Notify all active users
+            users = User.objects.filter(is_active=True)
+            for user in users:
+                send_push_notification(
+                    user,
+                    title="New Post Alert",
+                    body=f"Check out the latest: {instance.title}",
+                    data={
+                        "type": "new_post",
+                        "post_id": str(instance.id),
+                        "category": instance.type
+                    }
+                )
+
 class AdminContentReportListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = ContentReport.objects.all().order_by('-created_at')
@@ -361,10 +399,12 @@ class AdminModerationActionView(APIView):
             target_user.profile.admin_notice = reason
             target_user.profile.save()
             
-            Notification.objects.create(
+            from core.services.fcm_service import send_push_notification
+            send_push_notification(
                 recipient=target_user,
                 title="Warning from Admin",
-                message=f"You have received a warning: {reason}"
+                body=f"You have received a warning: {reason}",
+                data={"type": "admin_warning"}
             )
             return Response({'status': 'warned'})
             
@@ -375,11 +415,13 @@ class AdminModerationActionView(APIView):
             target_user.profile.admin_notice = f"Suspended for {duration} days: {reason}"
             target_user.profile.save()
             
-            # Notify
-            Notification.objects.create(
+            # Notify via Direct Push
+            from core.services.fcm_service import send_push_notification
+            send_push_notification(
                 recipient=target_user,
                 title="Account Suspended",
-                message=f"Your account has been suspended for {duration} days. Reason: {reason}"
+                body=f"Your account has been suspended for {duration} days. Reason: {reason}",
+                data={"type": "account_suspension"}
             )
             return Response({'status': 'suspended'})
             
@@ -438,7 +480,26 @@ class StoryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        story = serializer.save(user=self.request.user)
+        
+        # Notify all active users via Direct Push
+        from core.services.fcm_service import send_push_notification
+        from django.contrib.auth.models import User
+        
+        # We notify everyone EXCEPT the creator
+        others = User.objects.filter(is_active=True).exclude(id=self.request.user.id)
+        for user in others:
+            send_push_notification(
+                user,
+                title="New Story Uploaded",
+                body=f"{self.request.user.username} just posted a new story!",
+                data={
+                    "type": "story_uploaded",
+                    "story_id": str(story.id),
+                    "sender_id": str(self.request.user.id)
+                },
+                tag="story_update" # Group story updates
+            )
 
     def get_queryset(self):
         # 24 hour filter
@@ -665,10 +726,13 @@ def wix_webhook(request):
                 
                 print(f"✅ [Wix Webhook] SUCCESS: {email} updated from {old_tier} to {new_tier}")
                 
-                Notification.objects.create(
-                    recipient=user,
+                # Direct Push to User (No in-app record)
+                from core.services.fcm_service import send_push_notification
+                send_push_notification(
+                    user,
                     title="Account Upgraded",
-                    message=f"Success! Your membership has been synced with Wix. You are now a {new_tier} member."
+                    body=f"Success! Your membership has been synced with Wix. You are now a {new_tier} member.",
+                    data={"type": "account_upgrade"}
                 )
                 return Response({"status": "success", "updated": True, "new_tier": new_tier})
             

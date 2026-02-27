@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import 'dart:ui'; // For ImageFilter
+import 'dart:ui';
 import 'dart:convert';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:overlay_support/overlay_support.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../community/member_list_screen.dart';
-import '../chat/chat_screen.dart'; // NEW
+import '../chat/chat_screen.dart';
 import '../community/profile_screen.dart';
 import '../resources/resources_screen.dart';
 import '../events/events_screen.dart';
-import '../events/event_detail_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../premium/locked_screen.dart';
 import '../premium/premium_screen.dart';
@@ -20,14 +23,11 @@ import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
 import '../settings/settings_screen.dart';
 import '../chat/inbox_screen.dart';
-import 'package:overlay_support/overlay_support.dart';
-import 'dart:async';
-import 'package:audioplayers/audioplayers.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/services/membership_service.dart';
 import '../../core/services/version_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/services/notification_service.dart';
 import '../../shared_widgets/user_avatar.dart';
 import 'widgets/founder_card.dart';
 import '../../core/api/constants.dart';
@@ -95,7 +95,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   // --- Notifications ---
   Timer? _notificationTimer; // Periodically checks for new messages/alerts
   int _lastUnreadCount = 0;
+  int _communityUnreadCount = 0; // NEW
   int _lastNotificationId = 0;
+  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -104,10 +106,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     _fetchEvents(); // Fetches all events, not just featured
     _checkMobileWeb(); // Check for mobile web
     _checkPremiumStatus();
-    _checkPremiumStatus();
     _loadHomepageContent();
-    // Start the Global Listener (Checks every 10 seconds)
-    _notificationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Start the Global Listener (Checks every 5 seconds)
+    _notificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _checkUnreadMessages();
     });
   }
@@ -133,6 +134,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
 
+    if (token == null || token.isEmpty) return;
+
     // 1. Check Chat Messages (Existing)
     if (_isPremium) {
       try {
@@ -143,10 +146,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final int currentCount = data['unread_count'];
-          if (currentCount > _lastUnreadCount) {
-            // Updated count - no sound needed as Push Notification handles alerting
-            // and this prevents "startup" dings for existing unread messages.
-          }
           if (mounted) setState(() => _lastUnreadCount = currentCount);
         }
       } catch (e) {
@@ -154,93 +153,16 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }
 
-    // 2. Check Notifications (For everyone)
-    _checkNotifications(token);
+    // 2. Check Community Messages (NEW)
+    _fetchCommunityUnread(token);
+
+    // 3. Check Notifications - Disabled for Firebase transition
+    // _checkNotifications(token);
   }
 
   /// Fetches and displays new notifications.
-  /// - Compares ID with persisted `last_notif_id`.
-  /// - Shows in-app overlay notification if new.
-  Future<void> _checkNotifications(String? token) async {
-    try {
-      final response = await http.get(
-        Uri.parse('${baseUrl}notifications/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
-        if (data.isNotEmpty) {
-          final latest = data.first; // Created at desc
-          final int id = latest['id'];
-
-          // If new notification found
-          if (id > _lastNotificationId) {
-            _lastNotificationId = id;
-
-            // Check persisted ID first
-            const storage = FlutterSecureStorage();
-            final savedIdStr = await storage.read(key: 'last_notif_id');
-            final savedId = int.tryParse(savedIdStr ?? '0') ?? 0;
-
-            if (id > savedId) {
-              _lastNotificationId = id;
-              await storage.write(key: 'last_notif_id', value: id.toString());
-
-              // Show Popup (Non-disturbing)
-              showSimpleNotification(
-                Text(
-                  latest['title'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                subtitle: Text(
-                  latest['message'],
-                  style: const TextStyle(color: Colors.white),
-                ),
-                background: FfigTheme.primaryBrown,
-                duration: const Duration(seconds: 5),
-                slideDismissDirection: DismissDirection.up,
-                trailing: Builder(
-                  builder: (context) {
-                    return TextButton(
-                      onPressed: () {
-                        OverlaySupportEntry.of(context)?.dismiss();
-                        _markNotificationRead(id, token);
-                      },
-                      child: const Text(
-                        "Mark Read",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    );
-                  },
-                ),
-              );
-
-              // Play sound for Admin too
-              final player = AudioPlayer();
-              await player.play(AssetSource('sounds/ding.mp3'));
-            }
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print("Admin Note Error: $e");
-    }
-  }
-
-  /// Marks a specific notification as read.
-  Future<void> _markNotificationRead(int id, String? token) async {
-    try {
-      await http.post(
-        Uri.parse('${baseUrl}notifications/$id/read/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-    } catch (e) {
-      /* ignore */
-    }
-  }
+  // REMOVED both _checkNotifications and _markNotificationRead to clean up legacy system
+  // and eliminate hardcoded 'ding.mp3' sounds as part of the Firebase Transition.
 
     // --- Check Premium / Role Status ---
     // This is the core gatekeeper. It checks:
@@ -317,6 +239,10 @@ class _DashboardScreenState extends State<DashboardScreen>
 
           // FORCE FCM TOKEN SYNC (Backend needs token for Push Notifications)
           NotificationService().forceTokenSync();
+
+          // ENSURE COMMUNITY TOPIC SUBSCRIPTION
+          // (Catch cases where subscription failed on init or during guest mode)
+          FirebaseMessaging.instance.subscribeToTopic('community_chat');
         }
       } else {
         // ERROR HANDLER
@@ -779,12 +705,11 @@ class _DashboardScreenState extends State<DashboardScreen>
           else
             IconButton(
               icon: Badge(
-                isLabelVisible: _lastUnreadCount > 0,
-                label: Text('$_lastUnreadCount'),
+                isLabelVisible: (_lastUnreadCount + _communityUnreadCount) > 0,
+                label: Text('${_lastUnreadCount + _communityUnreadCount}'),
                 child: const Icon(Icons.email_outlined),
               ),
               onPressed: () {
-                setState(() => _lastUnreadCount = 0);
                 if (MembershipService.canInbox) {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen()));
                 } else {
@@ -866,7 +791,11 @@ class _DashboardScreenState extends State<DashboardScreen>
           GlassNavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: "Home"),
           GlassNavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: "Events"),
           GlassNavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: "Network"),
-          GlassNavItem(icon: Icons.diamond_outlined, activeIcon: Icons.diamond, label: "VVIP"),
+          GlassNavItem(
+            icon: Icons.diamond_outlined, 
+            activeIcon: Icons.diamond, 
+            label: "VVIP",
+          ),
           if (_isAdmin)
             GlassNavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: "Admin"),
         ],
@@ -875,14 +804,35 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  Future<void> _fetchCommunityUnread(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}chat/community/unread-count/'),
+        headers: {'Authorization': 'Bearer $token'}
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _communityUnreadCount = data['unread_count'] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   /// Refreshes all homepage data.
   Future<void> _onRefresh() async {
+    final token = await _storage.read(key: 'access_token');
     // Determine if need to show loading indicators or just refresh silently
     // For pull-to-refresh, we usually just want to await the results
     await Future.wait([
       _fetchEvents(), // Changed from _fetchFeaturedEvents
       _loadHomepageContent(),
       _checkPremiumStatus(),
+      if (token != null) _fetchCommunityUnread(token),
     ]);
   }
 

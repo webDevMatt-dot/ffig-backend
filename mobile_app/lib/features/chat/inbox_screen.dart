@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -232,17 +233,30 @@ class _InboxScreenState extends State<InboxScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true, 
       appBar: AppBar(
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.7),
         elevation: 0,
-          title: Text(
-            "MESSAGES", 
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            )
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
           ),
+        ),
+        title: Text(
+          "MESSAGES", 
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          )
+        ),
+        shape: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.1),
+            width: 0.5,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -252,19 +266,16 @@ class _InboxScreenState extends State<InboxScreen> {
              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
              child: Container(
                decoration: BoxDecoration(
-                 color: theme.cardColor,
+                 color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
                  borderRadius: BorderRadius.circular(30),
-                 boxShadow: isDark ? null : [
-                   BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
-                 ],
-                 border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
+                 border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
                ),
                child: TextField(
                  controller: _searchController,
                  style: theme.textTheme.bodyLarge,
                  decoration: InputDecoration(
                      hintText: "Search messages...",
-                     hintStyle: TextStyle(color: theme.hintColor),
+                     hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.5)),
                      prefixIcon: Icon(Icons.search, color: FfigTheme.primaryBrown.withOpacity(0.5)),
                      border: InputBorder.none,
                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)

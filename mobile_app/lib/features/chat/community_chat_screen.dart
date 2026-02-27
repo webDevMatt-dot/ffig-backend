@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../../core/services/membership_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -51,6 +52,9 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
              _conversationId = data['id'];
              _isLoading = false;
            });
+           
+           // Mark as Read
+           _markRead(token);
         }
       } else {
         throw Exception("Failed to load chat: ${response.statusCode} | ${response.body}");
@@ -63,11 +67,37 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
     }
   }
 
+  Future<void> _markRead(String? token) async {
+    try {
+      await http.post(
+        Uri.parse('${baseUrl}chat/community/mark-read/'),
+        headers: {'Authorization': 'Bearer $token'}
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text("COMMUNITY CHAT")),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          centerTitle: true,
+          backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.7),
+          elevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          title: const Text("COMMUNITY CHAT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1, fontSize: 16)),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -82,7 +112,19 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
     }
     
     return Scaffold(
-      appBar: AppBar(title: const Text("COMMUNITY CHAT")),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.7),
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        title: const Text("COMMUNITY CHAT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1, fontSize: 16)),
+      ),
       body: const Center(child: Text("Unable to load community chat.")),
     );
   }

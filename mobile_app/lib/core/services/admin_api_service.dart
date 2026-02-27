@@ -550,7 +550,7 @@ class AdminApiService {
 
   Future<int> fetchCommunityUnreadCount() async {
       final token = await _getToken();
-      final response = await http.get(Uri.parse('${baseUrl}chat/community/unread/'), headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(Uri.parse('${baseUrl}chat/community/unread-count/'), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) {
           return jsonDecode(response.body)['unread_count'];
       }
@@ -559,7 +559,7 @@ class AdminApiService {
 
   Future<void> markCommunityChatRead() async {
       final token = await _getToken();
-      await http.post(Uri.parse('${baseUrl}chat/community/read/'), headers: {'Authorization': 'Bearer $token'});
+      await http.post(Uri.parse('${baseUrl}chat/community/mark-read/'), headers: {'Authorization': 'Bearer $token'});
   }
 
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)

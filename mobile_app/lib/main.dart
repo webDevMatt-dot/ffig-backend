@@ -32,17 +32,31 @@ void main() async {
   try {
     // on Web, we skip Firebase unless configured (to avoid crash)
     if (!kIsWeb) {
-      // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
-      await Firebase.initializeApp();
-      
-      // REGISTER BACKGROUND HANDLER
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      try {
+        // Initialize Firebase. Assumes native config files (google-services.json / GoogleService-Info.plist) are present.
+        await Firebase.initializeApp();
+        
+        // REGISTER BACKGROUND HANDLER
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-      // Initialize Notifications
-      await NotificationService().init();
+        // Initialize Notification Service
+        await NotificationService().init();
+        
+        if (kDebugMode) print("Firebase & Notification Service initialized successfully.");
+      } catch (e) {
+        if (kDebugMode) {
+          print("CRITICAL: Firebase/Notification Init Error: $e");
+          if (e.toString().contains("core/no-app") || e.toString().contains("plist")) {
+            print("HINT: On iOS, confirm that GoogleService-Info.plist is added to the Runner project and is in the Runner folder.");
+          }
+          if (e.toString().contains("google-services.json")) {
+            print("HINT: On Android, confirm that google-services.json is in the android/app folder.");
+          }
+        }
+      }
     }
   } catch (e) {
-    print("Firebase/Notification Init Error: $e");
+    print("General App Init Error: $e"); // Catch any other unexpected errors during main initialization
   }
   runApp(const FFIGApp());
 }

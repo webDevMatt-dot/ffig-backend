@@ -49,7 +49,11 @@ from members.views import (
     StoryViewSet, AdminUserUpdateView, wix_webhook
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
-from chat.views import ConversationListView, MessageListView, SendMessageView, UnreadCountView, CommunityChatView, ChatSearchView, ClearChatView, MuteChatView
+from chat.views import (
+    ConversationListView, MessageListView, SendMessageView, 
+    UnreadCountView, CommunityChatView, ChatSearchView, 
+    ClearChatView, MuteChatView, CommunityUnreadCountView, MarkCommunityReadView
+)
 from home.views import download_latest_apk
 
 urlpatterns = [
@@ -140,6 +144,8 @@ urlpatterns = [
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/community/', CommunityChatView.as_view(), name='community-chat'),
+    path('api/chat/community/unread-count/', CommunityUnreadCountView.as_view(), name='community-unread-count'),
+    path('api/chat/community/mark-read/', MarkCommunityReadView.as_view(), name='community-mark-read'),
     path('api/chat/search/', ChatSearchView.as_view(), name='chat-search'),
 
     # Redirect /app.apk to the download endpoint

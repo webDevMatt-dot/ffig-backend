@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -665,33 +666,54 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final bool isCommunity = widget.isCommunity;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor, // Explicitly set to avoid grey default
       resizeToAvoidBottomInset: true, // Ensure layout resizes for keyboard
+      extendBodyBehindAppBar: true, // Allow content to scroll behind glass AppBar
       appBar: AppBar(
         titleSpacing: 0,
+        backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.7),
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         title: _isSearching 
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.black87),
-                cursorColor: FfigTheme.primaryBrown,
-                decoration: InputDecoration(
-                    hintText: "Search...",
-                    hintStyle: TextStyle(color: Colors.grey[600]),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
+            ? Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: theme.textTheme.bodyLarge,
+                  cursorColor: FfigTheme.primaryBrown,
+                  decoration: InputDecoration(
+                      hintText: "Search chat...",
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      filled: true,
+                      fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0)
+                  ),
+                  onChanged: (val) {
+                     if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+                     _searchDebounce = Timer(const Duration(milliseconds: 300), () => _performInChatSearch(val));
+                  },
                 ),
-                onChanged: (val) {
-                   if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
-                   _searchDebounce = Timer(const Duration(milliseconds: 300), () => _performInChatSearch(val));
-                },
               )
-            : Text(widget.recipientName),
-        elevation: 1,
+            : Text(
+                widget.recipientName.toUpperCase(),
+                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1, fontSize: 16),
+              ),
+        shape: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.1),
+            width: 0.5,
+          ),
+        ),
         actions: _isSearching 
         ? [
             IconButton(
@@ -857,25 +879,32 @@ class _ChatScreenState extends State<ChatScreen> {
                                 onLongPress: () {
                                      _showMessageOptions(msg);
                                 },
-                                child: Container(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75), // Limit width to 75%
-                                    decoration: BoxDecoration(
-                                    color: isHighlighted 
-                                        ? Colors.amber.withValues(alpha: 0.4) 
-                                        : (isMe 
-                                            ? FfigTheme.primaryBrown 
-                                            : (Theme.of(context).brightness == Brightness.dark 
-                                                ? const Color(0xFF21262D) 
-                                                : Colors.grey[200])), // Solid colors
-                                    borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(16),
-                                        topRight: const Radius.circular(16),
-                                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                                        bottomRight: isMe ? Radius.zero : const Radius.circular(16)
-                                    ),
-                                    // Remove border for solid style, or keep subtle
-                                    // border: Border.all(color: isMe ? FfigTheme.accentBrown : Colors.grey.withOpacity(0.2)),
-                                  ),
+                                    child: Container(
+                                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                                      decoration: BoxDecoration(
+                                        color: isHighlighted 
+                                            ? Colors.amber.withOpacity(0.4) 
+                                            : (isMe 
+                                                ? null // Uses gradient below
+                                                : (theme.brightness == Brightness.dark 
+                                                    ? Colors.white.withOpacity(0.08)
+                                                    : Colors.black.withOpacity(0.05))),
+                                        gradient: (!isHighlighted && isMe) ? const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [FfigTheme.primaryBrown, Color(0xFF8D6E63)],
+                                        ) : null,
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(20),
+                                            topRight: const Radius.circular(20),
+                                            bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+                                            bottomRight: isMe ? Radius.zero : const Radius.circular(20)
+                                        ),
+                                        border: !isMe ? Border.all(
+                                          color: Colors.white.withOpacity(0.1),
+                                          width: 0.5,
+                                        ) : null,
+                                      ),
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   child: IntrinsicWidth(
                                     child: Column(
@@ -1005,65 +1034,127 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          // Reply Preview
-          if (_replyMessage != null)
-            Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.grey[100],
-              child: Row(
-                children: [
-                  const Icon(Icons.reply, color: FfigTheme.primaryBrown),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Replying to ${_replyMessage!['sender']['username']}",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        Text(
-                          _replyMessage!['text'],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
+          // Glass Bottom Section
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 0.5,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 16),
-                    onPressed: () => setState(() => _replyMessage = null),
-                  )
-                ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Reply Preview
+                      if (_replyMessage != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.white.withOpacity(0.05),
+                                width: 0.5,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.reply, color: FfigTheme.primaryBrown, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Replying to ${_replyMessage!['sender']['username']}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 11,
+                                        color: FfigTheme.primaryBrown,
+                                      ),
+                                    ),
+                                    Text(
+                                      _replyMessage!['text'],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.grey[400], 
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 16, color: Colors.grey),
+                                onPressed: () => setState(() => _replyMessage = null),
+                              )
+                            ],
+                          ),
+                        ),
+                      
+                      // Input Bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _controller,
+                                  keyboardType: TextInputType.multiline,
+                                  maxLines: 5,
+                                  minLines: 1,
+                                  textCapitalization: TextCapitalization.sentences,
+                                  style: const TextStyle(fontSize: 15),
+                                  decoration: InputDecoration(
+                                    hintText: "Type a message...",
+                                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _sendMessage,
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: const BoxDecoration(
+                                  color: FfigTheme.primaryBrown,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.send_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          
-          // Input Bar
-          Container(
-            padding: const EdgeInsets.all(8),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: Theme.of(context).colorScheme.primary,
-                  onPressed: _sendMessage,
-                ),
-              ],
             ),
           ),
         ],
