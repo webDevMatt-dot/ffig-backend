@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Profile
+from .models import Profile, LoginLog
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
@@ -13,3 +13,10 @@ class ProfileAdmin(admin.ModelAdmin):
     list_editable = ('tier', 'is_premium') 
     
     search_fields = ('user__username', 'business_name')
+
+@admin.register(LoginLog)
+class LoginLogAdmin(admin.ModelAdmin):
+    list_display = ('user', 'timestamp', 'ip_address')
+    list_filter = ('timestamp',)
+    search_fields = ('user__username', 'ip_address', 'user_agent')
+    readonly_fields = ('user', 'timestamp', 'ip_address', 'user_agent')

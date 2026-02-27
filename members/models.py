@@ -190,3 +190,16 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender.username}: {self.content[:20]}"
+
+
+class LoginLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_logs')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} logged in at {self.timestamp}"

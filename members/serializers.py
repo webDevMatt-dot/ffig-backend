@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story, StoryView, Conversation, Message
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story, StoryView, Conversation, Message, LoginLog
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -402,3 +402,9 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = ['id', 'sender', 'content', 'created_at', 'story', 'is_read']
         read_only_fields = ['sender', 'created_at', 'is_read']
+class LoginLogSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = LoginLog
+        fields = ['id', 'username', 'timestamp', 'ip_address', 'user_agent']

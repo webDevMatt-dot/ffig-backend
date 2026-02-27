@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../home/dashboard_screen.dart';
 import '../../core/services/membership_service.dart';
 import '../marketing/business_profile_editor_screen.dart';
+import '../admin/admin_logs_screen.dart';
 
 /// Displays the Application Settings and User Preferences.
 ///
@@ -41,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String? _adminNotice;
   bool _updateAvailable = false;
+  bool _isAdmin = false;
 
   String? _updateUrl;
   bool _isGuest = true;
@@ -93,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Backend returns flat JSON via ProfileSerializer
               _readReceiptsEnabled = data['read_receipts_enabled'] ?? true;
               _adminNotice = data['admin_notice']; // May be null
+              _isAdmin = data['is_staff'] ?? false;
               _isGuest = false;
             });
           }
@@ -486,6 +489,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
            const Divider(),
+
+          // ADMINISTRATION
+          if (_isAdmin) ...[
+            _buildSectionHeader("Administration"),
+            ListTile(
+              leading: const Icon(Icons.history_outlined),
+              title: const Text("Admin Login Logs"),
+              subtitle: const Text("View user login history"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminLogsScreen()));
+              },
+            ),
+            const Divider(),
+          ],
 
           // 5. Sign Out - HIDDEN FOR GUESTS
           if (!_isGuest) ...[

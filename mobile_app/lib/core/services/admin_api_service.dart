@@ -56,6 +56,20 @@ class AdminApiService {
     }
   }
 
+  // Fetch Login Logs (Admin only)
+  Future<List<dynamic>> fetchLoginLogs() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('${baseUrl}admin/logs/logins/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load login logs: ${response.statusCode}');
+    }
+  }
+
   // Generic DELETE
   Future<void> deleteItem(String endpoint, int id) async {
     final token = await _getToken();

@@ -15,7 +15,7 @@ from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
 from .serializers import (
     ProfileSerializer, BusinessProfileSerializer, AdminBusinessProfileSerializer,
     MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer,
-    NotificationSerializer
+    NotificationSerializer, LoginLogSerializer
 )
 from .models import Notification
 
@@ -750,3 +750,12 @@ def wix_webhook(request):
         return Response({"error": str(e)}, status=500)
     finally:
         print("--- [WIX WEBHOOK END] ---")
+
+
+class AdminLoginLogListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = LoginLogSerializer
+
+    def get_queryset(self):
+        from .models import LoginLog
+        return LoginLog.objects.all().order_by('-timestamp')

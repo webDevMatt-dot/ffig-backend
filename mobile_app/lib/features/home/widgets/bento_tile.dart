@@ -39,7 +39,7 @@ class BentoTile extends StatelessWidget {
     Widget content = Container(
       width: width ?? double.infinity,
       height: height,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16), // Reduced from 20 to 16
       decoration: BoxDecoration(
         color: color ?? theme.cardTheme.color,
         borderRadius: BorderRadius.circular(32),
@@ -61,7 +61,7 @@ class BentoTile extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -79,10 +79,11 @@ class BentoTile extends StatelessWidget {
               Icon(Icons.arrow_outward, color: isDark ? Colors.grey : Colors.grey[400], size: 16),
             ],
           ),
-          if (icon != null) const SizedBox(height: 16),
+          if (icon != null) const SizedBox(height: 12), // Reduced from 16 to 12
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
@@ -91,28 +92,32 @@ class BentoTile extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
+                    height: 1.1, // Explicit line height
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: isDark ? Colors.grey : Colors.black54, // Darker text for light mode
-                      fontWeight: isDark ? FontWeight.normal : FontWeight.w500,
+                  const SizedBox(height: 1), // Reduced from 2 to 1
+                  Flexible(
+                    child: Text(
+                      subtitle!,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey : Colors.black54,
+                        fontWeight: isDark ? FontWeight.normal : FontWeight.w500,
+                        height: 1.1, // Explicit line height
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],
             ),
           ),
           if (child != null) ...[
-             const SizedBox(height: 8),
+             const SizedBox(height: 4), // Reduced from 8 to 4
              child!,
           ]
         ],

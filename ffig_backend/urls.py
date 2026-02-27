@@ -46,7 +46,7 @@ from members.views import (
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
-    StoryViewSet, AdminUserUpdateView, wix_webhook
+    StoryViewSet, AdminUserUpdateView, AdminLoginLogListView, wix_webhook
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import (
@@ -109,6 +109,7 @@ urlpatterns = [
     
     # Admin User Management
     path('api/admin/users/<int:pk>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
+    path('api/admin/logs/logins/', AdminLoginLogListView.as_view(), name='admin-login-logs'),
 
     # User Submissions
     path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
