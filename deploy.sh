@@ -7,58 +7,61 @@ cd "$SCRIPT_DIR"
 
 echo "🚀 STARTING FULL DEPLOYMENT..."
 
-command -v flutter >/dev/null || { echo "Flutter not installed"; exit 1; }
-command -v git >/dev/null || { echo "Git not installed"; exit 1; }
+command -v flutter >/dev/null || { echo "❌ Flutter not installed"; exit 1; }
+command -v git >/dev/null || { echo "❌ Git not installed"; exit 1; }
 
-COMMIT_MSG="${1:-build(release): web update}"
+COMMIT_MSG="${1:-build(release): system update}"
 
 # --- Version bump ---
 if [ -f "./bump_version.sh" ]; then
+  echo "🔢 Bumping version..."
   chmod +x ./bump_version.sh
   ./bump_version.sh
 fi
 
-echo "📂 Entering mobile_app..."
+echo "📂 Entering mobile_app (Frontend Repository)..."
 cd mobile_app
 
+echo "📦 Syncing dependencies..."
 flutter pub get
 
-if git diff --quiet HEAD -- lib web pubspec.yaml; then
-  echo "⚡ No Flutter changes detected. Skipping build."
-else
-  echo "� Building release apps..."
-  flutter build appbundle
-  flutter build ios --release --no-codesign
-  flutter build web --release --no-tree-shake-icons
-fi
+echo "🏗️  Step 1: Building Android (App Bundle)..."
+flutter build appbundle --release
 
-VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-CLEAN_VERSION="${VERSION%%+*}"
-echo "Version: $CLEAN_VERSION"
+echo "🏗️  Step 2: Building iOS (Release - No Codesign)..."
+flutter build ios --release --no-codesign
 
-echo "� Committing mobile_app..."
+echo "🏗️  Step 3: Building Web..."
+flutter build web --release --no-tree-shake-icons
+
+# --- Git Push Frontend ---
+echo "✨ Pushing Frontend changes..."
 git add .
-
 if ! git diff --cached --quiet; then
   git commit -m "$COMMIT_MSG"
-  git push
+  echo "🛡️  Syncing with remote..."
+  git pull --rebase origin main
+  git push origin main
 else
-  echo "⚠️ Nothing to commit"
+  echo "⚠️  No frontend changes to push."
 fi
 
 cd ..
 
-echo "📁 Committing root..."
+# --- Git Push Backend (Root) ---
+echo "📂 Pushing Backend/Root changes..."
 git add .
-
 if ! git diff --cached --quiet; then
   git commit -m "$COMMIT_MSG"
-  git push
+  echo "🛡️  Syncing with remote..."
+  git pull --rebase origin main
+  git push origin main
 else
-  echo "⚠️ Nothing to commit"
+  echo "⚠️  No backend changes to push."
 fi
 
 if [ -f "auto_update_version.sh" ]; then
+  echo "🔄 Updating server version..."
   chmod +x auto_update_version.sh
   ./auto_update_version.sh
 fi
