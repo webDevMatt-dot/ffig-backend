@@ -80,6 +80,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['is_staff'] = self.user.is_staff
         data['is_superuser'] = self.user.is_superuser
         
+        # 6. Manually Trigger User Logged In Signal
+        # SimpleJWT doesn't trigger this by default, but we need it for our LoginLog tracking
+        from django.contrib.auth.signals import user_logged_in
+        user_logged_in.send(sender=self.user.__class__, request=self.context.get('request'), user=self.user)
+        
         # Moderation Checks
         try:
             profile = self.user.profile

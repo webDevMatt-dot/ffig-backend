@@ -31,6 +31,4 @@ fi
 
 echo "Using simulator: $SIMULATOR_ID"
 
-# Run the Flutter app
-echo "Building and running Flutter app..."
-cd mobile_app && flutter run
+echo "iOS simulator is ready."

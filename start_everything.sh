@@ -40,8 +40,17 @@ trap cleanup EXIT
 
 echo "============================="
 echo "Backend is running!"
-echo "Starting iOS Simulator & Flutter app..."
+echo "Starting Emulators & Flutter app..."
 echo "============================="
 
-# Start the frontend
-./start_ios_simulator.sh
+# Start both emulators in the background/parallel
+./start_ios_simulator.sh &
+./start_android_emulator.sh &
+
+# Wait for both to be ready (enough for run command)
+echo "Waiting for devices to be ready..."
+sleep 15
+
+# Run the frontend on ALL devices
+echo "Launching lib/main.dart on all devices..."
+cd mobile_app && flutter run -d all

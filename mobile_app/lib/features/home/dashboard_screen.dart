@@ -181,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     final token = await storage.read(key: 'access_token');
 
     // Guest Mode: Reset everything to restricted state
-    if (token == null) {
+    if (token == null || token.isEmpty) {
       if (mounted) {
         setState(() {
           _isPremium = false;
@@ -189,6 +189,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           _userProfile = null;
           MembershipService.setTier("free"); // Default to free/guest
           MembershipService.isAdmin = false;
+          _isLoading = false; // MUST set to false so guest see content
         });
       }
       return;
@@ -210,6 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             data = Map<String, dynamic>.from(rawData.first);
           } else {
             // Empty list, treat as guest/error?
+            if (mounted) setState(() => _isLoading = false);
             return; 
           }
         } else {
@@ -229,6 +231,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             MembershipService.isAdmin = _isAdmin;
             _isPremium =
                 MembershipService.isPremium; // Keep for now, or replace usage
+            _isLoading = false; // Data loaded
           });
 
           await storage.write(key: 'is_premium', value: _isPremium.toString());
@@ -247,50 +250,23 @@ class _DashboardScreenState extends State<DashboardScreen>
       } else {
         // ERROR HANDLER
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text("Session Expired or Failed"),
-              content: Text(
-                "Server returned status ${response.statusCode}.\nPlease log in again.",
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("OK"),
-                ),
-              ],
-            ),
-          );
+          setState(() => _isLoading = false);
+          // Don't show dialog on every 401/expired for now, just let user log in
+          print("Profile fetch failed: ${response.statusCode}");
         }
       }
     } catch (e) {
       print("Error checking premium/admin status: $e");
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Profile Load Error"),
-            content: Text("Failed to load user data: $e"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-        );
+        setState(() => _isLoading = false);
       }
     }
   }
 
   /// Checks for account moderation flags (Block, Suspension, Warning).
-  /// - Shows varying dialogs based on severity.
-  /// - Block/Suspend dialogs are non-dismissible.
   void _checkModerationStatus() {
     if (_userProfile == null) return;
 
-    // 1. Blocked
     if (_userProfile!['is_blocked'] == true) {
       showDialog(
         context: context,
@@ -300,7 +276,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       return;
     }
 
-    // 2. Suspended
     if (_userProfile!['is_suspended'] == true) {
       showDialog(
         context: context,
@@ -314,7 +289,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       return;
     }
 
-    // 3. Warning (Show only once per session or always? Assuming always until admin clears it)
     if (_userProfile!['admin_notice'] != null &&
         _userProfile!['admin_notice'].toString().isNotEmpty) {
       showDialog(
@@ -329,33 +303,27 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// Fetches all events to display in the Trending section.
-  /// - Used to populate the horizontal list on Home tab.
   Future<void> _fetchEvents() async {
-    // Renamed from _fetchFeaturedEvents
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-
     final String endpoint = '${baseUrl}events/';
-
     final headers = {'Content-Type': 'application/json'};
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
     try {
       final response = await http.get(Uri.parse(endpoint), headers: headers);
-
       if (response.statusCode == 200) {
-        setState(() {
-          _events = jsonDecode(response.body);
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _events = jsonDecode(response.body);
+            _isLoading = false;
+          });
+        }
       } else {
-        // Token might be expired
-        print("Error fetching events: ${response.statusCode}");
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      print("Connection error: $e");
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -371,28 +339,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     }).toList();
   }
 
-  /// Loads core Homepage Content in parallel.
-  /// - **Hero Items:** Carousel images.
-  /// - **Founder Profile:** Top-level founder feature.
-  /// - **Flash Alerts:** Urgent scrolling banners.
-  /// - **News Ticker:** Scrolling text updates.
+  /// Loads core Homepage Content.
+  /// Uses individual try-catches to ensure one failing API doesn't block the rest.
   Future<void> _loadHomepageContent() async {
     final api = AdminApiService();
+    
+    // 1. Hero Items
     try {
-      // Run fetches in parallel for speed
-      final results = await Future.wait([
-        api.fetchItems('hero'),
-        api.fetchItems('founder'),
-        api.fetchItems('alerts'),
-        api.fetchItems('ticker'),
-        api.fetchItems('business'), // NEW: Fetch Business of the Month
-      ]);
-
+      final heroData = await api.fetchItems('hero');
       if (mounted) {
         setState(() {
-          // 1. Hero Items
-          _heroItems = (results[0]).map((json) {
-            // Ensure ID is string safely
+          _heroItems = (heroData).map((json) {
             final Map<String, dynamic> data = Map<String, dynamic>.from(json);
             data['id'] = data['id'].toString();
             if (data['image'] != null) {
@@ -408,82 +365,82 @@ class _DashboardScreenState extends State<DashboardScreen>
             }
             return HeroItem.fromJson(data);
           }).toList();
-
-          // 2. Founder Profile (Take the first one)
-          final founders = results[1];
-          if (founders.isNotEmpty) {
-            final Map<String, dynamic> data = Map<String, dynamic>.from(
-              founders.first,
-            );
-            data['id'] = data['id'].toString();
-            final domain = baseUrl.replaceAll('/api/', '');
-            // The serializer returns photo_url directly, but ensure it's properly formatted
-            if (data['photo_url'] != null && data['photo_url'] != 'null') {
-              var url = data['photo_url'].toString();
-              if (url.isNotEmpty && !url.contains('http')) {
-                final domain = baseUrl.replaceAll('/api/', '');
-                if (url.startsWith('/')) {
-                  data['photo_url'] = '$domain$url';
-                } else {
-                  data['photo_url'] = '$domain/$url';
-                }
-              }
-            } else if (data['photo'] != null && data['photo'] != 'null') {
-              var url = data['photo'].toString();
-              if (url.isNotEmpty && !url.contains('http')) {
-                final domain = baseUrl.replaceAll('/api/', '');
-                if (url.startsWith('/')) {
-                  data['photo_url'] = '$domain$url';
-                } else {
-                  data['photo_url'] = '$domain/$url';
-                }
-              }
-            }
-            _founderProfile = FounderProfile.fromJson(data);
-          } else {
-            _founderProfile = null;
-          }
-
-          // 3. Flash Alert (Take the newest valid one)
-          final alerts = results[2];
-          if (alerts.isNotEmpty) {
-            final Map<String, dynamic> data = Map<String, dynamic>.from(
-              alerts.last,
-            ); // Last = Newest usually
-            data['id'] = data['id'].toString();
-            _flashAlert = FlashAlert.fromJson(data);
-          } else {
-            _flashAlert = null;
-          }
-
-          // 4. News Ticker
-          final tickers = results[3];
-          // Map 'text' to string
-          _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
-
-          // 5. Business of the Month (NEW)
-          if (results.length > 4) {
-             final businesses = results[4];
-             if (businesses.isNotEmpty) {
-                final Map<String, dynamic> data = Map<String, dynamic>.from(businesses.first);
-                data['id'] = data['id'].toString();
-                // Ensure image URL is absolute
-                final domain = baseUrl.replaceAll('/api/', '');
-                if (data['image_url'] != null && data['image_url'] != 'null') {
-                   var url = data['image_url'].toString();
-                   if (url.startsWith('/')) {
-                      data['image_url'] = '$domain$url';
-                   }
-                }
-                _businessProfile = BusinessProfile.fromJson(data);
-             } else {
-                _businessProfile = null;
-             }
-          }
         });
       }
     } catch (e) {
-      if (kDebugMode) print("Error loading homepage content: $e");
+      if (kDebugMode) print("Error loading Hero Items: $e");
+    }
+
+    // 2. Founder Profile
+    try {
+      final founders = await api.fetchItems('founder');
+      if (mounted && founders.isNotEmpty) {
+        setState(() {
+          final Map<String, dynamic> data = Map<String, dynamic>.from(founders.first);
+          data['id'] = data['id'].toString();
+          if (data['photo_url'] != null && data['photo_url'] != 'null') {
+            var url = data['photo_url'].toString();
+            if (url.isNotEmpty && !url.contains('http')) {
+              final domain = baseUrl.replaceAll('/api/', '');
+              if (url.startsWith('/')) {
+                data['photo_url'] = '$domain$url';
+              } else {
+                data['photo_url'] = '$domain/$url';
+              }
+            }
+          }
+          _founderProfile = FounderProfile.fromJson(data);
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error loading Founder Profile: $e");
+    }
+
+    // 3. Flash Alerts
+    try {
+      final alerts = await api.fetchItems('alerts');
+      if (mounted && alerts.isNotEmpty) {
+        setState(() {
+          final Map<String, dynamic> data = Map<String, dynamic>.from(alerts.last);
+          data['id'] = data['id'].toString();
+          _flashAlert = FlashAlert.fromJson(data);
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error loading Flash Alerts: $e");
+    }
+
+    // 4. News Ticker
+    try {
+      final tickers = await api.fetchItems('ticker');
+      if (mounted) {
+        setState(() {
+          _newsTickerItems = tickers.map((t) => t['text'].toString()).toList();
+        });
+      }
+    } catch (e) {
+       if (kDebugMode) print("Error loading News Ticker: $e");
+    }
+
+    // 5. Business of the Month
+    try {
+      final businesses = await api.fetchItems('business');
+      if (mounted && businesses.isNotEmpty) {
+        setState(() {
+          final Map<String, dynamic> data = Map<String, dynamic>.from(businesses.first);
+          data['id'] = data['id'].toString();
+          final domain = baseUrl.replaceAll('/api/', '');
+          if (data['image_url'] != null && data['image_url'] != 'null') {
+             var url = data['image_url'].toString();
+             if (url.startsWith('/')) {
+                data['image_url'] = '$domain$url';
+             }
+          }
+          _businessProfile = BusinessProfile.fromJson(data);
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error loading Business of the Month: $e");
     }
   }
 
@@ -826,14 +783,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// Refreshes all homepage data.
   Future<void> _onRefresh() async {
     final token = await _storage.read(key: 'access_token');
-    // Determine if need to show loading indicators or just refresh silently
-    // For pull-to-refresh, we usually just want to await the results
     await Future.wait([
-      _fetchEvents(), // Changed from _fetchFeaturedEvents
+      _fetchEvents(),
       _loadHomepageContent(),
       _checkPremiumStatus(),
       if (token != null) _fetchCommunityUnread(token),
-    ]);
+    ].whereType<Future>());
   }
 
   /// Counts upcoming events for the Bento Tile.
