@@ -1,6 +1,10 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import welcome, RegisterView, AdminPasswordResetView, CustomTokenObtainPairView, AdminUserListView, AdminUserDetailView, UserPasswordChangeView, UserDeleteView
+from .views import (
+    welcome, RegisterView, AdminPasswordResetView, CustomTokenObtainPairView, 
+    AdminUserListView, AdminUserDetailView, UserPasswordChangeView, UserDeleteView,
+    PasswordResetRequestOTPView, PasswordResetConfirmOTPView
+)
 
 urlpatterns = [
     path('welcome/', welcome, name='welcome'),
@@ -10,8 +14,13 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', RegisterView.as_view(), name='auth_register'),
     
+    # Password Reset (OTP-based)
+    path('auth/password/reset/request-otp/', PasswordResetRequestOTPView.as_view(), name='password_reset_request_otp'),
+    path('auth/password/reset/confirm-otp/', PasswordResetConfirmOTPView.as_view(), name='password_reset_confirm_otp'),
+    
     # User Password Change (Self)
     path('auth/password/change/', UserPasswordChangeView.as_view(), name='user_password_change'),
+
     path('auth/delete/', UserDeleteView.as_view(), name='user_delete'),
     
     # Admin Password Reset
