@@ -46,11 +46,9 @@ CURRENT_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '[
 # e.g. 1.0.297+297
 SEMVER="${CURRENT_VERSION%+*}"        # 1.0.297
 BUILD="${CURRENT_VERSION##*+}"        # 297
-PATCH="${SEMVER##*.}"                 # 297
 PREFIX="${SEMVER%.*}"                 # 1.0
-NEW_PATCH=$((PATCH + 1))
 NEW_BUILD=$((BUILD + 1))
-NEW_VERSION="${PREFIX}.${NEW_PATCH}+${NEW_BUILD}"
+NEW_VERSION="${PREFIX}.${NEW_BUILD}+${NEW_BUILD}"
 sed -i '' "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
 echo "✅ Version bumped: ${CURRENT_VERSION} → ${NEW_VERSION}"
 
