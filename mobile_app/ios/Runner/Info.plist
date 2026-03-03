@@ -71,5 +71,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to allow you to upload images for your profile and stories.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera to allow you to capture photos and videos for your profile and stories.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone to allow you to record audio for your video stories.</string>
 </dict>
 </plist>
