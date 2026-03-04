@@ -183,7 +183,7 @@ class _PreviewMarketingPostScreenState extends State<PreviewMarketingPostScreen>
                   // Media
                   if (widget.mediaFile != null)
                     AspectRatio(
-                      aspectRatio: 16 / 9,
+                      aspectRatio: widget.isVideo ? 16 / 9 : 4 / 5,
                       child: Container(
                         color: Colors.black,
                         child: widget.isVideo 
@@ -268,10 +268,10 @@ class _PreviewMarketingPostScreenState extends State<PreviewMarketingPostScreen>
 
   Widget _buildImageWidget() {
      final media = widget.mediaFile;
-     if (media is File) return Image.file(media, fit: BoxFit.cover);
-     if (media is CroppedFile) return Image.file(File(media.path), fit: BoxFit.cover);
-     if (media is String) return Image.network(media, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image));
-     if (media is Uint8List) return Image.memory(media, fit: BoxFit.cover);
+     if (media is File) return Image.file(media, fit: BoxFit.contain);
+     if (media is CroppedFile) return Image.file(File(media.path), fit: BoxFit.contain);
+     if (media is String) return Image.network(media, fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.broken_image));
+     if (media is Uint8List) return Image.memory(media, fit: BoxFit.contain);
      return const SizedBox(); 
   }
 }

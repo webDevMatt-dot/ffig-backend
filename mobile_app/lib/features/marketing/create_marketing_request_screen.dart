@@ -58,12 +58,19 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
               toolbarTitle: 'Edit Image',
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              initAspectRatio: CropAspectRatioPreset.original,
               lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio16x9,
+              ],
             ),
             IOSUiSettings(
               title: 'Edit Image',
               aspectRatioLockEnabled: false,
+              aspectRatioPickerButtonHidden: false,
             ),
             WebUiSettings(
               context: context,

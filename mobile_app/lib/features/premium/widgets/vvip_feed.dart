@@ -418,6 +418,12 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     }
 
     final bool hasVideo = _chewieController != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final frameColor = isDark ? const Color(0xFF0D1117) : Colors.white;
+    final overlayBottom = isDark
+        ? [Colors.black.withOpacity(0.85), Colors.black.withOpacity(0.12), Colors.transparent]
+        : [Colors.black.withOpacity(0.32), Colors.black.withOpacity(0.06), Colors.transparent];
+    const textColor = Colors.white;
     
     final double storiesBarHeight = 110; // Matches StoriesBar height in stories_bar.dart
     
@@ -430,10 +436,15 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
       ), 
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1117), // Deep Obsidian
+          color: frameColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, spreadRadius: 0, offset: const Offset(0, -10))
+             BoxShadow(
+               color: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
+               blurRadius: isDark ? 30 : 18,
+               spreadRadius: 0,
+               offset: const Offset(0, -10),
+             )
           ]
         ),
         clipBehavior: Clip.hardEdge,
@@ -448,7 +459,11 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                       child: hasVideo
                           ? Chewie(key: ValueKey('video_${widget.item['id']}'), controller: _chewieController!)
                           : (imageUrl != null
-                              ? Image.network(imageUrl, key: ValueKey('image_${widget.item['id']}'), fit: BoxFit.cover)
+                              ? Container(
+                                  key: ValueKey('image_${widget.item['id']}'),
+                                  color: isDark ? Colors.black : const Color(0xFFF7F7F7),
+                                  child: Image.network(imageUrl, fit: BoxFit.contain),
+                                )
                               : Container(key: const ValueKey('broken_image'), color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white)))),
                     )
                 )
@@ -473,11 +488,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withOpacity(0.85),
-                        Colors.black.withOpacity(0.1),
-                        Colors.transparent,
-                      ], 
+                      colors: overlayBottom,
                       begin: Alignment.bottomCenter,
                       end: const Alignment(0, -0.2),
                     )
@@ -515,9 +526,9 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
+                            color: isDark ? Colors.black.withOpacity(0.5) : Colors.white.withOpacity(0.75),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.3), width: 1)
+                            border: Border.all(color: isDark ? FfigTheme.accentBrown.withOpacity(0.3) : Colors.black.withOpacity(0.08), width: 1)
                         ),
                         child: Row(
                             children: [
@@ -532,7 +543,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                                 ), 
                                 const SizedBox(width: 8),
                                 Text((widget.item['category'] ?? widget.item['type'] ?? 'EXCLUSIVE').toUpperCase(),
-                                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2.0)
+                                 style: TextStyle(color: isDark ? Colors.white : const Color(0xFF121212), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2.0)
                                 ),
                             ],
                         ),
@@ -556,6 +567,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                            isActive: _isLiked,
                            onTap: _toggleLike,
                            isVertical: true,
+                           isDark: isDark,
                        ),
                        const SizedBox(height: 16),
                        _SocialButton(
@@ -563,6 +575,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                            label: "$_commentsCount",
                            onTap: _showComments,
                            isVertical: true,
+                           isDark: isDark,
                        ),
                        const SizedBox(height: 16),
                        _SocialButton(
@@ -570,6 +583,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                            label: "",
                            onTap: _share,
                            isVertical: true,
+                           isDark: isDark,
                        ),
                        const SizedBox(height: 24),
                        const Icon(Icons.bookmark_outline, color: FfigTheme.accentBrown, size: 30),
@@ -613,8 +627,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                           widget.item['title'] ?? '',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white, 
+                          style: TextStyle(
+                            color: textColor,
                             fontSize: 24, 
                             fontWeight: FontWeight.w800, 
                             height: 1.2,
@@ -627,7 +641,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                         children: [
                           Text(
                             _getFormattedDate(), 
-                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w500)
+                            style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 13, fontWeight: FontWeight.w500)
                           ),
                           if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty) ...[
                             const SizedBox(width: 12),
@@ -673,6 +687,7 @@ class _SocialButton extends StatelessWidget {
     final VoidCallback onTap;
     final bool isActive;
     final bool isVertical;
+    final bool isDark;
     
     const _SocialButton({
       required this.icon, 
@@ -680,6 +695,7 @@ class _SocialButton extends StatelessWidget {
       required this.onTap, 
       this.isActive = false,
       this.isVertical = false,
+      this.isDark = true,
     });
     
     @override
@@ -690,19 +706,19 @@ class _SocialButton extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withOpacity(0.4),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                    color: isDark ? Colors.black.withOpacity(0.4) : Colors.white.withOpacity(0.75),
+                    border: Border.all(color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.08)),
                   ),
                   padding: const EdgeInsets.all(14),
                   child: AnimatedScale(
                     scale: isActive ? 1.2 : 1.0,
                     duration: const Duration(milliseconds: 200),
-                    child: Icon(icon, color: isActive ? Colors.redAccent : Colors.white, size: 26)
+                    child: Icon(icon, color: isActive ? Colors.redAccent : (isDark ? Colors.white : const Color(0xFF1A1A1A)), size: 26)
                   ),
                 ),
                 if (label.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))
+                    Text(label, style: TextStyle(color: isDark ? Colors.white : const Color(0xFF1A1A1A), fontWeight: FontWeight.w800, fontSize: 13))
                 ]
             ],
         );

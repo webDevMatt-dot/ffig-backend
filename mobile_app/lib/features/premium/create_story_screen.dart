@@ -86,10 +86,17 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.original,
               lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio5x3,
+              ],
             ),
             IOSUiSettings(
               title: 'Story',
               aspectRatioLockEnabled: false,
+              aspectRatioPickerButtonHidden: false,
             ),
              WebUiSettings(
               context: context,
