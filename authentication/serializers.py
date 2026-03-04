@@ -63,7 +63,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     user = User.objects.get(email__iexact=login_input)
                     attrs['username'] = user.username  # Switch to actual username for auth
                 except User.DoesNotExist:
-                    pass # Let the parent class fail naturally
+                    # Don't pass. If they used an email and we couldn't find it, auth should fail.
+                    raise serializers.ValidationError({"detail": "No active account found with the given credentials"})
             else:
                 # 3. If it's a username, ensure case-insensitive match helps
                 try:

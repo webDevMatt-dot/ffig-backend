@@ -132,14 +132,51 @@ class _LoginScreenState extends State<LoginScreen> {
         // Standard Incorrect Password / User not found
         _showError("Invalid credentials. Please check your username and password.");
       } else {
-        _showError("Login failed (${response.statusCode}). Please try again.");
+        _showError(_getLoginErrorMessage(response));
       }
     } catch (e) {
-      _showError("Login Error: $e");
-      print("Login exception: $e");
+      _showError("Unable to sign in right now. Please check your internet connection and try again.");
+      debugPrint("Login exception: $e");
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+
+  String _getLoginErrorMessage(http.Response response) {
+    try {
+      final dynamic decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final nonFieldErrors = decoded['non_field_errors'];
+        final detail = decoded['detail'];
+
+        final extracted =
+            _extractFirstError(nonFieldErrors) ?? _extractFirstError(detail);
+        if (extracted != null) {
+          return extracted;
+        }
+      }
+    } catch (_) {
+      // Fall through to status-based fallback
+    }
+
+    if (response.statusCode == 429) {
+      return "Too many login attempts. Please wait a moment and try again.";
+    }
+
+    return "Unable to sign in right now. Please try again in a moment.";
+  }
+
+  String? _extractFirstError(dynamic error) {
+    if (error is List && error.isNotEmpty) {
+      return error.first.toString();
+    }
+
+    if (error is String && error.trim().isNotEmpty) {
+      return error;
+    }
+
+    return null;
   }
 
   void _showError(String message) {
