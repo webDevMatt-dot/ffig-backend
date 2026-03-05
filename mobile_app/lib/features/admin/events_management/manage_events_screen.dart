@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'edit_event_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ManageEventsScreen extends StatefulWidget {
   const ManageEventsScreen({super.key});
@@ -27,6 +29,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   final _dateController = TextEditingController(); 
   final _endDateController = TextEditingController(); // NEW
   final _imgController = TextEditingController();
+  File? _selectedImage;
   
   @override
   void initState() {
@@ -98,6 +101,17 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
       _dateController.clear();
       _endDateController.clear();
       _imgController.clear();
+      _selectedImage = null;
+    }
+
+    Future<void> _pickImage(void Function(void Function()) setModalState) async {
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+        if (image != null) {
+            setModalState(() {
+                _selectedImage = File(image.path);
+            });
+        }
     }
 
     showModalBottomSheet(
@@ -179,7 +193,36 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         },
                     ),
                     const SizedBox(height: 24),
-                    _buildField(_imgController, "Image URL", Icons.image, required: false),
+                    InkWell(
+                        onTap: () => _pickImage(setModalState),
+                        child: Container(
+                            height: 150,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[300]!)
+                            ),
+                            child: _selectedImage != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                                  )
+                                : (_imgController.text.isNotEmpty && _imgController.text.startsWith('http')
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(_imgController.text, fit: BoxFit.cover),
+                                      )
+                                    : Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                            Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
+                                            const SizedBox(height: 8),
+                                            Text("Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                        ],
+                                      )),
+                        ),
+                    ),
                     const SizedBox(height: 24),
                     
                     if (_editingId != null)
@@ -274,15 +317,15 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                  return "${parts[2]}-${parts[1]}-${parts[0]}";
              }
              return _endDateController.text;
-         }(),
-         'image_url': _imgController.text.isNotEmpty ? _imgController.text : "https://images.unsplash.com/photo-1542744173-8e7e53415bb0"
+         }()
        };
+       // Note: we removed image_url from the map here to prevent overriding the backend's logic with empty strings
        
        if (_editingId != null) {
-         await _apiService.updateEvent(int.parse(_editingId!), data);
+         await _apiService.updateEvent(int.parse(_editingId!), data, imageFile: _selectedImage ?? _imgController.text);
          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Updated')));
        } else {
-         await _apiService.createEvent(data);
+         await _apiService.createEvent(data, imageFile: _selectedImage);
          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event Created')));
        }
        _loadEvents();

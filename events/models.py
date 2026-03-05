@@ -10,6 +10,7 @@ class Event(models.Model):
     date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     image_url = models.URLField(default="https://images.unsplash.com/photo-1542744173-8e7e53415bb0") 
+    image = models.ImageField(upload_to='events/', null=True, blank=True)
     is_featured = models.BooleanField(default=False)
     description = models.TextField(blank=True, default="Join us for an incredible networking experience.")
     

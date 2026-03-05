@@ -150,25 +150,54 @@ class AdminApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> data, {dynamic imageFile}) async {
     final token = await _getToken();
-     final response = await http.post(
-      Uri.parse('$_eventsBaseUrl/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode(data)
-    );
-     if (response.statusCode != 201) throw Exception('Failed to create event: ${response.body}');
-     return jsonDecode(response.body);
+    var request = http.MultipartRequest('POST', Uri.parse('$_eventsBaseUrl/'));
+    request.headers['Authorization'] = 'Bearer $token';
+    data.forEach((key, value) {
+      if (value != null) {
+        request.fields[key] = value.toString();
+      }
+    });
+
+    if (imageFile != null) {
+      if (kIsWeb && imageFile is List<int>) {
+         request.files.add(http.MultipartFile.fromBytes('image', imageFile, filename: 'event.jpg', contentType: MediaType('image', 'jpeg')));
+      } else if (imageFile is File) {
+         request.files.add(await http.MultipartFile.fromPath('image', imageFile.path, contentType: MediaType('image', 'jpeg')));
+      }
+    }
+
+    final response = await request.send();
+    final respStr = await response.stream.bytesToString();
+    if (response.statusCode != 201) throw Exception('Failed to create event: $respStr');
+    return jsonDecode(respStr);
   }
 
-  Future<void> updateEvent(int id, Map<String, dynamic> data) async {
+  Future<void> updateEvent(int id, Map<String, dynamic> data, {dynamic imageFile}) async {
       final token = await _getToken();
-     final response = await http.patch(
-      Uri.parse('$_eventsBaseUrl/$id/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode(data)
-    );
-     if (response.statusCode != 200) throw Exception('Failed to update event: ${response.body}');
+      var request = http.MultipartRequest('PATCH', Uri.parse('$_eventsBaseUrl/$id/'));
+      request.headers['Authorization'] = 'Bearer $token';
+      data.forEach((key, value) {
+          if (value != null) {
+              request.fields[key] = value.toString();
+          }
+      });
+
+      if (imageFile != null) {
+          if (imageFile is String) {
+               // URL String, usually means no new image, or we just pass it back
+               // But usually we don't pass the URL back to a FileField, backend ignores or errors.
+          } else if (kIsWeb && imageFile is List<int>) {
+             request.files.add(http.MultipartFile.fromBytes('image', imageFile, filename: 'event.jpg', contentType: MediaType('image', 'jpeg')));
+          } else if (imageFile is File) {
+             request.files.add(await http.MultipartFile.fromPath('image', imageFile.path, contentType: MediaType('image', 'jpeg')));
+          }
+      }
+
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      if (response.statusCode != 200) throw Exception('Failed to update event: $respStr');
   }
 
   Future<void> createTicketTier(Map<String, dynamic> data) async {
@@ -188,6 +217,16 @@ class AdminApiService {
       headers: {'Authorization': 'Bearer $token'}
     );
      if (response.statusCode != 204) throw Exception('Failed to delete tier');
+  }
+
+  Future<void> updateTicketTier(int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$_eventsBaseUrl/tiers/$id/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+    if (response.statusCode != 200) throw Exception('Failed to update tier: ${response.body}');
   }
 
   Future<void> deleteEvent(int id) async {
@@ -216,16 +255,29 @@ class AdminApiService {
      if (response.statusCode != 204) throw Exception('Failed to delete item');
   }
 
+  Future<void> _updateSubItem(String endpoint, int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+     final response = await http.patch(
+      Uri.parse('$_eventsBaseUrl/$endpoint/$id/'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(data)
+    );
+     if (response.statusCode != 200) throw Exception('Failed to update item: ${response.body}');
+  }
+
   // Speakers
   Future<void> createEventSpeaker(Map<String, dynamic> data) async => _createSubItem('speakers', data);
+  Future<void> updateEventSpeaker(int id, Map<String, dynamic> data) async => _updateSubItem('speakers', id, data);
   Future<void> deleteEventSpeaker(int id) async => _deleteSubItem('speakers', id);
 
   // Agenda
   Future<void> createAgendaItem(Map<String, dynamic> data) async => _createSubItem('agenda', data);
+  Future<void> updateAgendaItem(int id, Map<String, dynamic> data) async => _updateSubItem('agenda', id, data);
   Future<void> deleteAgendaItem(int id) async => _deleteSubItem('agenda', id);
 
   // FAQ
   Future<void> createEventFAQ(Map<String, dynamic> data) async => _createSubItem('faqs', data);
+  Future<void> updateEventFAQ(int id, Map<String, dynamic> data) async => _updateSubItem('faqs', id, data);
   Future<void> deleteEventFAQ(int id) async => _deleteSubItem('faqs', id);
 
   // Helpers

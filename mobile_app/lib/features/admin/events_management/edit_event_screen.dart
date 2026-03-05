@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EditEventScreen extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -23,6 +25,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
   final _imageUrlController = TextEditingController();
   final _virtualLinkController = TextEditingController();
   bool _isVirtual = false;
+  File? _selectedImage;
 
   bool _isLoading = false;
 
@@ -64,6 +67,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -89,8 +102,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
         'location': _locationController.text,
         'price_label': _priceLabelController.text,
         'description': _descriptionController.text,
-        'image_url': _imageUrlController.text,
-        'is_virtual': _isVirtual,
+        'is_virtual': _isVirtual.toString(),
         'virtual_link': _virtualLinkController.text,
       };
       
@@ -98,7 +110,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
       if (widget.event == null) {
         await _createWithSubItems(data);
       } else {
-        await api.updateEvent(widget.event!['id'], data);
+        await api.updateEvent(widget.event!['id'], data, imageFile: _selectedImage ?? _imageUrlController.text);
         if (mounted) Navigator.pop(context);
       }
     } catch (e) {
@@ -111,7 +123,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
   Future<void> _createWithSubItems(Map<String, dynamic> eventData) async {
       final api = AdminApiService();
       // 1. Create Event
-      final newEvent = await api.createEvent(eventData);
+      final newEvent = await api.createEvent(eventData, imageFile: _selectedImage);
       final eventId = newEvent['id'];
 
       // 2. Create Sub-items
@@ -163,18 +175,18 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
 
-  void _showAddDialog(String type) {
-    if (type == 'tier') _addTierDialog();
-    if (type == 'speaker') _addSpeakerDialog();
-    if (type == 'agenda') _addAgendaDialog();
-    if (type == 'faq') _addFAQDialog();
+  void _showManageDialog(String type, {Map<String, dynamic>? item, int? indexOrId}) {
+    if (type == 'tier') _tierDialog(item: item, indexOrId: indexOrId);
+    if (type == 'speaker') _speakerDialog(item: item, indexOrId: indexOrId);
+    if (type == 'agenda') _agendaDialog(item: item, indexOrId: indexOrId);
+    if (type == 'faq') _faqDialog(item: item, indexOrId: indexOrId);
   }
 
-  void _addTierDialog() {
-    final name = TextEditingController();
-    final price = TextEditingController();
-    final cap = TextEditingController();
-    _showFormDialog("Add Ticket Tier", [
+  void _tierDialog({Map<String, dynamic>? item, int? indexOrId}) {
+    final name = TextEditingController(text: item?['name']?.toString() ?? '');
+    final price = TextEditingController(text: item?['price']?.toString() ?? '');
+    final cap = TextEditingController(text: item?['capacity']?.toString() ?? '');
+    _showFormDialog(item == null ? "Add Ticket Tier" : "Edit Ticket Tier", [
       _buildStyledTextField(name, "Tier Name", icon: Icons.label),
       const SizedBox(height: 12),
       _buildStyledTextField(price, "Price (\$)", icon: Icons.attach_money, isNumber: true),
@@ -185,21 +197,25 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'name': name.text,
          'price': double.tryParse(price.text) ?? 0,
          'capacity': int.tryParse(cap.text) ?? 100,
-         'available': int.tryParse(cap.text) ?? 100
+         if (item == null) 'available': int.tryParse(cap.text) ?? 100
        };
        if (widget.event == null) {
-          setState(() => _localTiers.add(data));
+          setState(() => item == null ? _localTiers.add(data) : _localTiers[indexOrId!] = data);
        } else {
-          await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+          if (item == null) {
+              await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+          } else {
+              await AdminApiService().updateTicketTier(indexOrId!, data);
+          }
        }
-    });
+    }, isEdit: item != null);
   }
 
-  void _addSpeakerDialog() {
-    final name = TextEditingController();
-    final role = TextEditingController();
-    final photo = TextEditingController();
-    _showFormDialog("Add Speaker", [
+  void _speakerDialog({Map<String, dynamic>? item, int? indexOrId}) {
+    final name = TextEditingController(text: item?['name']?.toString() ?? '');
+    final role = TextEditingController(text: item?['role']?.toString() ?? '');
+    final photo = TextEditingController(text: item?['photo_url']?.toString() ?? '');
+    _showFormDialog(item == null ? "Add Speaker" : "Edit Speaker", [
       _buildStyledTextField(name, "Full Name", icon: Icons.person),
       const SizedBox(height: 12),
       _buildStyledTextField(role, "Role / Title", icon: Icons.work),
@@ -212,19 +228,23 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'photo_url': photo.text,
        };
        if (widget.event == null) {
-          setState(() => _localSpeakers.add(data));
+          setState(() => item == null ? _localSpeakers.add(data) : _localSpeakers[indexOrId!] = data);
        } else {
-          await AdminApiService().createEventSpeaker({...data, 'event': widget.event!['id']});
+          if (item == null) {
+              await AdminApiService().createEventSpeaker({...data, 'event': widget.event!['id']});
+          } else {
+              await AdminApiService().updateEventSpeaker(indexOrId!, data);
+          }
        }
-    });
+    }, isEdit: item != null);
   }
 
-  void _addAgendaDialog() {
-    final title = TextEditingController();
-    final start = TextEditingController(text: "09:00");
-    final end = TextEditingController(text: "10:00");
-    final desc = TextEditingController();
-    _showFormDialog("Add Agenda Item", [
+  void _agendaDialog({Map<String, dynamic>? item, int? indexOrId}) {
+    final title = TextEditingController(text: item?['title']?.toString() ?? '');
+    final start = TextEditingController(text: item?['start_time']?.toString() ?? "09:00");
+    final end = TextEditingController(text: item?['end_time']?.toString() ?? "10:00");
+    final desc = TextEditingController(text: item?['description']?.toString() ?? '');
+    _showFormDialog(item == null ? "Add Agenda Item" : "Edit Agenda Item", [
       _buildStyledTextField(title, "Session Title", icon: Icons.event_note),
       const SizedBox(height: 12),
       Row(children: [
@@ -242,17 +262,21 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'description': desc.text,
        };
        if (widget.event == null) {
-          setState(() => _localAgenda.add(data));
+          setState(() => item == null ? _localAgenda.add(data) : _localAgenda[indexOrId!] = data);
        } else {
-          await AdminApiService().createAgendaItem({...data, 'event': widget.event!['id']});
+          if (item == null) {
+              await AdminApiService().createAgendaItem({...data, 'event': widget.event!['id']});
+          } else {
+              await AdminApiService().updateAgendaItem(indexOrId!, data);
+          }
        }
-    });
+    }, isEdit: item != null);
   }
 
-  void _addFAQDialog() {
-    final q = TextEditingController();
-    final a = TextEditingController();
-    _showFormDialog("Add FAQ", [
+  void _faqDialog({Map<String, dynamic>? item, int? indexOrId}) {
+    final q = TextEditingController(text: item?['question']?.toString() ?? '');
+    final a = TextEditingController(text: item?['answer']?.toString() ?? '');
+    _showFormDialog(item == null ? "Add FAQ" : "Edit FAQ", [
       _buildStyledTextField(q, "Question", icon: Icons.help_outline),
       const SizedBox(height: 12),
       _buildStyledTextField(a, "Answer", icon: Icons.info_outline, maxLines: 3),
@@ -262,11 +286,15 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'answer': a.text,
        };
        if (widget.event == null) {
-          setState(() => _localFaqs.add(data));
+          setState(() => item == null ? _localFaqs.add(data) : _localFaqs[indexOrId!] = data);
        } else {
-          await AdminApiService().createEventFAQ({...data, 'event': widget.event!['id']});
+          if (item == null) {
+              await AdminApiService().createEventFAQ({...data, 'event': widget.event!['id']});
+          } else {
+              await AdminApiService().updateEventFAQ(indexOrId!, data);
+          }
        }
-    });
+    }, isEdit: item != null);
   }
 
   Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon}) {
@@ -288,7 +316,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
       );
   }
 
-  void _showFormDialog(String title, List<Widget> fields, Future<void> Function() onSave) {
+  void _showFormDialog(String title, List<Widget> fields, Future<void> Function() onSave, {bool isEdit = false}) {
     showDialog(
       context: context, 
       builder: (ctx) => Dialog(
@@ -326,9 +354,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                         if (widget.event != null) {
                                            await onSave(); 
                                            Navigator.pop(ctx);
-                                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Added! Re-open to refresh.")));
+                                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated! Re-open to refresh." : "Added! Re-open to refresh.")));
                                         } else {
-                                           // Local add
+                                           // Local add/edit
                                            await onSave();
                                            Navigator.pop(ctx);
                                         }
@@ -336,7 +364,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
                                       }
                                     }, 
-                                    child: const Text("ADD ITEM")
+                                    child: Text(isEdit ? "SAVE CHANGES" : "ADD ITEM")
                                 )
                             ],
                         )
@@ -438,7 +466,36 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  const SizedBox(height: 12),
                  _buildStyledTextField(_priceLabelController, "Price Label (e.g. 'From \$20')"),
                  const SizedBox(height: 12),
-                 _buildStyledTextField(_imageUrlController, "Cover Image URL"),
+                 InkWell(
+                   onTap: _pickImage,
+                   child: Container(
+                     height: 150,
+                     width: double.infinity,
+                     decoration: BoxDecoration(
+                         color: Colors.grey[100],
+                         borderRadius: BorderRadius.circular(12),
+                         border: Border.all(color: Colors.grey[300]!)
+                     ),
+                     child: _selectedImage != null
+                         ? ClipRRect(
+                             borderRadius: BorderRadius.circular(12),
+                             child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                           )
+                         : (_imageUrlController.text.isNotEmpty && _imageUrlController.text.startsWith('http')
+                             ? ClipRRect(
+                                 borderRadius: BorderRadius.circular(12),
+                                 child: Image.network(_imageUrlController.text, fit: BoxFit.cover),
+                               )
+                             : Column(
+                                 mainAxisAlignment: MainAxisAlignment.center,
+                                 children: [
+                                     Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
+                                     const SizedBox(height: 8),
+                                     Text("Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                 ],
+                               )),
+                   ),
+                 ),
                  const SizedBox(height: 12),
                  _buildStyledTextField(_descriptionController, "Description", maxLines: 3),
                  const SizedBox(height: 12),
@@ -529,7 +586,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                    ]),
                    IconButton(
                        icon: const Icon(Icons.add_circle, color: FfigTheme.accentBrown, size: 28), 
-                       onPressed: () => _showAddDialog(type)
+                       onPressed: () => _showManageDialog(type)
                    )
                  ]),
              ),
@@ -543,7 +600,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
                 final id = i['id'] ?? index; 
                 return ListTile(
                   title: Text(label(i), style: const TextStyle(fontWeight: FontWeight.w500)),
-                  trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20), onPressed: () => _deleteItem(type, id)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20), onPressed: () => _showManageDialog(type, item: Map<String, dynamic>.from(i), indexOrId: id)),
+                      IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20), onPressed: () => _deleteItem(type, id)),
+                    ],
+                  ),
                   dense: true,
                 );
              }),
