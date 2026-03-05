@@ -32,7 +32,7 @@ class StoryBubble extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(right: 18),
+        margin: const EdgeInsets.only(right: 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -68,13 +68,13 @@ class StoryBubble extends StatelessWidget {
                     ),
                   ),
                   child: CircleAvatar(
-                    radius: 32,
+                    radius: 24,
                     backgroundColor: const Color(0xFF0D1117),
                     child: isAdd
                         ? Icon(Icons.add, size: 28, color: FfigTheme.primaryBrown)
                         : UserAvatar(
                             imageUrl: imageUrl,
-                            radius: 30,
+                            radius: 22,
                             username: name,
                           ),
                   ),
@@ -96,16 +96,16 @@ class StoryBubble extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             // User Name below the bubble
             SizedBox(
-              width: 72,
+              width: 58,
               child: Text(
                 name,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isAdd ? Colors.grey[400] : (isSeen ? Colors.grey[500] : Colors.white),
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: isSeen ? FontWeight.w400 : FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -128,7 +128,7 @@ class ShimmerStoryBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 18),
+      margin: const EdgeInsets.only(right: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -137,22 +137,22 @@ class ShimmerStoryBubble extends StatelessWidget {
             baseColor: Colors.grey.shade800,
             highlightColor: Colors.grey.shade700,
             child: Container(
-              width: 72,
-              height: 72,
+              width: 58,
+              height: 58,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           // Text Line Shimmer
           Shimmer.fromColors(
             baseColor: Colors.grey.shade800,
             highlightColor: Colors.grey.shade700,
             child: Container(
-              width: 50,
-              height: 10,
+              width: 40,
+              height: 8,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),

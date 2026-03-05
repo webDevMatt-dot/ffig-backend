@@ -11,6 +11,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/services/version_service.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 // import 'firebase_options.dart'; // Uncomment if you have generated firebase_options.dart using FlutterFire CLI
 
 // Global access to theme controller (Simple dependency injection)
@@ -29,6 +30,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 /// 4. Launch the `FFIGApp`.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Stripe SDK
+  Stripe.publishableKey = 'pk_test_TYooMQauvdEDq54NiTphI7jx'; // Replace with actual test/live key from .env later
+
   try {
     // on Web, we skip Firebase unless configured (to avoid crash)
     if (!kIsWeb) {

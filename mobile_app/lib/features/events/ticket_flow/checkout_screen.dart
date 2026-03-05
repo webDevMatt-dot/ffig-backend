@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/services/ticket_service.dart';
-import 'ticket_confirmation_screen.dart';
+import '../../../../core/services/stripe_service.dart';
+import '../../home/dashboard_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -13,38 +13,27 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  final _ticketService = TicketService();
   bool _isLoading = false;
-  
-  // Mock Form Fields
-  final _cardNumberController = TextEditingController();
-  final _expiryController = TextEditingController();
-  final _cvvController = TextEditingController();
 
   Future<void> _processPayment() async {
-    // Validate (Mock)
-    if (_cardNumberController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter card details")));
-      return;
-    }
-
     setState(() => _isLoading = true);
 
     try {
-      // Simulate Payment Delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Call API
-      final ticket = await _ticketService.purchaseTicket(
-        widget.event['id'], 
-        widget.tier['id']
+      final stripeService = StripeService();
+      final success = await stripeService.purchaseTicket(
+        tierId: widget.tier['id'],
       );
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => TicketConfirmationScreen(ticket: ticket, event: widget.event))
+      if (success && mounted) {
+        // Show success and redirect to dashboard/tickets
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment Successful! Your ticket is in My Tickets.")));
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          (route) => false,
         );
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment Canceled or Failed.")));
       }
     } catch (e) {
       if (mounted) {
@@ -58,6 +47,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final price = double.tryParse(widget.tier['price'].toString()) ?? 0.0;
+    
+    // Check if free ticket
+    if (price <= 0.0) {
+        return Scaffold(
+          appBar: AppBar(title: const Text("Checkout")),
+          body: Center(
+              child: ElevatedButton(
+                  onPressed: () {
+                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Free tickets are handled separately (not yet implemented)")));
+                  },
+                  child: const Text("Get Free Ticket")
+              )
+          ),
+        );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text("Checkout")),
@@ -77,35 +81,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 32),
             
-            Text("Payment Method", style: Theme.of(context).textTheme.titleLarge),
+            Text("Secure Payment", style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(
-                labelText: "Card Number",
-                prefixIcon: Icon(Icons.credit_card),
-                border: OutlineInputBorder(),
-                hintText: "0000 0000 0000 0000",
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: const [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(labelText: "Expiry (MM/YY)", border: OutlineInputBorder()),
-                    keyboardType: TextInputType.datetime,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(labelText: "CVV", border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
+            const Text("We use Stripe to securely process your payment. You will be prompted to enter your payment details below."),
             
             const SizedBox(height: 48),
             SizedBox(
@@ -123,7 +101,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Center(child: Text("Secure Payment Encrypted", style: TextStyle(color: Colors.grey, fontSize: 12))),
+            const Center(child: Text("Powered by Stripe", style: TextStyle(color: Colors.grey, fontSize: 12))),
           ],
         ),
       ),

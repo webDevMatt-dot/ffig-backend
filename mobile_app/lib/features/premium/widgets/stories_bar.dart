@@ -8,6 +8,7 @@ import '../../../core/api/constants.dart';
 import 'story_bubbles.dart';
 import 'story_viewer.dart';
 import '../logic/story_logic.dart';
+import '../create_story_screen.dart';
 
 /// A horizontal bar that displays a list of users who have posted stories.
 ///
@@ -138,72 +139,58 @@ class _StoriesBarState extends State<StoriesBar> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(35),
-            border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              height: 110,
-              color: const Color(0xFF161B22).withOpacity(0.7),
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                itemCount: 6,
-                itemBuilder: (_, __) => const ShimmerStoryBubble(),
-              ),
-            ),
+      return const SizedBox(
+        height: 104,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _StoriesLoadingRow(),
           ),
         ),
       );
     }
 
+    return SizedBox(
+      height: 104,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        scrollDirection: Axis.horizontal,
+        itemCount: _uniqueUserStories.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return StoryBubble(
+              name: 'Create',
+              isAdd: true,
+              onTap: _openCreateStory,
+            );
+          }
 
-    if (_uniqueUserStories.isEmpty) {
-      return const SizedBox.shrink();
-    }
+          final group = _uniqueUserStories[index - 1];
+          final bool hasUnseen = group['has_unseen'] ?? false;
+          final isSeen = !hasUnseen;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(35),
-          border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(
-            height: 110,
-            color: const Color(0xFF161B22).withOpacity(0.7), // Premium Obsidian Glass
-            child: ListView.builder(
-
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: _uniqueUserStories.length,
-              itemBuilder: (context, index) {
-                final group = _uniqueUserStories[index];
-                final bool hasUnseen = group['has_unseen'] ?? false;
-                final isSeen = !hasUnseen; 
-
-                return StoryBubble(
-                  name: group['username'] ?? 'User',
-                  imageUrl: group['user_photo'], 
-                  isSeen: isSeen,
-                  onTap: () => _openStoryViewer(group),
-                );
-              },
-            ),
-          ),
-        ),
+          return StoryBubble(
+            name: group['username'] ?? 'User',
+            imageUrl: group['user_photo'],
+            isSeen: isSeen,
+            onTap: () => _openStoryViewer(group),
+          );
+        },
       ),
     );
+  }
+
+
+  Future<void> _openCreateStory() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    _fetchStories();
   }
 
   /// Opens the Story Viewer interaction.
@@ -286,3 +273,16 @@ class _StoriesBarState extends State<StoriesBar> {
   }
 }
 
+class _StoriesLoadingRow extends StatelessWidget {
+  const _StoriesLoadingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      scrollDirection: Axis.horizontal,
+      itemCount: 6,
+      itemBuilder: (_, __) => const ShimmerStoryBubble(),
+    );
+  }
+}

@@ -16,6 +16,7 @@ import '../home/dashboard_screen.dart';
 import '../../core/services/membership_service.dart';
 import '../marketing/business_profile_editor_screen.dart';
 import '../admin/admin_logs_screen.dart';
+import '../../core/services/stripe_service.dart';
 
 /// Displays the Application Settings and User Preferences.
 ///
@@ -320,6 +321,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: const Text("UNLOCK")
                     ),
                  ),
+                 
+               ListTile(
+                  leading: const Icon(Icons.payments_outlined, color: FfigTheme.primaryBrown),
+                  title: const Text("Event Payouts (Stripe)"),
+                  subtitle: const Text("Set up your account to sell tickets"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () async {
+                      final service = StripeService();
+                      final status = await service.getConnectStatus();
+                      if (status != null && status['status'] == 'active') {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Your Stripe account is successfully connected and active!")));
+                      } else {
+                          // Needs onboarding
+                          final url = await service.getConnectOnboardingLink();
+                          if (url != null) {
+                              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                          } else {
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not generate Stripe link.")));
+                          }
+                      }
+                  },
+               ),
                const Divider(),
              ],
 

@@ -83,7 +83,12 @@ class _VVIPFeedState extends State<VVIPFeed> {
                   _pageController.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
                 });
             }
-            return _ReelItem(item: _reels[index], index: index, key: ValueKey(_reels[index]['id']));
+            return _ReelItem(
+              item: _reels[index],
+              index: index,
+              showActions: true,
+              key: ValueKey(_reels[index]['id']),
+            );
           },
         ),
         
@@ -95,7 +100,7 @@ class _VVIPFeedState extends State<VVIPFeed> {
             child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: kToolbarHeight), // Snaps directly under AppBar content
+                  padding: const EdgeInsets.only(top: 4),
                   child: AnimatedBuilder(
                       animation: _pageController,
                       builder: (context, child) {
@@ -184,7 +189,14 @@ class _CaughtUpPage extends StatelessWidget {
 class _ReelItem extends StatefulWidget {
   final Map<String, dynamic> item;
   final int index;
-  const _ReelItem({super.key, required this.item, required this.index});
+  final bool showActions;
+
+  const _ReelItem({
+    super.key,
+    required this.item,
+    required this.index,
+    required this.showActions,
+  });
 
   @override
   State<_ReelItem> createState() => _ReelItemState();
@@ -419,36 +431,30 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
     final bool hasVideo = _chewieController != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final frameColor = isDark ? const Color(0xFF0D1117) : Colors.white;
     final overlayBottom = isDark
-        ? [Colors.black.withOpacity(0.85), Colors.black.withOpacity(0.12), Colors.transparent]
-        : [Colors.black.withOpacity(0.32), Colors.black.withOpacity(0.06), Colors.transparent];
+        ? [
+            Colors.black.withOpacity(0.92),
+            Colors.black.withOpacity(0.45),
+            Colors.transparent,
+            Colors.black.withOpacity(0.3),
+          ]
+        : [
+            Colors.black.withOpacity(0.5),
+            Colors.black.withOpacity(0.22),
+            Colors.transparent,
+            Colors.black.withOpacity(0.2),
+          ];
     const textColor = Colors.white;
     
-    final double storiesBarHeight = 110; // Matches StoriesBar height in stories_bar.dart
-    
-    return Padding( 
+    final double storiesBarHeight = 104;
+
+    return Padding(
       padding: EdgeInsets.only(
-        bottom: 24, 
-        left: 0, 
-        right: 0, 
-        top: widget.index == 0 ? (MediaQuery.of(context).padding.top + kToolbarHeight + storiesBarHeight + 8) : 0
-      ), 
-      child: Container(
-        decoration: BoxDecoration(
-          color: frameColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          boxShadow: [
-             BoxShadow(
-               color: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
-               blurRadius: isDark ? 30 : 18,
-               spreadRadius: 0,
-               offset: const Offset(0, -10),
-             )
-          ]
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Stack(
+        top: widget.index == 0
+            ? (MediaQuery.of(context).padding.top + storiesBarHeight + 8)
+            : 0,
+      ),
+      child: Stack(
           fit: StackFit.expand,
           children: [
             // --- 0. MEDIA LAYER ---
@@ -461,8 +467,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                           : (imageUrl != null
                               ? Container(
                                   key: ValueKey('image_${widget.item['id']}'),
-                                  color: isDark ? Colors.black : const Color(0xFFF7F7F7),
-                                  child: Image.network(imageUrl, fit: BoxFit.contain),
+                                  color: Colors.black,
+                                  child: Image.network(imageUrl, fit: BoxFit.cover),
                                 )
                               : Container(key: const ValueKey('broken_image'), color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white)))),
                     )
@@ -490,7 +496,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                     gradient: LinearGradient(
                       colors: overlayBottom,
                       begin: Alignment.bottomCenter,
-                      end: const Alignment(0, -0.2),
+                      end: Alignment.topCenter,
+                      stops: const [0.0, 0.25, 0.72, 1.0],
                     )
                   ),
                 ),
@@ -517,8 +524,8 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
             // --- 4. TOP BADGE (AD / EXCLUSIVE) ---
             Positioned(
-                top: 24,
-                left: 24,
+                top: 16,
+                left: 16,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
@@ -558,36 +565,44 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               bottom: 0,
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 110), // Account for GlassNavBar height
-                  child: Column(
-                    children: [
-                       _SocialButton(
-                           icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-                           label: "$_likesCount",
-                           isActive: _isLiked,
-                           onTap: _toggleLike,
-                           isVertical: true,
-                           isDark: isDark,
-                       ),
-                       const SizedBox(height: 16),
-                       _SocialButton(
-                           icon: Icons.chat_bubble_outline,
-                           label: "$_commentsCount",
-                           onTap: _showComments,
-                           isVertical: true,
-                           isDark: isDark,
-                       ),
-                       const SizedBox(height: 16),
-                       _SocialButton(
-                           icon: Icons.send_outlined,
-                           label: "",
-                           onTap: _share,
-                           isVertical: true,
-                           isDark: isDark,
-                       ),
-                       const SizedBox(height: 24),
-                       const Icon(Icons.bookmark_outline, color: FfigTheme.accentBrown, size: 30),
-                    ],
+                  padding: const EdgeInsets.only(bottom: 96),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 260),
+                    opacity: widget.showActions ? 1 : 0,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 260),
+                      offset: widget.showActions ? Offset.zero : const Offset(0.25, 0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _SocialButton(
+                            icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                            accentColor: const Color(0xFFFE2C55),
+                            label: "$_likesCount",
+                            isActive: _isLiked,
+                            onTap: _toggleLike,
+                            isVertical: true,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 16),
+                          _SocialButton(
+                            icon: Icons.mode_comment_outlined,
+                            label: "$_commentsCount",
+                            onTap: _showComments,
+                            isVertical: true,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 16),
+                          _SocialButton(
+                            icon: Icons.reply,
+                            label: "Share",
+                            onTap: _share,
+                            isVertical: true,
+                            isDark: isDark,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -595,55 +610,73 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
 
             // --- 6. BOTTOM INFO (Refined Typography) ---
             Positioned(
-              left: 24,
-              right: 100, // Leave room for social stack
+              left: 16,
+              right: 100,
               bottom: 0,
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 40), // Shifted up slightly above nav
+                  padding: const EdgeInsets.only(bottom: 26),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Premium Poster Info
                       Row(
-                          children: [
-                               UserAvatar(
-                                 radius: 14,
-                                 imageUrl: widget.item['photo_url'],
-                                 username: widget.item['username'],
-                               ),
-                               const SizedBox(width: 10),
-                               Text(
-                                 (widget.item['username'] ?? 'VVIP Member').toUpperCase(), 
-                                 style: const TextStyle(color: FfigTheme.accentBrown, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)
-                               ),
-                               const SizedBox(width: 6),
-                               const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 14), 
-                          ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Title: Limited to 2 lines
-                      Text(
-                          widget.item['title'] ?? '',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 24, 
-                            fontWeight: FontWeight.w800, 
-                            height: 1.2,
-                            letterSpacing: -0.5
+                        children: [
+                          UserAvatar(
+                            radius: 14,
+                            imageUrl: widget.item['photo_url'],
+                            username: widget.item['username'],
                           ),
+                          const SizedBox(width: 10),
+                          Text(
+                            (widget.item['username'] ?? 'VVIP Member').toUpperCase(),
+                            style: const TextStyle(
+                              color: FfigTheme.accentBrown,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 14),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '@${(widget.item['username'] ?? 'vvip').toString().replaceAll(' ', '').toLowerCase()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 8),
+                      Text(
+                        widget.item['title'] ?? '',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                       // Metadata
                       Row(
                         children: [
                           Text(
-                            _getFormattedDate(), 
-                            style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 13, fontWeight: FontWeight.w500)
+                            _getFormattedDate(),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.78),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          if (widget.item['link'] != null && widget.item['link'].toString().isNotEmpty) ...[
+                          if (widget.item['link'] != null &&
+                              widget.item['link'].toString().isNotEmpty) ...[
                             const SizedBox(width: 12),
                             GestureDetector(
                               onTap: () => launchUrl(Uri.parse(widget.item['link'])),
@@ -652,9 +685,16 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                                 decoration: BoxDecoration(
                                   color: FfigTheme.accentBrown.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.5))
+                                  border: Border.all(color: FfigTheme.accentBrown.withOpacity(0.5)),
                                 ),
-                                child: const Text("VIEW LINK", style: TextStyle(color: FfigTheme.accentBrown, fontSize: 10, fontWeight: FontWeight.w900)),
+                                child: const Text(
+                                  "VIEW LINK",
+                                  style: TextStyle(
+                                    color: FfigTheme.accentBrown,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
                               ),
                             )
                           ]
@@ -667,7 +707,6 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -688,7 +727,8 @@ class _SocialButton extends StatelessWidget {
     final bool isActive;
     final bool isVertical;
     final bool isDark;
-    
+    final Color accentColor;
+
     const _SocialButton({
       required this.icon, 
       required this.label, 
@@ -696,6 +736,7 @@ class _SocialButton extends StatelessWidget {
       this.isActive = false,
       this.isVertical = false,
       this.isDark = true,
+      this.accentColor = Colors.redAccent,
     });
     
     @override
@@ -713,7 +754,7 @@ class _SocialButton extends StatelessWidget {
                   child: AnimatedScale(
                     scale: isActive ? 1.2 : 1.0,
                     duration: const Duration(milliseconds: 200),
-                    child: Icon(icon, color: isActive ? Colors.redAccent : (isDark ? Colors.white : const Color(0xFF1A1A1A)), size: 26)
+                    child: Icon(icon, color: isActive ? accentColor : (isDark ? Colors.white : const Color(0xFF1A1A1A)), size: 26)
                   ),
                 ),
                 if (label.isNotEmpty) ...[
