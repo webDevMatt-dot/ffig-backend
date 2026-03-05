@@ -73,6 +73,9 @@ urlpatterns = [
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
     
+    # Authentication (Login, Register, Password Reset)
+    path('api/', include('authentication.urls')),
+
     # Explicit override to ensuring routing works
     path('api/home/download-apk/', download_latest_apk, name='direct-download-apk'),
     path('api/home/', include('home.urls')),
