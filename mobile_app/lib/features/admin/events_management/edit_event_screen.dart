@@ -305,13 +305,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
           decoration: InputDecoration(
               labelText: label,
               prefixIcon: icon != null ? Icon(icon, color: FfigTheme.primaryBrown) : null,
-              filled: true,
-              fillColor: Colors.grey[50], // Very light grey
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 2)),
-              labelStyle: TextStyle(color: Colors.grey[700]),
           ),
       );
   }
@@ -321,6 +314,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
       context: context, 
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Theme.of(ctx).cardColor,
         child: Container(
             padding: const EdgeInsets.all(24),
             constraints: const BoxConstraints(maxWidth: 400),
@@ -393,13 +387,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  TextFormField(
                    controller: _dateController,
                    decoration: InputDecoration(
-                     labelText: "Date", 
+                     labelText: "Date",
                      prefixIcon: const Icon(Icons.calendar_today, color: FfigTheme.primaryBrown),
-                     filled: true,
-                     fillColor: Colors.grey[50], 
-                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 2)),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -430,13 +419,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  TextFormField(
                    controller: _endDateController,
                    decoration: InputDecoration(
-                     labelText: "End Date (Optional)", 
+                     labelText: "End Date (Optional)",
                      prefixIcon: const Icon(Icons.calendar_month, color: FfigTheme.primaryBrown),
-                     filled: true,
-                     fillColor: Colors.grey[50], 
-                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 2)),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -472,9 +456,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
                      height: 150,
                      width: double.infinity,
                      decoration: BoxDecoration(
-                         color: Colors.grey[100],
+                         color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
                          borderRadius: BorderRadius.circular(12),
-                         border: Border.all(color: Colors.grey[300]!)
+                         border: Border.all(color: Theme.of(context).colorScheme.outline)
                      ),
                      child: _selectedImage != null
                          ? ClipRRect(
@@ -491,7 +475,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                  children: [
                                      Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
                                      const SizedBox(height: 8),
-                                     Text("Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                     Text(widget.event != null ? "Change Cover Image" : "Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
                                  ],
                                )),
                    ),
@@ -522,7 +506,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).cardColor,
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
@@ -551,7 +535,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     return Card(
       elevation: 0,
        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.withOpacity(0.2))),
-       color: Colors.white,
+       color: Theme.of(context).cardColor,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -570,7 +554,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.withOpacity(0.2))
       ),

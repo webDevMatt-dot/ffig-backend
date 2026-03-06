@@ -20,7 +20,7 @@ from django.views.static import serve
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.conf.urls.static import static
+
 import os
 
 # APK Directory
