@@ -59,6 +59,11 @@ from home.views import download_latest_apk
 urlpatterns = [
     path('admin/', admin.site.urls),
     
+    path('api/events/', EventListView.as_view(), name='event-list'),
+    path('api/events/<int:pk>/', EventDetailView.as_view(), name='event-detail'),
+    path('api/events/<int:pk>/delete/', EventDeleteView.as_view(), name='event-delete'),
+    path('api/events/featured/', FeaturedEventView.as_view(), name='featured-events'),
+    
     path('api/events/speakers/', EventSpeakerCreateView.as_view(), name='speaker-create'),
     path('api/events/speakers/<int:pk>/', EventSpeakerDeleteView.as_view(), name='speaker-delete'),
     path('api/events/agenda/', AgendaItemCreateView.as_view(), name='agenda-create'),
