@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/services/admin_api_service.dart';
+import '../../core/utils/url_utils.dart';
 
 class BusinessProfileEditorScreen extends StatefulWidget {
   const BusinessProfileEditorScreen({super.key});
@@ -95,9 +96,14 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
 
     try {
       final api = AdminApiService();
+      final normalizedWebsite = normalizeUrl(_websiteController.text);
+      if (normalizedWebsite != _websiteController.text) {
+        _websiteController.text = normalizedWebsite;
+      }
+
       final data = {
         'company_name': _nameController.text,
-        'website': _websiteController.text,
+        'website': normalizedWebsite,
         'location': _locationController.text,
         'description': _descController.text,
       };
@@ -140,6 +146,11 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
               TextFormField(
                 controller: _websiteController,
                 decoration: const InputDecoration(labelText: "Website URL"),
+                keyboardType: TextInputType.url,
+                onEditingComplete: () {
+                  _websiteController.text = normalizeUrl(_websiteController.text);
+                  FocusScope.of(context).nextFocus();
+                },
               ),
               const SizedBox(height: 16),
               

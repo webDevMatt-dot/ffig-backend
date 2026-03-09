@@ -7,6 +7,7 @@ import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/utils/url_utils.dart';
 
 class ManageHeroScreen extends StatefulWidget {
   const ManageHeroScreen({super.key});
@@ -302,7 +303,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
     try {
       final fields = {
         'title': _titleController.text,
-        'action_url': _urlController.text,
+        'action_url': normalizeUrl(_urlController.text),
         'type': _selectedType,
         'is_active': 'true',
       };

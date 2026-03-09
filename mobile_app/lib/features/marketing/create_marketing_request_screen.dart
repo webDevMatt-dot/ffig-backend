@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart'; 
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
+import '../../core/utils/url_utils.dart';
 import 'preview_marketing_post_screen.dart'; 
 
 /// Screen for creating a new Marketing Request (Ad or Promotion).
@@ -112,7 +113,7 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
            formData: {
              'type': _selectedType,
              'title': _titleController.text,
-             'link': _linkController.text,
+             'link': normalizeUrl(_linkController.text),
            },
            mediaFile: media,
            isVideo: _isVideo,

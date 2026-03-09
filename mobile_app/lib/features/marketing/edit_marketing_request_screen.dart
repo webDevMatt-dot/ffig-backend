@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/services/admin_api_service.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
+import '../../core/utils/url_utils.dart';
 
 class EditMarketingRequestScreen extends StatefulWidget {
   final dynamic requestData;
@@ -78,14 +79,14 @@ class _EditMarketingRequestScreenState extends State<EditMarketingRequestScreen>
 
        final fields = {
          'title': _titleController.text,
-         'link': _linkController.text,
+         'link': normalizeUrl(_linkController.text),
        };
 
        // Only send media if it changed or if switching to manual URL
        dynamic mediaPayload;
        // If user typed a new URL
        if (_urlInputController.text.isNotEmpty && _urlInputController.text != widget.requestData['image'] && _urlInputController.text != widget.requestData['video']) {
-            mediaPayload = _urlInputController.text;
+            mediaPayload = normalizeUrl(_urlInputController.text);
             if (mediaPayload.toLowerCase().endsWith('.mp4') || mediaPayload.toLowerCase().endsWith('.mov')) {
                  _isVideo = true;
             } else {

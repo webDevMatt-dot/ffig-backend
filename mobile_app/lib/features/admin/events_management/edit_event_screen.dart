@@ -5,6 +5,7 @@ import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/utils/url_utils.dart';
 
 class EditEventScreen extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -103,7 +104,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
         'price_label': _priceLabelController.text,
         'description': _descriptionController.text,
         'is_virtual': _isVirtual.toString(),
-        'virtual_link': _virtualLinkController.text,
+        'virtual_link': normalizeUrl(_virtualLinkController.text),
       };
       
       final api = AdminApiService();
@@ -225,7 +226,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
        final data = {
          'name': name.text,
          'role': role.text,
-         'photo_url': photo.text,
+         'photo_url': normalizeUrl(photo.text),
        };
        if (widget.event == null) {
           setState(() => item == null ? _localSpeakers.add(data) : _localSpeakers[indexOrId!] = data);

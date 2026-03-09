@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/utils/url_utils.dart';
 
 class ManageTickerScreen extends StatefulWidget {
   const ManageTickerScreen({super.key});
@@ -171,14 +172,14 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
         // UPDATE
         await _apiService.updateTickerItem(_editingId.toString(), {
            'text': _textController.text,
-           'url': _urlController.text,
+           'url': normalizeUrl(_urlController.text),
         });
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News Item Updated!')));
       } else {
         // CREATE
         await _apiService.createTickerItem({
           'text': _textController.text,
-          'url': _urlController.text,
+          'url': normalizeUrl(_urlController.text),
           'is_active': true,
           'order': 0,
         });

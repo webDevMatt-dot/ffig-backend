@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
+import '../../core/utils/url_utils.dart';
 
 /// Screen to manage VIP Resources (Magazines, Masterclasses, etc).
 ///
@@ -219,17 +220,11 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
     try {
       final token = await _storage.read(key: 'access_token');
       
-      var urlInput = _urlController.text.trim();
-      if (urlInput.isNotEmpty && !urlInput.startsWith('http')) urlInput = 'https://$urlInput';
-
-      var thumbInput = _thumbController.text.trim();
-      if (thumbInput.isNotEmpty && !thumbInput.startsWith('http')) thumbInput = 'https://$thumbInput';
-
       final body = jsonEncode({
         'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
-        'url': urlInput,
-        'thumbnail_url': thumbInput.isEmpty ? null : thumbInput,
+        'url': normalizeUrl(_urlController.text),
+        'thumbnail_url': _thumbController.text.trim().isEmpty ? null : normalizeUrl(_thumbController.text),
         'category': _selectedCategory,
       });
 

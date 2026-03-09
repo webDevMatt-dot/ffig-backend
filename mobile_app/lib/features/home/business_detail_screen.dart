@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared_widgets/user_avatar.dart';
 import 'models/business_profile.dart';
+import '../../core/utils/url_utils.dart';
 
 class BusinessDetailScreen extends StatelessWidget {
   final BusinessProfile profile;
@@ -9,7 +10,7 @@ class BusinessDetailScreen extends StatelessWidget {
   const BusinessDetailScreen({super.key, required this.profile});
 
   Future<void> _launchURL() async {
-    final Uri url = Uri.parse(profile.website);
+    final Uri url = Uri.parse(normalizeUrl(profile.website));
     if (!await launchUrl(url)) {
       throw Exception('Could not launch $url');
     }

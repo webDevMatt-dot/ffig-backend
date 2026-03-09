@@ -9,6 +9,7 @@ import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/utils/url_utils.dart';
 
 class ManageBusinessScreen extends StatefulWidget {
   const ManageBusinessScreen({super.key});
@@ -314,9 +315,12 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final normalizedWebsite = normalizeUrl(_websiteController.text);
+      _websiteController.text = normalizedWebsite;
+
       final fields = {
         'name': _nameController.text,
-        'website': _websiteController.text,
+        'website': normalizedWebsite,
         'location': _locationController.text,
         'description': _descriptionController.text,
         'is_premium': _isPremium.toString(),
