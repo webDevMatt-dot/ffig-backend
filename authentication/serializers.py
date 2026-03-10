@@ -16,8 +16,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'password', 'password2', 'first_name', 'last_name', 'industry', 'industry_other']
 
     def validate(self, data):
+        # 1. Password Match
         if data['password'] != data['password2']:
             raise serializers.ValidationError("Passwords do not match.")
+
+        # 2. Standardize & Check Username
+        username = data.get('username', '').strip()
+        data['username'] = username
+        if User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError({"username": "A user with that username already exists."})
+
+        # 3. Standardize & Check Email
+        email = data.get('email', '').strip().lower()
+        data['email'] = email
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError({"email": "A user with that email already exists."})
+
         return data
 
     def create(self, validated_data):
@@ -123,24 +137,33 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # Custom uniqueness check for username
+        # 1. Standardize Username
         if 'username' in data:
-            username = data['username']
+            username = data['username'].strip()
+            data['username'] = username
             
-            # Optimization: If updating self and username hasn't changed (case-insensitive), skip check
-            if self.instance and self.instance.username.lower() == username.lower():
-                return data
-
-            # Check if username exists for ANY OTHER user (exclude self)
+            # Check for name conflict case-insensitively (exclude self)
             qs = User.objects.filter(username__iexact=username)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             
             if qs.exists():
                 conflict = qs.first()
-                # Debugging print (remove in production)
-                print(f"DEBUG: Conflict found for '{username}'. Me: {self.instance.pk if self.instance else 'None'}, Conflict: {conflict.pk} ({conflict.username})")
                 raise serializers.ValidationError({"username": f"A user with that username already exists (ID: {conflict.id})."})
+
+        # 2. Standardize Email
+        if 'email' in data:
+            email = data['email'].strip().lower()
+            data['email'] = email
+            
+            # Check for email conflict (exclude self)
+            qs = User.objects.filter(email__iexact=email)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            if qs.exists():
+                conflict = qs.first()
+                raise serializers.ValidationError({"email": f"A user with that email already exists (ID: {conflict.id})."})
         
         return data
 
@@ -151,20 +174,23 @@ class UserSerializer(serializers.ModelSerializer):
         # Update User fields
         instance = super().update(instance, validated_data)
 
-        # Update Profile fields
+        # Update Profile fields - Use get_or_create to be bulletproof
+        from members.models import Profile
+        profile, _ = Profile.objects.get_or_create(user=instance)
+
         if profile_data:
             updated = False
             if 'is_premium' in profile_data:
-                instance.profile.is_premium = profile_data['is_premium']
+                profile.is_premium = profile_data['is_premium']
                 updated = True
             
             if 'tier' in profile_data:
-                instance.profile.tier = profile_data['tier']
+                profile.tier = profile_data['tier']
                 # Sync deprecated is_premium flag
-                instance.profile.is_premium = (profile_data['tier'] == 'PREMIUM')
+                profile.is_premium = (profile_data['tier'] == 'PREMIUM')
                 updated = True
                 
             if updated:
-                instance.profile.save()
+                profile.save()
             
         return instance

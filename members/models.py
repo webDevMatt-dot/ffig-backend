@@ -63,6 +63,26 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username}'s Profile ({self.tier})"
 
+    @property
+    def is_complete(self):
+        return len(self.get_missing_fields()) == 0
+
+    def get_missing_fields(self):
+        missing = []
+        if not self.bio or self.bio.strip() == "":
+            missing.append("bio")
+        if not self.business_name or self.business_name.strip() == "":
+            missing.append("business_name")
+        if not self.location or self.location.strip() == "":
+            missing.append("location")
+        if self.industry == "OTH":
+            missing.append("industry")
+        if not self.photo:
+            # If no photo file, check if photo_url is still the default avatar
+            if "ui-avatars.com" in self.photo_url:
+                missing.append("photo")
+        return missing
+
 class BusinessProfile(models.Model):
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')]
     

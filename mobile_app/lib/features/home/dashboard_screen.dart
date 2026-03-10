@@ -821,6 +821,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             // 0. Flash Alert
             if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
 
+            // 0.1 Profile Completion Prompt
+            if (_userProfile != null && _userProfile!['is_complete'] == false)
+              _buildProfileCompletionPrompt(),
+
             // 1. Editorial Header
             Padding(
               padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 16, 24, 24),
@@ -1313,6 +1317,99 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             const SizedBox(height: 120),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileCompletionPrompt() {
+    final missingCount = (_userProfile!['get_missing_fields'] as List? ?? []).length;
+    final firstName = _userProfile!['first_name'] ?? 'Founder';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            FfigTheme.primaryBrown.withOpacity(0.15),
+            FfigTheme.accentBrown.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: FfigTheme.primaryBrown.withOpacity(0.3)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: FfigTheme.primaryBrown.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.face_retouching_natural,
+                    color: FfigTheme.primaryBrown,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Hi $firstName!",
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Your profile is almost there! Complete the last $missingCount steps to stand out in the community.",
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                    );
+                    _checkPremiumStatus(); // Refresh profile on return
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: FfigTheme.primaryBrown,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Finish",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
