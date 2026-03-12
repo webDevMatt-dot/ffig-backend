@@ -17,7 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
 
   Future<void> _requestOtp() async {
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     if (email.isEmpty) {
       _showError("Please enter your email address.");
       return;
@@ -33,7 +33,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
-          'sender_email': 'admin@femalefoundersinitiative.com',
         }),
       );
 

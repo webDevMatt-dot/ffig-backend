@@ -20,7 +20,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   bool _obscurePassword = true;
 
   Future<void> _verifyOtpAndReset() async {
-    final otp = _otpController.text.trim();
+    final otp = _otpController.text.replaceAll(RegExp(r'\s+'), '');
     final newPassword = _passwordController.text.trim();
 
     if (otp.length != 6) {
@@ -41,7 +41,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': widget.email,
+          'email': widget.email.trim().toLowerCase(),
           'otp': otp,
           'new_password': newPassword,
         }),
