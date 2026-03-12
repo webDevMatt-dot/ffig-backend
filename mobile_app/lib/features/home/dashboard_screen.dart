@@ -811,6 +811,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// Builds the 'Home' tab content (Index 0).
   /// - Includes Editorial Header, Hero Carousel, Bento Grid, and Trending Events.
   Widget _buildHomeTab() {
+    final shouldShowProfilePrompt = _shouldShowProfileCompletionPrompt();
+
     return RefreshIndicator(
       onRefresh: _onRefresh,
       color: FfigTheme.primaryBrown,
@@ -822,12 +824,19 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
 
             // 0.1 Profile Completion Prompt
-            if (_userProfile != null && _userProfile!['is_complete'] == false)
+            if (shouldShowProfilePrompt)
               _buildProfileCompletionPrompt(),
 
             // 1. Editorial Header
             Padding(
-              padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 16, 24, 24),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                shouldShowProfilePrompt
+                    ? 24
+                    : MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                24,
+                24,
+              ),
 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1322,12 +1331,45 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  bool _shouldShowProfileCompletionPrompt() {
+    if (_userProfile == null) return false;
+
+    final rawMissingFields = _userProfile!['get_missing_fields'];
+    if (rawMissingFields is List && rawMissingFields.isNotEmpty) {
+      return true;
+    }
+
+    final profileCompleteValue = _userProfile!['is_complete'];
+    if (profileCompleteValue is bool) {
+      return !profileCompleteValue;
+    }
+    if (profileCompleteValue is num) {
+      return profileCompleteValue == 0;
+    }
+    if (profileCompleteValue is String) {
+      final normalized = profileCompleteValue.trim().toLowerCase();
+      if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+        return true;
+      }
+      if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   Widget _buildProfileCompletionPrompt() {
     final missingCount = (_userProfile!['get_missing_fields'] as List? ?? []).length;
     final firstName = _userProfile!['first_name'] ?? 'Founder';
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      margin: EdgeInsets.fromLTRB(
+        24,
+        MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        24,
+        0,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [

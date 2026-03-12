@@ -16,6 +16,15 @@ from datetime import timedelta
 import os
 import dj_database_url
 
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).lower() in {'1', 'true', 'yes', 'on'}
+
+
+def env_list(name, default=''):
+    raw = os.environ.get(name, default)
+    return [item.strip() for item in raw.split(',') if item.strip()]
+
 # Load .env file for local development
 env_path = Path(__file__).resolve().parent.parent / '.env'
 if env_path.exists():
@@ -34,7 +43,7 @@ if env_path.exists():
                     pass
 
 # Log the Database Host for verification (Safe for debugging)
-if os.environ.get('DATABASE_URL'):
+if env_bool('DEBUG', False) and os.environ.get('DATABASE_URL'):
     from dj_database_url import parse as db_url_parse
     db_config = db_url_parse(os.environ.get('DATABASE_URL'))
     print(f"📡 Database Host: {db_config.get('HOST')}")
@@ -50,17 +59,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if env_bool('DEBUG', False):
+        SECRET_KEY = 'django-insecure-local-development-key-change-me'
+    else:
+        raise RuntimeError('SECRET_KEY must be set in non-debug environments.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = env_bool('DEBUG', False)
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
-CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
+CSRF_TRUSTED_ORIGINS = env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://*.onrender.com,http://localhost,http://127.0.0.1'
+)
 
+CORS_ALLOW_ALL_ORIGINS = env_bool('CORS_ALLOW_ALL_ORIGINS', False)
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', '')
 
-CORS_ALLOW_ALL_ORIGINS = True
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', True)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', True)
+    SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', True)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    X_FRAME_OPTIONS = 'DENY'
 
 # Application definition
 
@@ -137,11 +166,12 @@ if os.environ.get('RENDER') and 'sqlite' in DATABASES['default']['ENGINE']:
     raise RuntimeError("❌ FATAL: Render detected but DATABASE_URL is missing! You must configure the Postgres URL in Environment Variables.")
 
 # Debug: Print DB Engine to logs (Safe for ephemeral logs)
-print(f"🚀 Database Engine Configured: {DATABASES['default']['ENGINE']}")
-if 'sqlite' in DATABASES['default']['ENGINE']:
-    print("⚠️  WARNING: Using SQLite. Data will be lost on ephemeral environments like Render!")
-    if os.environ.get('RENDER'):
-        print("❌ CRITICAL: Render detected but DATABASE_URL not found!")
+if DEBUG:
+    print(f"🚀 Database Engine Configured: {DATABASES['default']['ENGINE']}")
+    if 'sqlite' in DATABASES['default']['ENGINE']:
+        print("⚠️  WARNING: Using SQLite. Data will be lost on ephemeral environments like Render!")
+        if os.environ.get('RENDER'):
+            print("❌ CRITICAL: Render detected but DATABASE_URL not found!")
 
 
 # Password validation
@@ -255,12 +285,20 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    # CHANGE THIS: Set the login life to 7 days
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.environ.get('JWT_ACCESS_MINUTES', '30'))),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.environ.get('JWT_REFRESH_DAYS', '7'))),
     
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+}
+
+REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
+    'rest_framework.throttling.AnonRateThrottle',
+    'rest_framework.throttling.UserRateThrottle',
+]
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+    'anon': os.environ.get('DRF_THROTTLE_ANON', '60/minute'),
+    'user': os.environ.get('DRF_THROTTLE_USER', '120/minute'),
 }
 
 # Email Configuration (AWS SES via SMTP)

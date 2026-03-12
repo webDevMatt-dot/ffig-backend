@@ -136,17 +136,36 @@ class UserSerializer(serializers.ModelSerializer):
             'username': {'validators': []},  # Remove default UniqueValidator to handle updates manually
         }
 
+    def _get_target_user_pk(self):
+        if self.instance:
+            return self.instance.pk
+
+        request = self.context.get('request')
+        if request and request.parser_context:
+            view_kwargs = request.parser_context.get('kwargs', {})
+            pk = view_kwargs.get('pk')
+            if pk is not None:
+                return pk
+
+        view = self.context.get('view')
+        if view:
+            return view.kwargs.get('pk')
+
+        return None
+
     def validate(self, data):
+        target_user_pk = self._get_target_user_pk()
+
         # 1. Standardize Username
         if 'username' in data:
             username = data['username'].strip()
             data['username'] = username
-            
-            # Check for name conflict case-insensitively (exclude self)
+
+            # Check for name conflict case-insensitively (exclude currently edited user)
             qs = User.objects.filter(username__iexact=username)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            
+            if target_user_pk is not None:
+                qs = qs.exclude(pk=target_user_pk)
+
             if qs.exists():
                 conflict = qs.first()
                 raise serializers.ValidationError({"username": f"A user with that username already exists (ID: {conflict.id})."})
@@ -155,16 +174,16 @@ class UserSerializer(serializers.ModelSerializer):
         if 'email' in data:
             email = data['email'].strip().lower()
             data['email'] = email
-            
-            # Check for email conflict (exclude self)
+
+            # Check for email conflict (exclude currently edited user)
             qs = User.objects.filter(email__iexact=email)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            
+            if target_user_pk is not None:
+                qs = qs.exclude(pk=target_user_pk)
+
             if qs.exists():
                 conflict = qs.first()
                 raise serializers.ValidationError({"email": f"A user with that email already exists (ID: {conflict.id})."})
-        
+
         return data
 
     def update(self, instance, validated_data):

@@ -1,28 +1,130 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
-class LockedScreen extends StatelessWidget {
+class LockedScreen extends StatefulWidget {
   const LockedScreen({super.key});
 
-  // Your specific payment links
-  /// Payment URL for Standard Plan
-  final String _standardPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiJhZDQwMzVkZi04MzA0LTRhMjctODZlNi0yY2ExMDNlNTNlNWIiLCJjaGVja291dEZsb3dJZCI6Ijk3ZjRiMjcwLTA5ZTUtNDIxOS1iYzNkLWE3ZjIxNWMwNTJjMCJ9";
-  
-  /// Payment URL for Premium Plan
-  final String _premiumPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiI5YWQ4OTNlNi03ZTIzLTQ2NTAtYWY1OS1lMWNiMTU5NDA5OTQiLCJjaGVja291dEZsb3dJZCI6IjAwMTZmN2QxLTc2MzgtNDgyOS1hODVjLTU5MTYwYTdjMjYxNyJ9";
+  @override
+  State<LockedScreen> createState() => _LockedScreenState();
+}
 
-  Future<void> _launchURL(BuildContext context, String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Could not open payment page")),
-      );
+class _LockedScreenState extends State<LockedScreen> {
+  /// Replace these IDs with the exact product identifiers created in App Store Connect.
+  static const String _standardProductId = 'ffig.standard.yearly';
+  static const String _premiumProductId = 'ffig.premium.yearly';
+
+  final InAppPurchase _inAppPurchase = InAppPurchase.instance;
+  final Set<String> _productIds = {_standardProductId, _premiumProductId};
+
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+
+  bool _isStoreAvailable = false;
+  bool _isLoadingProducts = true;
+  bool _isPurchasing = false;
+  List<ProductDetails> _products = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initIap();
+  }
+
+  Future<void> _initIap() async {
+    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
+      _onPurchaseUpdated,
+      onDone: () => _purchaseSubscription?.cancel(),
+      onError: (_) {},
+    );
+
+    final available = await _inAppPurchase.isAvailable();
+    if (!mounted) return;
+
+    if (!available) {
+      setState(() {
+        _isStoreAvailable = false;
+        _isLoadingProducts = false;
+      });
+      return;
     }
+
+    final ProductDetailsResponse response =
+        await _inAppPurchase.queryProductDetails(_productIds);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isStoreAvailable = true;
+      _products = response.productDetails;
+      _isLoadingProducts = false;
+    });
+  }
+
+  Future<void> _buy(ProductDetails product) async {
+    setState(() => _isPurchasing = true);
+
+    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+    await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+  }
+
+  Future<void> _restorePurchases() async {
+    await _inAppPurchase.restorePurchases();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Restore request sent.')),
+    );
+  }
+
+  Future<void> _onPurchaseUpdated(List<PurchaseDetails> purchaseDetailsList) async {
+    for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
+      if (purchaseDetails.status == PurchaseStatus.pending) {
+        if (mounted) setState(() => _isPurchasing = true);
+      } else {
+        if (purchaseDetails.status == PurchaseStatus.error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Purchase failed: ${purchaseDetails.error?.message ?? 'Unknown error'}')),
+            );
+          }
+        } else if (purchaseDetails.status == PurchaseStatus.purchased ||
+            purchaseDetails.status == PurchaseStatus.restored) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Purchase successful. Premium access will sync after profile refresh.')),
+            );
+            Navigator.of(context).pop();
+          }
+        }
+
+        if (purchaseDetails.pendingCompletePurchase) {
+          await _inAppPurchase.completePurchase(purchaseDetails);
+        }
+
+        if (mounted) setState(() => _isPurchasing = false);
+      }
+    }
+  }
+
+  ProductDetails? _findProduct(String productId) {
+    for (final product in _products) {
+      if (product.id == productId) return product;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _purchaseSubscription?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final standard = _findProduct(_standardProductId);
+    final premium = _findProduct(_premiumProductId);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -34,20 +136,20 @@ class LockedScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const Icon(Icons.workspace_premium, size: 60, color: Color(0xFFD4AF37)), // Gold
+            const Icon(Icons.workspace_premium, size: 60, color: Color(0xFFD4AF37)),
             const SizedBox(height: 16),
             Text(
-              "Unlock the Network",
+              'Unlock the Network',
               style: GoogleFonts.playfairDisplay(fontSize: 30, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             const Text(
-              "Direct messaging is exclusively available to our members. Choose a plan to start connecting.",
+              'Direct messaging is exclusively available to our members. Subscribe in-app to start connecting.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
 
             // Option 1: Standard Plan
             _buildPlanCard(
@@ -84,13 +186,14 @@ class LockedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanCard(BuildContext context, {
+  Widget _buildPlanCard(
+    BuildContext context, {
     required String title,
     required String price,
     required List<String> features,
     required String buttonText,
     required bool isRecommended,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     final goldColor = Theme.of(context).colorScheme.primary;
 
@@ -99,8 +202,8 @@ class LockedScreen extends StatelessWidget {
         color: isRecommended ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isRecommended ? Colors.black : Colors.grey[300]!, width: 2),
-        boxShadow: isRecommended 
-            ? [BoxShadow(color: goldColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))] 
+        boxShadow: isRecommended
+            ? [BoxShadow(color: goldColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]
             : [],
       ),
       child: Padding(
@@ -112,25 +215,40 @@ class LockedScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(color: goldColor, borderRadius: BorderRadius.circular(20)),
-                child: const Text("RECOMMENDED", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                child: const Text('RECOMMENDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
               ),
-            Text(title, style: TextStyle(color: isRecommended ? Colors.white : Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            Text(
+              title,
+              style: TextStyle(
+                color: isRecommended ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(price, style: TextStyle(color: isRecommended ? Colors.grey[300] : Colors.grey[600], fontSize: 14)),
+            Text(
+              price,
+              style: TextStyle(color: isRecommended ? Colors.grey[300] : Colors.grey[600], fontSize: 14),
+            ),
             const SizedBox(height: 24),
-            ...features.map((f) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start, // Align to top for multi-line
-                children: [
-                  Icon(Icons.check_circle, color: goldColor, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded( // Fix 1: Wrap Text in Expanded to prevent overflow
-                    child: Text(f, style: TextStyle(color: isRecommended ? Colors.white : Colors.black87, height: 1.3)),
-                  ),
-                ],
+            ...features.map(
+              (f) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.check_circle, color: goldColor, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        f,
+                        style: TextStyle(color: isRecommended ? Colors.white : Colors.black87, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
