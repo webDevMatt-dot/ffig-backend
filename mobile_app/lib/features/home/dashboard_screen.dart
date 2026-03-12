@@ -22,6 +22,7 @@ import '../premium/premium_screen.dart';
 import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
 import '../settings/settings_screen.dart';
+import '../settings/edit_profile_screen.dart';
 import '../chat/inbox_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
@@ -1430,7 +1431,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   onPressed: () async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
                     );
                     _checkPremiumStatus(); // Refresh profile on return
                   },
