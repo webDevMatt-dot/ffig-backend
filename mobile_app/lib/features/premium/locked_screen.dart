@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LockedScreen extends StatefulWidget {
   const LockedScreen({super.key});
@@ -15,6 +16,23 @@ class _LockedScreenState extends State<LockedScreen> {
   /// Replace these IDs with the exact product identifiers created in App Store Connect.
   static const String _standardProductId = 'ffig.standard.yearly';
   static const String _premiumProductId = 'ffig.premium.yearly';
+
+  // Your specific payment links
+  /// Payment URL for Standard Plan
+  final String _standardPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiJhZDQwMzVkZi04MzA0LTRhMjctODZlNi0yY2ExMDNlNTNlNWIiLCJjaGVja291dEZsb3dJZCI6Ijk3ZjRiMjcwLTA5ZTUtNDIxOS1iYzNkLWE3ZjIxNWMwNTJjMCJ9";
+  
+  /// Payment URL for Premium Plan
+  final String _premiumPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiI5YWQ4OTNlNi03ZTIzLTQ2NTAtYWY1OS1lMWNiMTU5NDA5OTQiLCJjaGVja291dEZsb3dJZCI6IjAwMTZmN2QxLTc2MzgtNDgyOS1hODVjLTU5MTYwYTdjMjYxNyJ9";
+
+  Future<void> _launchURL(BuildContext context, String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not open payment page")),
+      );
+    }
+  }
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   final Set<String> _productIds = {_standardProductId, _premiumProductId};
