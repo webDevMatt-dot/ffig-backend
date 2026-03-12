@@ -150,55 +150,58 @@ class _LockedScreenState extends State<LockedScreen> {
         elevation: 0,
         leading: const CloseButton(color: Colors.black),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            const Icon(Icons.workspace_premium, size: 60, color: Color(0xFFD4AF37)),
-            const SizedBox(height: 16),
-            Text(
-              'Unlock the Network',
-              style: GoogleFonts.playfairDisplay(fontSize: 30, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Direct messaging is exclusively available to our members. Subscribe in-app to start connecting.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-            const SizedBox(height: 30),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            children: [
+              const Icon(Icons.workspace_premium, size: 60, color: Color(0xFFD4AF37)),
+              const SizedBox(height: 16),
+              Text(
+                'Unlock the Network',
+                style: GoogleFonts.playfairDisplay(fontSize: 30, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Direct messaging is exclusively available to our members. Subscribe in-app to start connecting.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+              const SizedBox(height: 30),
 
-            // Option 1: Standard Plan
-            _buildPlanCard(
-              context,
-              title: "STANDARD MEMBER",
-              price: "\$200 / year",
-              features: ["Global Networking", "Member Directory Access", "Basic Resources"],
-              buttonText: "JOIN STANDARD",
-              isRecommended: false,
-              onTap: () => _launchURL(context, _standardPlanUrl),
-            ),
+              // Option 1: Standard Plan
+              _buildPlanCard(
+                context,
+                title: "STANDARD MEMBER",
+                price: "\$200 / year",
+                features: ["Global Networking", "Member Directory Access", "Basic Resources"],
+                buttonText: "JOIN STANDARD",
+                isRecommended: false,
+                onTap: () => _launchURL(context, _standardPlanUrl),
+              ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Option 2: Premium Plan (Highlighted)
-            _buildPlanCard(
-              context,
-              title: "PREMIUM MEMBER",
-              price: "\$400 / year",
-              features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
-              buttonText: "GO PREMIUM",
-              isRecommended: true,
-              onTap: () => _launchURL(context, _premiumPlanUrl),
-            ),
+              // Option 2: Premium Plan (Highlighted)
+              _buildPlanCard(
+                context,
+                title: "PREMIUM MEMBER",
+                price: "\$400 / year",
+                features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
+                buttonText: "GO PREMIUM",
+                isRecommended: true,
+                onTap: () => _launchURL(context, _premiumPlanUrl),
+              ),
 
-            const SizedBox(height: 40),
-            Text(
-              "Already upgraded? Pull to refresh your profile.",
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-          ],
+              const SizedBox(height: 40),
+              Text(
+                "Already upgraded? Pull to refresh your profile.",
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+              const SizedBox(height: 50), // Additional padding at the bottom
+            ],
+          ),
         ),
       ),
     );
