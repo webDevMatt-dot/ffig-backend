@@ -60,7 +60,7 @@ class NotificationService {
     );
 
     await _localNotifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         // Handle foreground notification tap
         if (response.payload != null) {
@@ -108,10 +108,10 @@ class NotificationService {
           ?? 'You have a new message';
 
       _localNotifications.show(
-        message.hashCode,
-        title,
-        body,
-        NotificationDetails(
+        id: message.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             channel.id,
             channel.name,
