@@ -43,6 +43,11 @@ post_install do |installer|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
       config.build_settings['SWIFT_VERSION'] = '5.0'
 
+      # Force dSYM generation for all pods to fix App Store Connect warnings
+      if config.name == 'Release' || config.name == 'Profile'
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+      end
+
       # iOS 18 marks StoreKit 1 APIs as deprecated. The Flutter
       # in_app_purchase_storekit plugin still relies on these APIs until a full
       # StoreKit 2 migration is complete, so we suppress deprecation warnings for
