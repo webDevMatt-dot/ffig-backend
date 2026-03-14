@@ -220,7 +220,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                      _fetchAllCategories(silent: true);
                    }
                  ),
-                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user['id'])),
+                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user['user_id'] ?? user['id'])),
               ],
             ),
           );

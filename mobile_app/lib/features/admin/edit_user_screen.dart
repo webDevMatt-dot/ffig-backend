@@ -104,7 +104,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
   }
 
   Future<void> _updateUser() async {
-      await _performUpdate(widget.user!['id'], false);
+      final targetId = widget.user!['user_id'] ?? widget.user!['id'];
+      await _performUpdate(targetId, false);
       if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User updated")));
          Navigator.pop(context, true);
@@ -136,10 +137,11 @@ class _EditUserScreenState extends State<EditUserScreen> {
        final newPass = _generatePassword();
        const storage = FlutterSecureStorage();
        final token = await storage.read(key: 'access_token');
+       final targetId = widget.user!['user_id'] ?? widget.user!['id'];
        final response = await http.post(
           Uri.parse('${baseUrl}admin/reset-password/'), 
           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-          body: jsonEncode({'user_id': widget.user!['id'], 'new_password': newPass}),
+          body: jsonEncode({'user_id': targetId, 'new_password': newPass}),
        );
        
        if (response.statusCode == 200) {
