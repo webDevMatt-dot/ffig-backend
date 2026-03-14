@@ -577,20 +577,24 @@ class AdminApiService {
       throw Exception('Failed to fetch approvals: ${response.statusCode}');
   }
 
-  Future<void> updateBusinessStatus(int id, String status) async {
-      await _updateStatus('business', id, status);
+  Future<void> updateBusinessStatus(int id, String status, {String? feedback}) async {
+      await _updateStatus('business', id, status, feedback: feedback);
   }
 
-  Future<void> updateMarketingStatus(int id, String status) async {
-      await _updateStatus('marketing', id, status);
+  Future<void> updateMarketingStatus(int id, String status, {String? feedback}) async {
+      await _updateStatus('marketing', id, status, feedback: feedback);
   }
 
-  Future<void> _updateStatus(String type, int id, String status) async {
+  Future<void> _updateStatus(String type, int id, String status, {String? feedback}) async {
       final token = await _getToken();
+      final Map<String, dynamic> body = {'status': status};
+      if (feedback != null && feedback.isNotEmpty) {
+          body['feedback'] = feedback;
+      }
       final response = await http.patch(
           Uri.parse('${baseUrl}admin/approvals/$type/$id/'),
           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-          body: jsonEncode({'status': status})
+          body: jsonEncode(body)
       );
       if (response.statusCode != 200) throw Exception('Failed to update status');
   }
