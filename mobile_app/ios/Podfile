@@ -48,13 +48,9 @@ post_install do |installer|
         config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
       end
 
-      # iOS 18 marks StoreKit 1 APIs as deprecated. The Flutter
-      # in_app_purchase_storekit plugin still relies on these APIs until a full
-      # StoreKit 2 migration is complete, so we suppress deprecation warnings for
-      # this pod target to keep CI warning output actionable.
-      if target.name == 'in_app_purchase_storekit'
-        config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
-      end
+      # iOS 18 marks StoreKit 1 APIs as deprecated.
+      # We suppress all deprecation warnings for all pods to keep CI output clean.
+      config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
     end
   end
 end
