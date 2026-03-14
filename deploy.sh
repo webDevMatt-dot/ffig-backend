@@ -78,7 +78,7 @@ echo "🏗️  Step 2: Building iOS Archive (for App Store Connect)..."
 # Flutter builds the framework first
 flutter build ios --release --no-codesign
 # xcodebuild physically creates the App Store archive in Xcode Organizer
-xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release archive || echo "⚠️ iOS Archive failed. Please archive manually in Xcode."
+xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -allowProvisioningUpdates archive || echo "⚠️ iOS Archive failed. Please archive manually in Xcode."
 
 echo "🏗️  Step 3: Building Web..."
 flutter build web --release --no-tree-shake-icons
