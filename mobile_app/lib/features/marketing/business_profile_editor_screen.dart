@@ -22,6 +22,8 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
   final _descController = TextEditingController();
   bool _isLoading = false;
   bool _isEditing = false; // Track if we are editing an existing profile
+  String _status = 'NONE';
+  String? _feedback;
 
   @override
   void initState() {
@@ -43,6 +45,8 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
           _nameController.text = data['company_name'] ?? '';
           _websiteController.text = data['website'] ?? '';
           _descController.text = data['description'] ?? '';
+          _status = data['status'] ?? 'PENDING';
+          _feedback = data['feedback'];
           existingLocation = data['location'];
           if (existingLocation != null) _locationController.text = existingLocation;
       }
@@ -135,6 +139,43 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
           key: _formKey,
           child: Column(
             children: [
+              if (_status == 'PENDING')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.hourglass_empty, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Expanded(child: Text("Your profile is currently pending approval.", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))),
+                    ],
+                  ),
+                ),
+              if (_status == 'REJECTED')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red),
+                          SizedBox(width: 12),
+                          Text("Profile Declined", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      if (_feedback != null && _feedback!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text("Reason: $_feedback", style: const TextStyle(color: Colors.red)),
+                      ],
+                      const SizedBox(height: 8),
+                      const Text("Please update your details and re-submit.", style: TextStyle(fontSize: 12, color: Colors.red)),
+                    ],
+                  ),
+                ),
               const Text("As a Premium Member, your business profile will be featured in the Business Directory upon approval."),
               const SizedBox(height: 24),
               TextFormField(

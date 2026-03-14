@@ -175,6 +175,11 @@ class _MarketingRequestsScreenState extends State<MarketingRequestsScreen> {
           children: [
             Text(req['type'] ?? 'AD'),
             Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+            if (status == 'REJECTED' && req['feedback'] != null && req['feedback'].toString().isNotEmpty)
+               Padding(
+                 padding: const EdgeInsets.only(top: 4.0),
+                 child: Text("Reason: ${req['feedback']}", style: const TextStyle(fontSize: 11, color: Colors.red)),
+               ),
           ],
         ),
         trailing: Row(
