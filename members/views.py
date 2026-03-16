@@ -328,6 +328,56 @@ class AdminBusinessProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BusinessProfile.objects.all()
     serializer_class = AdminBusinessProfileSerializer
 
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        instance = serializer.save()
+        new_status = instance.status
+
+        if old_status != 'REJECTED' and new_status == 'REJECTED':
+            from chat.models import Conversation, Message
+            from django.contrib.auth.models import User
+            from core.services.fcm_service import send_push_notification
+
+            # Try to find an admin user to send the message from
+            admin_user = User.objects.filter(is_superuser=True).first()
+            if not admin_user:
+                admin_user = User.objects.filter(is_staff=True).first()
+
+            if admin_user and instance.user != admin_user:
+                # Find existing conversation
+                conversation = Conversation.objects.filter(
+                    participants=admin_user
+                ).filter(
+                    participants=instance.user
+                ).filter(
+                    is_public=False
+                ).first()
+                
+                if not conversation:
+                    conversation = Conversation.objects.create(is_public=False)
+                    conversation.participants.add(admin_user, instance.user)
+
+                message_text = f"Your business profile for '{instance.company_name}' has been rejected."
+                if instance.feedback:
+                    message_text += f"\n\nReason: {instance.feedback}"
+
+                Message.objects.create(
+                    conversation=conversation,
+                    sender=admin_user,
+                    text=message_text
+                )
+
+                # Send push notification to the user
+                send_push_notification(
+                    instance.user,
+                    title="Business Profile Update",
+                    body=f"Your business profile has been rejected. Check your inbox for details.",
+                    data={
+                        "type": "profile_rejected",
+                        "conversation_id": str(conversation.id)
+                    }
+                )
+
 class AdminMarketingRequestListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = MarketingRequest.objects.all().order_by('-created_at')

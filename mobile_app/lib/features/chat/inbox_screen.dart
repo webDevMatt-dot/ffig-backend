@@ -383,13 +383,24 @@ class _InboxScreenState extends State<InboxScreen> {
                             username: title,
                           ),
                       ),
-                      title: Text(
-                        title, 
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                          fontSize: 16,
-                          color: theme.colorScheme.onSurface,
-                        ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title, 
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 16,
+                                color: title.toLowerCase() == 'admin' ? Colors.red : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          if (title.toLowerCase() == 'admin')
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4.0),
+                              child: Icon(Icons.verified_user, color: Colors.red, size: 16),
+                            ),
+                        ],
                       ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4.0),
