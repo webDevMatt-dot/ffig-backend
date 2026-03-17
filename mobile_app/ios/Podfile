@@ -51,6 +51,11 @@ post_install do |installer|
       # iOS 18 marks StoreKit 1 APIs as deprecated.
       # We suppress all deprecation warnings for all pods to keep CI output clean.
       config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+
+      # Fix for objective_c.framework / arm64 slice issue (simulator platform metadata)
+      if target.name == 'objective_c'
+        config.build_settings['SDKROOT'] = 'iphoneos'
+      end
     end
   end
 end
