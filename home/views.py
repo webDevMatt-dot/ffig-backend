@@ -75,10 +75,12 @@ class AppVersionViewSet(BaseHomeViewSet):
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
-        # Force Play Store URL for Android
+        # Force Play Store URL for Android and App Store for iOS
         for version in response.data:
             if version.get('platform') == 'ANDROID':
                 version['update_url'] = "https://play.google.com/store/apps/details?id=com.ffiglobal.mobile_app"
+            elif version.get('platform') == 'IOS':
+                version['update_url'] = "https://apps.apple.com/za/app/female-founders-initiative-glo/id6759861790"
         return response
 
 # --- APK Download Helper ---

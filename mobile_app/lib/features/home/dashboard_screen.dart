@@ -23,6 +23,7 @@ import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
 import '../settings/settings_screen.dart';
 import '../settings/edit_profile_screen.dart';
+import '../tickets/my_tickets_screen.dart';
 import '../chat/inbox_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../../core/services/admin_api_service.dart';
@@ -930,53 +931,64 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                   const SizedBox(height: 16),
 
-                  // ROW 2: MAIN FEATURE (FIND FOUNDER)
-                  BentoTile(
-                    title: "Network",
-                    subtitle: "Connect with Our Community Global Founders",
-                    height: 180,
-                    isGlass: true,
-                    icon: const Icon(
-                      Icons.search,
-                      color: FfigTheme.accentBrown,
-                      size: 28,
-                    ),
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: FfigTheme.primaryBrown,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          "Find a Founder",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                  // ROW 2: NETWORK & MY TICKETS
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BentoTile(
+                          title: "Network",
+                          subtitle: "Find a Founder",
+                          height: 160,
+                          isGlass: true,
+                          icon: const Icon(
+                            Icons.search,
+                            color: FfigTheme.accentBrown,
+                            size: 24,
                           ),
+                          onTap: () {
+                            if (_userProfile == null) {
+                              _showLoginDialog();
+                              return;
+                            }
+                            if (MembershipService.canViewLimitedDirectory) {
+                              setState(() => _selectedIndex = 2);
+                              _pageController.jumpToPage(2); // Jump to Network Tab
+                            } else {
+                              MembershipService.showUpgradeDialog(
+                                context,
+                                "Member Directory",
+                              );
+                            }
+                          },
                         ),
                       ),
-                    ),
-                    onTap: () {
-                      if (_userProfile == null) {
-                        _showLoginDialog();
-                        return;
-                      }
-                      if (MembershipService.canViewLimitedDirectory) {
-                        setState(() => _selectedIndex = 2);
-                        _pageController.jumpToPage(2); // Jump to Network Tab
-                      } else {
-                        MembershipService.showUpgradeDialog(
-                          context,
-                          "Member Directory",
-                        );
-                      }
-                    },
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: BentoTile(
+                          title: "Tickets",
+                          subtitle: "View My Tickets",
+                          height: 160,
+                          isGlass: true,
+                          icon: const Icon(
+                            Icons.confirmation_num_outlined,
+                            color: FfigTheme.accentBrown,
+                            size: 24,
+                          ),
+                          onTap: () {
+                            if (_userProfile == null) {
+                              _showLoginDialog();
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MyTicketsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 
@@ -1151,14 +1163,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                       Expanded(
                         child: BentoTile(
                           title: "Inbox",
-                          subtitle: _lastUnreadCount > 0
-                              ? "$_lastUnreadCount Unread"
+                          subtitle: (_lastUnreadCount + _communityUnreadCount) > 0
+                              ? "${_lastUnreadCount + _communityUnreadCount} Unread"
                               : "No messages",
                           height: 140,
                           isGlass: true, // Glass effect for hover/light mode
                           icon: Icon(
                             Icons.chat_bubble_outline,
-                            color: _lastUnreadCount > 0
+                            color: (_lastUnreadCount + _communityUnreadCount) > 0
                                 ? FfigTheme.primaryBrown
                                 : Colors.grey,
                           ),

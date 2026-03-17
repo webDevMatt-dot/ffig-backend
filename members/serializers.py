@@ -22,10 +22,17 @@ class ProfileSerializer(serializers.ModelSerializer):
     is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
     admin_notice = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField() # Override to prefer S3 photo
-    
+    linkedin_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_other', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked', 'fcm_token', 'is_complete', 'get_missing_fields']
+        fields = ['id', 'user_id', 'username', 'email', 'first_name', 'last_name', 'business_name', 'industry', 'industry_other', 'industry_label', 'location', 'bio', 'photo_url', 'photo', 'is_premium', 'tier', 'subscription_expiry', 'is_online', 'is_staff', 'read_receipts_enabled', 'admin_notice', 'suspension_expiry', 'is_blocked', 'fcm_token', 'is_complete', 'get_missing_fields', 'linkedin_url']
+
+    def get_linkedin_url(self, obj):
+        try:
+            return obj.user.business_profile.linkedin_url
+        except:
+            return None
 
     def get_admin_notice(self, obj):
         # Only show the notice if the request user IS the profile user

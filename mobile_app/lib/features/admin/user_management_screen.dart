@@ -124,6 +124,40 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
      }
   }
 
+  Future<void> _confirmDeleteUser(Map<String, dynamic> user) async {
+    final firstName = (user['first_name'] ?? user['name'] ?? '').toString().trim();
+    final surname = (user['last_name'] ?? user['surname'] ?? '').toString().trim();
+    final fallbackName = user['username']?.toString() ?? 'this user';
+    final fullName = [firstName, surname].where((part) => part.isNotEmpty).join('+');
+    final displayName = fullName.isEmpty ? fallbackName : fullName;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: Text("Are you sure you want to delete $displayName's profile?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              style: TextButton.styleFrom(foregroundColor: Colors.grey),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await _deleteUser(user['user_id'] ?? user['id']);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,7 +254,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                      _fetchAllCategories(silent: true);
                    }
                  ),
-                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user['user_id'] ?? user['id'])),
+                 IconButton(
+                   icon: const Icon(Icons.delete, color: Colors.red),
+                   onPressed: () => _confirmDeleteUser(user),
+                 ),
               ],
             ),
           );

@@ -90,10 +90,20 @@ class BusinessProfile(models.Model):
     company_name = models.CharField(max_length=200)
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
     website = models.URLField(blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    linkedin_url = models.URLField(blank=True, null=True)
     description = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     feedback = models.TextField(blank=True, help_text="Admin feedback if rejected")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Sync location to user profile for consistency across the app
+        if self.location and hasattr(self.user, 'profile'):
+            profile = self.user.profile
+            profile.location = self.location
+            profile.save()
 
     def __str__(self):
         return self.company_name

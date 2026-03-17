@@ -5,6 +5,7 @@ class BusinessProfile {
   final String description;
   final String location;
   final String website;
+  final String? linkedinUrl;
   final bool isPremium;
   final int? ownerId;
   final String? ownerName;
@@ -17,6 +18,7 @@ class BusinessProfile {
     required this.description,
     required this.location,
     required this.website,
+    this.linkedinUrl,
     this.isPremium = false,
     this.ownerId,
     this.ownerName,
@@ -31,6 +33,7 @@ class BusinessProfile {
       description: json['description'] ?? json['bio'] ?? '',
       location: json['location'] ?? json['country'] ?? '',
       website: json['website'] ?? '',
+      linkedinUrl: json['linkedin_url'],
       isPremium: json['is_premium'] ?? false,
       ownerId: json['owner_id'],
       ownerName: json['owner_name'],

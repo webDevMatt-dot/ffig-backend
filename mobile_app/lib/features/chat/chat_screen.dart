@@ -248,6 +248,24 @@ class _ChatScreenState extends State<ChatScreen> {
       }
   }
 
+  String? _normalizeImageUrl(dynamic rawUrl) {
+    if (rawUrl == null) return null;
+    final url = rawUrl.toString().trim();
+    if (url.isEmpty || url == 'null') return null;
+
+    final domain = baseUrl.replaceAll('/api/', '');
+    if (url.startsWith('/')) return '$domain$url';
+    if (url.contains('localhost')) {
+      try {
+        final uri = Uri.parse(url);
+        return '$domain${uri.path}';
+      } catch (_) {
+        return null;
+      }
+    }
+    return url;
+  }
+
   /// Sends a message.
   /// - Handles optimistic local update (TODO).
   /// - Posts to `/chat/messages/send/`.
@@ -710,7 +728,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
         shape: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.10),
             width: 0.5,
           ),
         ),
@@ -762,7 +780,18 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
         ],
       ),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.scaffoldBackgroundColor,
+              theme.scaffoldBackgroundColor.withOpacity(isDark ? 0.98 : 0.94),
+            ],
+          ),
+        ),
+        child: Column(
         children: [
           // Message List
           Expanded(
@@ -782,14 +811,21 @@ class _ChatScreenState extends State<ChatScreen> {
                     return Center(
                         child: Container(
                             margin: const EdgeInsets.symmetric(vertical: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
+                                color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.07),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.08),
+                                ),
                             ),
                             child: Text(
                                 _getDateLabel(item['date']),
-                                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.75),
+                                  fontWeight: FontWeight.w700,
+                                ),
                             ),
                         ),
                     );
@@ -800,6 +836,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 final isRead = msg['is_read'] ?? false;
                 final isHighlighted = msg['id'] == _highlightedMessageId;
                 final username = msg['sender']['username'] ?? 'Unknown';
+                final senderPhoto = _normalizeImageUrl(
+                  msg['sender']['photo'] ??
+                  msg['sender']['photo_url'] ??
+                  msg['sender']['profile_picture'],
+                );
                 final createdAt = DateTime.parse(msg['created_at']).toLocal();
                 final timeString = "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}";
 
@@ -820,22 +861,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                 }
                 
-                // Username Visibility Logic
-                bool showUsername = false;
-                if (isCommunity && !isMe) {
-                    showUsername = true; // Always show in Community Chat
-                } else if (!isMe) {
-                    // Normal Grouping for DM
-                    if (index == _groupedMessages.length - 1) {
-                         showUsername = true; 
-                    } else {
-                        final nextMsg = _groupedMessages[index + 1];
-                        if (nextMsg['is_header'] == true || 
-                            nextMsg['sender']['id'] != msg['sender']['id']) {
-                            showUsername = true;
-                        }
-                    }
-                }
+                // Keep sender identity visible for premium-style chat readability.
+                final bool showUsername = !isMe;
 
                 return Dismissible(
                   key: Key(msg['id'].toString()),
@@ -856,7 +883,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Align(
                   alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Column(
                             crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                             children: [
@@ -867,7 +894,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(username, style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                      if (!isMe) ...[
+                                        UserAvatar(radius: 15, username: username, imageUrl: senderPhoto),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Text(username, style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[700], fontWeight: FontWeight.w700)),
                                       if (msg['sender']['tier'] == 'PREMIUM') ...[
                                         const SizedBox(width: 2),
                                         const Icon(Icons.verified, color: Colors.amber, size: 10),
@@ -878,32 +909,36 @@ class _ChatScreenState extends State<ChatScreen> {
                               GestureDetector(
                                 onLongPress: () {
                                      _showMessageOptions(msg);
-                                },
+                                  },
                                     child: Container(
                                       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                                       decoration: BoxDecoration(
-                                        color: isHighlighted 
-                                            ? Colors.amber.withOpacity(0.4) 
-                                            : (isMe 
-                                                ? null // Uses gradient below
-                                                : (theme.brightness == Brightness.dark 
-                                                    ? Colors.white.withOpacity(0.08)
-                                                    : Colors.black.withOpacity(0.05))),
-                                        gradient: (!isHighlighted && isMe) ? const LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [FfigTheme.primaryBrown, Color(0xFF8D6E63)],
-                                        ) : null,
+                                        color: isHighlighted
+                                            ? Colors.amber.withOpacity(0.35)
+                                            : (isMe
+                                                ? FfigTheme.primaryBrown
+                                                : (theme.brightness == Brightness.dark
+                                                    ? const Color(0xFF1E242C)
+                                                    : Colors.black.withOpacity(0.06))),
                                         borderRadius: BorderRadius.only(
-                                            topLeft: const Radius.circular(20),
-                                            topRight: const Radius.circular(20),
-                                            bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-                                            bottomRight: isMe ? Radius.zero : const Radius.circular(20)
+                                          topLeft: const Radius.circular(18),
+                                          topRight: const Radius.circular(18),
+                                          bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+                                          bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
                                         ),
-                                        border: !isMe ? Border.all(
-                                          color: Colors.white.withOpacity(0.1),
-                                          width: 0.5,
-                                        ) : null,
+                                        border: !isMe
+                                            ? Border.all(
+                                                color: Colors.white.withOpacity(0.1),
+                                                width: 0.5,
+                                              )
+                                            : null,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(isDark ? 0.28 : 0.10),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
                                       ),
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   child: IntrinsicWidth(
@@ -969,23 +1004,45 @@ class _ChatScreenState extends State<ChatScreen> {
                                               },
                                               child: Container(
                                                   margin: const EdgeInsets.only(bottom: 8),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                                   decoration: BoxDecoration(
-                                                      color: const Color(0xFFc29a77), // Fixed Accent Brown
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      border: Border(left: BorderSide(color: FfigTheme.primaryBrown, width: 3))
+                                                    color: isMe
+                                                        ? Colors.black.withOpacity(0.16)
+                                                        : (theme.brightness == Brightness.dark
+                                                            ? Colors.black.withOpacity(0.22)
+                                                            : Colors.black.withOpacity(0.05)),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border(
+                                                      left: BorderSide(
+                                                        color: isMe ? const Color(0xFFD8C3AF) : FfigTheme.primaryBrown,
+                                                        width: 3,
+                                                      ),
+                                                    ),
                                                   ),
                                                   child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
                                                           Text(
                                                               replyContext['sender']['username'] ?? 'User', 
-                                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.w700,
+                                                                color: isMe ? const Color(0xFFF4D4B8) : FfigTheme.primaryBrown,
+                                                              ),
                                                           ),
+                                                          const SizedBox(height: 2),
                                                           Text(
                                                               replyContext['text'] ?? '', 
                                                               maxLines: 1, 
                                                               overflow: TextOverflow.ellipsis,
-                                                              style: const TextStyle(fontSize: 10, color: Colors.black54)
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                color: isMe
+                                                                    ? Colors.white.withOpacity(0.9)
+                                                                    : (theme.brightness == Brightness.dark
+                                                                        ? Colors.white70
+                                                                        : Colors.black54),
+                                                              ),
                                                           ),
                                                       ],
                                                   ),
@@ -999,7 +1056,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         linkStyle: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.none),
                                         options: const LinkifyOptions(humanize: false),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 6),
                                       Align(
                                         alignment: Alignment.bottomRight,
                                         child: Row(
@@ -1032,7 +1089,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   );
               },
-            ),
+              ),
           ),
           // Glass Bottom Section
           ClipRect(
@@ -1040,11 +1097,11 @@ class _ChatScreenState extends State<ChatScreen> {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.86),
                   border: Border(
                     top: BorderSide(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 0.5,
+                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.08),
+                      width: 0.7,
                     ),
                   ),
                 ),
@@ -1109,10 +1166,12 @@ class _ChatScreenState extends State<ChatScreen> {
                             Expanded(
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: theme.brightness == Brightness.dark
+                                      ? const Color(0xFF212833)
+                                      : Colors.black.withOpacity(0.06),
                                   borderRadius: BorderRadius.circular(24),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
+                                    color: Colors.white.withOpacity(0.08),
                                     width: 1,
                                   ),
                                 ),
@@ -1125,7 +1184,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   style: const TextStyle(fontSize: 15),
                                   decoration: InputDecoration(
                                     hintText: "Type a message...",
-                                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                                     border: InputBorder.none,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                   ),
@@ -1137,9 +1196,16 @@ class _ChatScreenState extends State<ChatScreen> {
                               onTap: _sendMessage,
                               child: Container(
                                 padding: const EdgeInsets.all(10),
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   color: FfigTheme.primaryBrown,
                                   shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: FfigTheme.primaryBrown.withOpacity(0.45),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
                                 child: const Icon(
                                   Icons.send_rounded,
@@ -1158,6 +1224,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: _showScrollToBottom 
         ? Padding(

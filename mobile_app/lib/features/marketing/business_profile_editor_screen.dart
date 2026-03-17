@@ -19,6 +19,7 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
   final _nameController = TextEditingController();
   final _websiteController = TextEditingController();
   final _locationController = TextEditingController(); // NEW
+  final _linkedinController = TextEditingController(); // NEW
   final _descController = TextEditingController();
   bool _isLoading = false;
   bool _isEditing = false; // Track if we are editing an existing profile
@@ -44,6 +45,7 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
           _isEditing = true;
           _nameController.text = data['company_name'] ?? '';
           _websiteController.text = data['website'] ?? '';
+          _linkedinController.text = data['linkedin_url'] ?? '';
           _descController.text = data['description'] ?? '';
           _status = data['status'] ?? 'PENDING';
           _feedback = data['feedback'];
@@ -108,6 +110,7 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
       final data = {
         'company_name': _nameController.text,
         'website': normalizedWebsite,
+        'linkedin_url': _linkedinController.text,
         'location': _locationController.text,
         'description': _descController.text,
       };
@@ -190,6 +193,27 @@ class _BusinessProfileEditorScreenState extends State<BusinessProfileEditorScree
                 keyboardType: TextInputType.url,
                 onEditingComplete: () {
                   _websiteController.text = normalizeUrl(_websiteController.text);
+                  FocusScope.of(context).nextFocus();
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _linkedinController,
+                decoration: const InputDecoration(
+                  labelText: "LinkedIn URL",
+                  hintText: "https://linkedin.com/in/username",
+                ),
+                keyboardType: TextInputType.url,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return null;
+                  final uri = Uri.tryParse(v);
+                  if (uri == null || !uri.hasScheme || !uri.host.contains('linkedin.com')) {
+                    return "Enter a valid LinkedIn URL";
+                  }
+                  return null;
+                },
+                onEditingComplete: () {
+                  _linkedinController.text = normalizeUrl(_linkedinController.text);
                   FocusScope.of(context).nextFocus();
                 },
               ),

@@ -160,8 +160,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                const SizedBox(height: 24),
                
                // Info Cards
-               _buildInfoCard(Icons.work_outline, "Industry", _profileData['industry_label'] ?? 'General'),
-               _buildInfoCard(Icons.location_on_outlined, "Location", _profileData['location'] ?? 'Global'),
+                _buildInfoCard(Icons.work_outline, "Industry", _profileData['industry_label'] ?? 'General'),
+                _buildInfoCard(Icons.location_on_outlined, "Location", _profileData['location'] ?? 'Global'),
+                
+                if (_profileData['linkedin_url'] != null && _profileData['linkedin_url'].toString().isNotEmpty)
+                  GestureDetector(
+                    onTap: () async {
+                      final url = Uri.parse(_profileData['linkedin_url']);
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: _buildInfoCard(Icons.link, "LinkedIn", "View Profile", isLink: true),
+                  ),
                
                if (_profileData['bio'] != null && _profileData['bio'].toString().isNotEmpty) ...[
                   const SizedBox(height: 24),
@@ -180,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String label, String value) {
+  Widget _buildInfoCard(IconData icon, String label, String value, {bool isLink = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -193,15 +204,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: FfigTheme.primaryBrown),
+          Icon(icon, color: isLink ? Colors.blue : FfigTheme.primaryBrown),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: Colors.grey)),
-              Text(value, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.w500)),
-            ],
-          )
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: Colors.grey)),
+                Text(
+                  value, 
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w500,
+                    color: isLink ? Colors.blue : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isLink)
+            const Icon(Icons.open_in_new, size: 16, color: Colors.blue),
         ],
       ),
     );

@@ -96,6 +96,25 @@ class _InboxScreenState extends State<InboxScreen> {
   int _communityUnreadCount = 0; // New State
   final _apiService = AdminApiService(); // Instantiate Helper
 
+
+  String? _normalizeImageUrl(dynamic rawUrl) {
+    if (rawUrl == null) return null;
+    final url = rawUrl.toString().trim();
+    if (url.isEmpty || url == 'null') return null;
+
+    final domain = baseUrl.replaceAll('/api/', '');
+    if (url.startsWith('/')) return '$domain$url';
+    if (url.contains('localhost')) {
+      try {
+        final uri = Uri.parse(url);
+        return '$domain${uri.path}';
+      } catch (_) {
+        return null;
+      }
+    }
+    return url;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -379,8 +398,11 @@ class _InboxScreenState extends State<InboxScreen> {
                                }
                           },
                           child: UserAvatar(
-                            radius: 28, 
+                            radius: 28,
                             username: title,
+                            imageUrl: _normalizeImageUrl(
+                              others.isNotEmpty ? (others.first['photo'] ?? others.first['photo_url'] ?? others.first['profile_picture']) : null,
+                            ),
                           ),
                       ),
                       title: Row(
@@ -511,7 +533,7 @@ class _InboxScreenState extends State<InboxScreen> {
                          color: theme.cardColor,
                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                          child: ListTile(
-                            leading: UserAvatar(radius: 20, username: senderName), // Show Sender pic
+                            leading: UserAvatar(radius: 20, username: senderName, imageUrl: _normalizeImageUrl(m['sender']?['photo'] ?? m['sender']?['photo_url'] ?? m['sender']?['profile_picture'])), // Show Sender pic
                             title: Text(m['chat_title'] ?? "Chat", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                             subtitle: RichText(
                                 maxLines: 2,

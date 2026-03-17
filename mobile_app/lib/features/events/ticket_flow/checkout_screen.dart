@@ -116,16 +116,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 48),
             SizedBox(
               width: double.infinity,
-              height: 50,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _processPayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(56),
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    height: 1.2,
+                  ),
                 ),
                 child: _isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text("PAY $currency ${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    : Text("PAY $currency ${price.toStringAsFixed(2)}", textAlign: TextAlign.center),
               ),
             ),
             const SizedBox(height: 16),
