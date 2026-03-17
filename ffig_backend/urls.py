@@ -157,6 +157,9 @@ urlpatterns = [
     path('api/notifications/', NotificationListView.as_view(), name='notification-list'),
     path('api/notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
 
+    # Payments (Stripe)
+    path('api/payments/', include('payments.urls')),
+
     # Wix Webhooks
     path('api/webhooks/wix/', wix_webhook, name='wix-webhook'),
 ]

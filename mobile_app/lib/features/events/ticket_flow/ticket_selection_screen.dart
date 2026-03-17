@@ -74,9 +74,12 @@ class _TicketSelectionScreenState extends State<TicketSelectionScreen> {
                             ),
                           ),
                           Text(
-                            price == 0 ? "Free" : "\$${price.toStringAsFixed(2)}",
+                            price == 0 
+                              ? "Free" 
+                              : "${(tier['currency'] ?? 'usd').toString().toUpperCase()} ${price.toStringAsFixed(2)}",
                             style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
+
                           const SizedBox(width: 16),
                           Icon(
                             isSelected ? Icons.radio_button_checked : Icons.radio_button_off,

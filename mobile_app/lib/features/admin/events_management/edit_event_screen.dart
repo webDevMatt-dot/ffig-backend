@@ -187,16 +187,37 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final price = TextEditingController(text: item?['price']?.toString() ?? '');
     final cap = TextEditingController(text: item?['capacity']?.toString() ?? '');
+    String selectedCurrency = item?['currency']?.toString().toUpperCase() ?? 'USD';
+
+    final List<String> currencies = ['USD', 'ZAR', 'EUR', 'GBP', 'KES', 'NGN', 'GHS'];
+
     _showFormDialog(item == null ? "Add Ticket Tier" : "Edit Ticket Tier", [
       _buildStyledTextField(name, "Tier Name", icon: Icons.label),
       const SizedBox(height: 12),
-      _buildStyledTextField(price, "Price (\$)", icon: Icons.attach_money, isNumber: true),
+      StatefulBuilder(
+        builder: (context, setDialogState) {
+          return DropdownButtonFormField<String>(
+            value: currencies.contains(selectedCurrency) ? selectedCurrency : 'USD',
+            decoration: const InputDecoration(
+                labelText: "Currency",
+                prefixIcon: Icon(Icons.currency_exchange, color: FfigTheme.primaryBrown),
+            ),
+            items: currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+            onChanged: (v) {
+              if (v != null) setDialogState(() => selectedCurrency = v);
+            },
+          );
+        }
+      ),
+      const SizedBox(height: 12),
+      _buildStyledTextField(price, "Price", icon: Icons.payments, isNumber: true),
       const SizedBox(height: 12),
       _buildStyledTextField(cap, "Capacity", icon: Icons.people, isNumber: true),
     ], () async {
        final data = {
          'name': name.text,
          'price': double.tryParse(price.text) ?? 0,
+         'currency': selectedCurrency.toLowerCase(),
          'capacity': int.tryParse(cap.text) ?? 100,
          if (item == null) 'available': int.tryParse(cap.text) ?? 100
        };
@@ -204,9 +225,23 @@ class _EditEventScreenState extends State<EditEventScreen> {
           setState(() => item == null ? _localTiers.add(data) : _localTiers[indexOrId!] = data);
        } else {
           if (item == null) {
-              await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+              final newTier = await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+              if (widget.event!['ticket_tiers'] != null) {
+                setState(() {
+                  (widget.event!['ticket_tiers'] as List).add(newTier);
+                });
+              }
           } else {
               await AdminApiService().updateTicketTier(indexOrId!, data);
+              if (widget.event!['ticket_tiers'] != null) {
+                setState(() {
+                  final tiers = widget.event!['ticket_tiers'] as List;
+                  final idx = tiers.indexWhere((t) => t['id'] == indexOrId);
+                  if (idx != -1) {
+                    tiers[idx] = {...tiers[idx], ...data};
+                  }
+                });
+              }
           }
        }
     }, isEdit: item != null);
@@ -494,7 +529,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
               ]),
               
               const SizedBox(height: 24),
-              _buildListSection("Ticket Tiers", 'tier', widget.event != null ? widget.event!['ticket_tiers'] : _localTiers, (i) => "${i['name']} (\$${i['price']})", Icons.airplane_ticket),
+              _buildListSection("Ticket Tiers", 'tier', widget.event != null ? widget.event!['ticket_tiers'] : _localTiers, (i) => "${i['name']} (${(i['currency'] ?? 'USD').toString().toUpperCase()} ${i['price']})", Icons.airplane_ticket),
               _buildListSection("Speakers", 'speaker', widget.event != null ? widget.event!['speakers'] : _localSpeakers, (i) => "${i['name']} (${i['role']})", Icons.mic),
               _buildListSection("Agenda", 'agenda', widget.event != null ? widget.event!['agenda'] : _localAgenda, (i) => "${i['start_time']} - ${i['title']}", Icons.calendar_view_day),
               _buildListSection("FAQ", 'faq', widget.event != null ? widget.event!['faqs'] : _localFaqs, (i) => i['question'], Icons.help),

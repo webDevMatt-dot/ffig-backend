@@ -44,9 +44,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  Future<void> _processFreeRegistration() async {
+    setState(() => _isLoading = true);
+    try {
+      final stripeService = StripeService();
+      final success = await stripeService.registerFreeTicket(
+        tierId: widget.tier['id'],
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registration Successful! Your ticket is in My Tickets.")));
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Registration Failed: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final price = double.tryParse(widget.tier['price'].toString()) ?? 0.0;
+    final currency = (widget.tier['currency'] ?? 'usd').toString().toUpperCase();
     
     // Check if free ticket
     if (price <= 0.0) {
@@ -54,12 +81,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           appBar: AppBar(title: const Text("Checkout")),
           body: Center(
               child: ElevatedButton(
-                  onPressed: () {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Free tickets are handled separately (not yet implemented)")));
-                  },
-                  child: const Text("Get Free Ticket")
+                  onPressed: _isLoading ? null : _processFreeRegistration,
+                  child: _isLoading 
+                    ? const CircularProgressIndicator() 
+                    : const Text("Get Free Ticket")
               )
           ),
+
         );
     }
 
@@ -76,7 +104,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: ListTile(
                 title: Text(widget.event['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text("${widget.tier['name']} Ticket"),
-                trailing: Text("\$${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                trailing: Text("$currency ${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
             const SizedBox(height: 32),
@@ -97,7 +125,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 child: _isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text("PAY \$${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    : Text("PAY $currency ${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 16),

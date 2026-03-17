@@ -8,5 +8,6 @@ urlpatterns = [
     
     # Payment Endpoints
     path('create-payment-intent/', views.create_payment_intent, name='create_payment_intent'),
+    path('free-registration/', views.register_free_ticket, name='register_free_ticket'),
     path('webhook/', views.stripe_webhook, name='stripe_webhook'),
 ]

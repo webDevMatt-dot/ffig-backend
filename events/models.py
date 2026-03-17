@@ -79,6 +79,7 @@ class TicketTier(models.Model):
     event = models.ForeignKey(Event, related_name='ticket_tiers', on_delete=models.CASCADE)
     name = models.CharField(max_length=100, help_text="General Admission, VIP, etc.")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, default='usd', help_text="ISO currency code (e.g. usd, eur, gbp)")
     capacity = models.IntegerField(default=100)
     available = models.IntegerField(default=100)
 

@@ -12,6 +12,7 @@ import 'core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/services/version_service.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'firebase_options.dart'; // Uncomment if you have generated firebase_options.dart using FlutterFire CLI
 
 // Global access to theme controller (Simple dependency injection)
@@ -31,8 +32,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+
   // Initialize Stripe SDK
-  Stripe.publishableKey = 'pk_test_TYooMQauvdEDq54NiTphI7jx'; // Replace with actual test/live key from .env later
+  Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? 'pk_test_TYooMQauvdEDq54NiTphI7jx';
 
   try {
     // on Web, we skip Firebase unless configured (to avoid crash)

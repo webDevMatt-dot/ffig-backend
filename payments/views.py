@@ -41,9 +41,9 @@ def create_connect_account(request):
         # Create an account link for onboarding
         # We need a return URL for when the user finishes or cancels onboarding
         # These URLs will need to point to your frontend app (e.g. deep links)
-        # For now, we'll use a placeholder or local URL
-        return_url = request.build_absolute_uri('/') # Replace with actual frontend success URL
-        refresh_url = request.build_absolute_uri('/') # Replace with actual frontend refresh URL
+        # Using a custom scheme for the mobile app
+        return_url = 'ffig://stripe-success'
+        refresh_url = 'ffig://stripe-refresh'
         
         account_link = stripe.AccountLink.create(
             account=connect_account.stripe_account_id,
@@ -114,12 +114,13 @@ def create_payment_intent(request):
             return Response({'error': 'This ticket tier is sold out'}, status=status.HTTP_400_BAD_REQUEST)
             
         organizer = event.organizer
-        if not organizer:
-             return Response({'error': 'This event has no assigned organizer to receive payment'}, status=status.HTTP_400_BAD_REQUEST)
-             
-        connect_account = getattr(organizer, 'stripe_account', None)
-        if not connect_account or not connect_account.payouts_enabled:
-            return Response({'error': 'The organizer is not fully set up to receive payments'}, status=status.HTTP_400_BAD_REQUEST)
+        connect_account = None
+        
+        if organizer:
+            connect_account = getattr(organizer, 'stripe_account', None)
+            if not connect_account or not connect_account.payouts_enabled:
+                return Response({'error': 'The organizer is not fully set up to receive payments'}, status=status.HTTP_400_BAD_REQUEST)
+
             
         # Amount must be in cents
         amount_cents = int(tier.price * 100)
@@ -127,27 +128,28 @@ def create_payment_intent(request):
         # Calculate platform fee (optional) - e.g. 5%
         # application_fee_amount = int(amount_cents * 0.05)
         
-        # Create PaymentIntent
-        intent = stripe.PaymentIntent.create(
-            amount=amount_cents,
-            currency='usd',
-            automatic_payment_methods={
-                'enabled': True,
-            },
-            # application_fee_amount=application_fee_amount, # Optional platform fee
-            transfer_data={
-                'destination': connect_account.stripe_account_id,
-            },
-            metadata={
-                'tier_id': tier.id,
-                'user_id': request.user.id,
+        # Create PaymentIntent params
+        intent_params = {
+            'amount': amount_cents,
+            'currency': tier.currency,
+            'automatic_payment_methods': {'enabled': True},
+            'metadata': {
                 'event_id': event.id,
+                'tier_id': tier.id,
+                'user_id': request.user.id
             }
-        )
+        }
+        
+        if connect_account:
+            intent_params['transfer_data'] = {'destination': connect_account.stripe_account_id}
+            # intent_params['application_fee_amount'] = int(amount_cents * 0.05)
+            
+        intent = stripe.PaymentIntent.create(**intent_params)
         
         return Response({
             'clientSecret': intent.client_secret,
         })
+
         
     except TicketTier.DoesNotExist:
         return Response({'error': 'Invalid Ticket Tier'}, status=status.HTTP_404_NOT_FOUND)
@@ -205,3 +207,43 @@ def stripe_webhook(request):
                  print(f"Error fulfilling order: {e}")
 
     return Response(status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def register_free_ticket(request):
+    """
+    Registers a user for a free ticket tier.
+    """
+    tier_id = request.data.get('tier_id')
+    
+    if not tier_id:
+        return Response({'error': 'tier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    try:
+        tier = TicketTier.objects.get(id=tier_id)
+        event = tier.event
+        
+        if tier.price > 0:
+            return Response({'error': 'This ticket tier is not free'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if tier.available < 1:
+            return Response({'error': 'This ticket tier is sold out'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Create Ticket
+        ticket = Ticket.objects.create(
+            event=event,
+            tier=tier,
+            user=request.user,
+            qr_code_data=f"EVENT-{event.id}-TIER-{tier.id}-USER-{request.user.id}-FREE-{tier.currency}"
+        )
+        
+        # Decrement availability
+        tier.available -= 1
+        tier.save()
+        
+        return Response({'status': 'success', 'ticket_id': ticket.id}, status=status.HTTP_201_CREATED)
+        
+    except TicketTier.DoesNotExist:
+        return Response({'error': 'Invalid Ticket Tier'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

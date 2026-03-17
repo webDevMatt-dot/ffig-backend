@@ -12,7 +12,7 @@ class StripeService {
   // Replace with your actual backend URL depending on environment
   final String _baseUrl = kDebugMode 
       ? 'http://10.0.2.2:8000/api/payments' // Android Emulator local address
-      : 'https://your-production-url.render.com/api/payments';
+      : 'https://femalefoundersinitiativeglobal.onrender.com/api/payments';
 
   final _storage = const FlutterSecureStorage();
 
@@ -121,6 +121,33 @@ class StripeService {
     } catch (e) {
       if (kDebugMode) print("Error checking Connect status: $e");
       return null;
+    }
+  }
+  /// Process a free ticket registration
+  Future<bool> registerFreeTicket({required int tierId}) async {
+    try {
+      final token = await _storage.read(key: 'access_token');
+      if (token == null) throw Exception("User not authenticated.");
+
+      final url = Uri.parse('$_baseUrl/free-registration/');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'tier_id': tierId}),
+      );
+
+      if (response.statusCode == 201) {
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? "Failed to register for free ticket.");
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error during free registration: $e");
+      rethrow;
     }
   }
 }

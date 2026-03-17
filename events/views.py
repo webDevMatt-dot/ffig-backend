@@ -50,7 +50,7 @@ class TicketTierCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated] 
     serializer_class = TicketTierSerializer
 
-class TicketTierDeleteView(generics.DestroyAPIView):
+class TicketTierDeleteView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TicketTierSerializer
     queryset = TicketTier.objects.all()
@@ -65,7 +65,7 @@ class EventSpeakerCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = EventSpeakerSerializer
 
-class EventSpeakerDeleteView(generics.DestroyAPIView):
+class EventSpeakerDeleteView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = EventSpeakerSerializer
     queryset = EventSpeaker.objects.all()
@@ -75,7 +75,7 @@ class AgendaItemCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AgendaItemSerializer
 
-class AgendaItemDeleteView(generics.DestroyAPIView):
+class AgendaItemDeleteView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AgendaItemSerializer
     queryset = AgendaItem.objects.all()
@@ -85,7 +85,8 @@ class EventFAQCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = EventFAQSerializer
 
-class EventFAQDeleteView(generics.DestroyAPIView):
+class EventFAQDeleteView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = EventFAQSerializer
     queryset = EventFAQ.objects.all()
+

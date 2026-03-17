@@ -200,34 +200,10 @@ class AdminApiService {
       if (response.statusCode != 200) throw Exception('Failed to update event: $respStr');
   }
 
-  Future<void> createTicketTier(Map<String, dynamic> data) async {
-    final token = await _getToken();
-     final response = await http.post(
-      Uri.parse('$_eventsBaseUrl/tiers/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode(data)
-    );
-     if (response.statusCode != 201) throw Exception('Failed to create tier: ${response.body}');
-  }
-
-  Future<void> deleteTicketTier(int id) async {
-    final token = await _getToken();
-     final response = await http.delete(
-      Uri.parse('$_eventsBaseUrl/tiers/$id/'),
-      headers: {'Authorization': 'Bearer $token'}
-    );
-     if (response.statusCode != 204) throw Exception('Failed to delete tier');
-  }
-
-  Future<void> updateTicketTier(int id, Map<String, dynamic> data) async {
-    final token = await _getToken();
-    final response = await http.patch(
-      Uri.parse('$_eventsBaseUrl/tiers/$id/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode(data)
-    );
-    if (response.statusCode != 200) throw Exception('Failed to update tier: ${response.body}');
-  }
+  // Tiers
+  Future<Map<String, dynamic>> createTicketTier(Map<String, dynamic> data) async => _createSubItem('tiers', data);
+  Future<void> updateTicketTier(int id, Map<String, dynamic> data) async => _updateSubItem('tiers', id, data);
+  Future<void> deleteTicketTier(int id) async => _deleteSubItem('tiers', id);
 
   Future<void> deleteEvent(int id) async {
     final token = await _getToken();
@@ -236,14 +212,15 @@ class AdminApiService {
   }
 
   // Sub-Items Generic Helpers
-  Future<void> _createSubItem(String endpoint, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> _createSubItem(String endpoint, Map<String, dynamic> data) async {
     final token = await _getToken();
      final response = await http.post(
       Uri.parse('$_eventsBaseUrl/$endpoint/'),
       headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
       body: jsonEncode(data)
     );
-     if (response.statusCode != 201) throw Exception('Failed to create item');
+     if (response.statusCode != 201) throw Exception('Failed to create item: ${response.body}');
+     return jsonDecode(response.body);
   }
 
   Future<void> _deleteSubItem(String endpoint, int id) async {
@@ -266,17 +243,17 @@ class AdminApiService {
   }
 
   // Speakers
-  Future<void> createEventSpeaker(Map<String, dynamic> data) async => _createSubItem('speakers', data);
+  Future<Map<String, dynamic>> createEventSpeaker(Map<String, dynamic> data) async => _createSubItem('speakers', data);
   Future<void> updateEventSpeaker(int id, Map<String, dynamic> data) async => _updateSubItem('speakers', id, data);
   Future<void> deleteEventSpeaker(int id) async => _deleteSubItem('speakers', id);
 
   // Agenda
-  Future<void> createAgendaItem(Map<String, dynamic> data) async => _createSubItem('agenda', data);
+  Future<Map<String, dynamic>> createAgendaItem(Map<String, dynamic> data) async => _createSubItem('agenda', data);
   Future<void> updateAgendaItem(int id, Map<String, dynamic> data) async => _updateSubItem('agenda', id, data);
   Future<void> deleteAgendaItem(int id) async => _deleteSubItem('agenda', id);
 
   // FAQ
-  Future<void> createEventFAQ(Map<String, dynamic> data) async => _createSubItem('faqs', data);
+  Future<Map<String, dynamic>> createEventFAQ(Map<String, dynamic> data) async => _createSubItem('faqs', data);
   Future<void> updateEventFAQ(int id, Map<String, dynamic> data) async => _updateSubItem('faqs', id, data);
   Future<void> deleteEventFAQ(int id) async => _deleteSubItem('faqs', id);
 

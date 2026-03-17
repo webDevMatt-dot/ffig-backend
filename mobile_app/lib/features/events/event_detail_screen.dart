@@ -228,7 +228,25 @@ class EventDetailScreen extends StatelessWidget {
                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                children: [
                  const Text("Starting Price:", style: TextStyle(fontSize: 16)),
-                 Text(event['price_label'] ?? 'Free', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                 Text(
+                   () {
+                     if (event['ticket_tiers'] != null && (event['ticket_tiers'] as List).isNotEmpty) {
+                       try {
+                         final tiers = event['ticket_tiers'] as List;
+                         var cheapest = tiers[0];
+                         double minP = double.tryParse(cheapest['price'].toString()) ?? 999999.0;
+                         for (var t in tiers) {
+                            double p = double.tryParse(t['price'].toString()) ?? 0.0;
+                            if (p < minP) { minP = p; cheapest = t; }
+                         }
+                         final cur = (cheapest['currency'] ?? 'usd').toString().toUpperCase();
+                         return minP == 0 ? "Free" : "$cur ${minP.toStringAsFixed(2)}";
+                       } catch (e) { return event['price_label'] ?? 'Free'; }
+                     }
+                     return event['price_label'] ?? 'Free';
+                   }(), 
+                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)
+                 ),
                ],
              ),
            ),
