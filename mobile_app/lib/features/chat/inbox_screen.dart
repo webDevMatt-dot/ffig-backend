@@ -30,7 +30,9 @@ class InboxScreen extends StatefulWidget {
 }
 
 class MiniProfileCard extends StatelessWidget {
-  final String username;
+  final String displayName;
+  final String? firstName;
+  final String? lastName;
   final String? bio;
   final String? photoUrl;
   final String? tier;
@@ -38,7 +40,9 @@ class MiniProfileCard extends StatelessWidget {
 
   const MiniProfileCard({
       super.key, 
-      required this.username, 
+      required this.displayName,
+      this.firstName,
+      this.lastName,
       this.bio, 
       this.photoUrl, 
       this.tier,
@@ -54,10 +58,16 @@ class MiniProfileCard extends StatelessWidget {
               child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                      UserAvatar(radius: 40, imageUrl: photoUrl, username: username),
+                      UserAvatar(
+                        radius: 40,
+                        imageUrl: photoUrl,
+                        firstName: firstName,
+                        lastName: lastName,
+                        username: displayName,
+                      ),
                       const SizedBox(height: 12),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(displayName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                           if (tier == 'PREMIUM') ...[
                               const SizedBox(width: 4),
                               const Icon(Icons.verified, color: Colors.amber, size: 20),
@@ -87,6 +97,33 @@ class MiniProfileCard extends StatelessWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   bool _isLoading = true;
+
+  String _displayNameFromUser(Map<String, dynamic>? user, {String fallback = 'User'}) {
+    final firstName = (user?['first_name'] ?? user?['name'] ?? '').toString().trim();
+    final lastName = (user?['last_name'] ?? user?['surname'] ?? '').toString().trim();
+    final fullName = [firstName, lastName].where((part) => part.isNotEmpty).join(' ');
+    if (fullName.isNotEmpty) return fullName;
+
+    final username = (user?['username'] ?? '').toString().trim();
+    if (username.isNotEmpty) return username;
+
+    final email = (user?['email'] ?? '').toString().trim();
+    if (email.isNotEmpty) return email;
+
+    return fallback;
+  }
+
+  String _conversationTitle(List others) {
+    final names = others
+        .map((participant) => _displayNameFromUser(
+              participant is Map<String, dynamic>
+                  ? participant
+                  : Map<String, dynamic>.from(participant as Map),
+            ))
+        .where((name) => name.isNotEmpty)
+        .toList();
+    return names.isNotEmpty ? names.join(', ') : 'Chat';
+  }
   List<dynamic> _conversations = [];
   String? _myUsername;
   Timer? _timer;
@@ -359,7 +396,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   
                   // Filter ME out to get Title
                   final others = participants.where((p) => p['username'] != _myUsername).toList();
-                  final String title = others.map((p) => p['username']).join(", ");
+                  final String title = _conversationTitle(others);
                   
                   final lastMsg = chat['last_message'] != null 
                       ? chat['last_message']['text'] 
@@ -383,7 +420,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                     showDialog(
                                         context: context,
                                         builder: (context) => MiniProfileCard(
-                                            username: targetUser['username'],
+                                            displayName: _displayNameFromUser(Map<String, dynamic>.from(targetUser)),
+                                            firstName: targetUser['first_name']?.toString(),
+                                            lastName: targetUser['last_name']?.toString(),
                                             photoUrl: targetUser['photo'] ?? targetUser['photo_url'], 
                                             tier: targetUser['tier'],
                                             onViewProfile: () {
@@ -399,6 +438,8 @@ class _InboxScreenState extends State<InboxScreen> {
                           },
                           child: UserAvatar(
                             radius: 28,
+                            firstName: others.isNotEmpty ? others.first['first_name']?.toString() : null,
+                            lastName: others.isNotEmpty ? others.first['last_name']?.toString() : null,
                             username: title,
                             imageUrl: _normalizeImageUrl(
                               others.isNotEmpty ? (others.first['photo'] ?? others.first['photo_url'] ?? others.first['profile_picture']) : null,
@@ -505,13 +546,19 @@ class _InboxScreenState extends State<InboxScreen> {
                     color: theme.cardColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
-                        leading: UserAvatar(radius: 20, username: u['username'], imageUrl: u['photo_url']),
-                        title: Text(u['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        leading: UserAvatar(
+                          radius: 20,
+                          firstName: u['first_name']?.toString(),
+                          lastName: u['last_name']?.toString(),
+                          username: _displayNameFromUser(Map<String, dynamic>.from(u)),
+                          imageUrl: u['photo_url'],
+                        ),
+                        title: Text(_displayNameFromUser(Map<String, dynamic>.from(u)), style: const TextStyle(fontWeight: FontWeight.bold)),
                         trailing: const Icon(Icons.chat_bubble_outline, color: FfigTheme.primaryBrown),
                         onTap: () {
                              Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(
                                  recipientId: u['id'],
-                                 recipientName: u['username'],
+                                 recipientName: _displayNameFromUser(Map<String, dynamic>.from(u)),
                              )));
                         },
                     ),
@@ -525,15 +572,15 @@ class _InboxScreenState extends State<InboxScreen> {
                       child: Text("MESSAGES", style: theme.textTheme.labelLarge?.copyWith(fontSize: 16, color: theme.hintColor)),
                   ),
                   ...messages.map((m) {
-                       final isMe = m['is_me'] == true;
-                       final senderName = m['sender']['username'];
+                       final sender = Map<String, dynamic>.from(m['sender'] as Map);
+                       final senderName = _displayNameFromUser(sender);
                        return Card(
                          elevation: 0,
                          margin: const EdgeInsets.only(bottom: 8),
                          color: theme.cardColor,
                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                          child: ListTile(
-                            leading: UserAvatar(radius: 20, username: senderName, imageUrl: _normalizeImageUrl(m['sender']?['photo'] ?? m['sender']?['photo_url'] ?? m['sender']?['profile_picture'])), // Show Sender pic
+                            leading: UserAvatar(radius: 20, firstName: sender['first_name']?.toString(), lastName: sender['last_name']?.toString(), username: senderName, imageUrl: _normalizeImageUrl(m['sender']?['photo'] ?? m['sender']?['photo_url'] ?? m['sender']?['profile_picture'])), // Show Sender pic
                             title: Text(m['chat_title'] ?? "Chat", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                             subtitle: RichText(
                                 maxLines: 2,

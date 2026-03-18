@@ -55,6 +55,9 @@ post_install do |installer|
       # Fix for objective_c.framework / arm64 slice issue (simulator platform metadata)
       if target.name == 'objective_c'
         config.build_settings['SDKROOT'] = 'iphoneos'
+        config.build_settings['EXCLUDED_ARCHS'] = 'x86_64 arm64-simulator' # Ensure no simulator slices
+        config.build_settings['ARCHS'] = 'arm64' # Only build for device
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
       end
     end
   end
