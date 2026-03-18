@@ -3,16 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../api/constants.dart';
 
 class StripeService {
   static final StripeService _instance = StripeService._internal();
   factory StripeService() => _instance;
   StripeService._internal();
 
-  // Replace with your actual backend URL depending on environment
-  final String _baseUrl = kDebugMode 
-      ? 'http://10.0.2.2:8000/api/payments' // Android Emulator local address
-      : 'https://femalefoundersinitiativeglobal.onrender.com/api/payments';
+  // Use the global baseUrl defined in constants.dart
+  final String _baseUrl = '${baseUrl}payments';
 
   final _storage = const FlutterSecureStorage();
 

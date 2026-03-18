@@ -77,5 +77,10 @@
 	<string>This app needs access to your camera to allow you to capture photos and videos for your profile and stories.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone to allow you to record audio for your video stories.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

@@ -34,8 +34,9 @@ class HeroCarousel extends StatelessWidget {
                 if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
                   String url = item.actionUrl!;
                    // Fix legacy domain if present
-                  if (url.contains('ffig-mobile-app.onrender.com')) {
-                     url = url.replaceAll('ffig-mobile-app.onrender.com', 'femalefoundersinitiativeglobal.onrender.com');
+                  if (url.contains('ffig-mobile-app.onrender.com') || url.contains('femalefoundersinitiativeglobal.onrender.com')) {
+                     url = url.replaceAll('ffig-mobile-app.onrender.com', 'ffig-backend-ti5w.onrender.com')
+                              .replaceAll('femalefoundersinitiativeglobal.onrender.com', 'ffig-backend-ti5w.onrender.com');
                   }
                   
                   launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);

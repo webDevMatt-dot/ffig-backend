@@ -110,7 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _checkPremiumStatus();
     _loadHomepageContent();
     // Start the Global Listener (Checks every 5 seconds)
-    _notificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _notificationTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       _checkUnreadMessages();
     });
   }
@@ -1161,32 +1161,38 @@ class _DashboardScreenState extends State<DashboardScreen>
                   Row(
                     children: [
                       Expanded(
-                        child: BentoTile(
-                          title: "Inbox",
-                          subtitle: (_lastUnreadCount + _communityUnreadCount) > 0
-                              ? "${_lastUnreadCount + _communityUnreadCount} Unread"
-                              : "No messages",
-                          height: 140,
-                          isGlass: true, // Glass effect for hover/light mode
-                          icon: Icon(
-                            Icons.chat_bubble_outline,
-                            color: (_lastUnreadCount + _communityUnreadCount) > 0
-                                ? FfigTheme.primaryBrown
-                                : Colors.grey,
+                        child: Badge(
+                          backgroundColor: Colors.red,
+                          isLabelVisible: (_lastUnreadCount + _communityUnreadCount) > 0,
+                          label: Text('${_lastUnreadCount + _communityUnreadCount}'),
+                          offset: const Offset(-20, 20),
+                          child: BentoTile(
+                            title: "Inbox",
+                            subtitle: (_lastUnreadCount + _communityUnreadCount) > 0
+                                ? "${_lastUnreadCount + _communityUnreadCount} Unread"
+                                : "No messages",
+                            height: 140,
+                            isGlass: true, // Glass effect for hover/light mode
+                            icon: Icon(
+                              Icons.chat_bubble_outline,
+                              color: (_lastUnreadCount + _communityUnreadCount) > 0
+                                  ? FfigTheme.primaryBrown
+                                  : Colors.grey,
+                            ),
+                            onTap: () {
+                              if (_userProfile == null) {
+                                _showLoginDialog();
+                                return;
+                              }
+                              setState(() => _lastUnreadCount = 0);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (c) => const InboxScreen(),
+                                ),
+                              );
+                            },
                           ),
-                          onTap: () {
-                            if (_userProfile == null) {
-                              _showLoginDialog();
-                              return;
-                            }
-                            setState(() => _lastUnreadCount = 0);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const InboxScreen(),
-                              ),
-                            );
-                          },
                         ),
                       ),
                       const SizedBox(width: 16),

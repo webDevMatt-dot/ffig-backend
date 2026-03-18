@@ -121,7 +121,7 @@ class _InboxScreenState extends State<InboxScreen> {
     _fetchCurrentUserAndConversations();
     _fetchCommunityUnreadCount(); // Initial Fetch
     // Refresh every 5 seconds for "Live" counts
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
         // Only refresh if NOT searching (to avoid overwriting search results with full list)
         if (_searchController.text.isEmpty) {
             _fetchCurrentUserAndConversations(silent: true);

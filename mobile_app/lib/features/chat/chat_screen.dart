@@ -593,49 +593,93 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _showMessageOptions(Map<String, dynamic> msg) {
-      final isMe = msg['is_me'];
-      final text = msg['text'];
-      final username = msg['sender']['username'];
+  void _openPublicProfile(Map<String, dynamic> msg) {
+    final sender = msg['sender'] as Map<String, dynamic>?;
+    final senderId = sender?['id'] ?? sender?['user_id'];
+    final username = sender?['username'];
 
-      showModalBottomSheet(
-          context: context,
-          builder: (context) => SafeArea(
-              child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                      ListTile(
-                          leading: const Icon(Icons.copy),
-                          title: const Text("Copy Text"),
-                          onTap: () async {
-                              await Clipboard.setData(ClipboardData(text: text));
-                              if (mounted) {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied to clipboard"), duration: Duration(seconds: 1)));
-                              }
-                          },
-                      ),
-                      ListTile(
-                          leading: const Icon(Icons.reply),
-                          title: const Text("Reply"),
-                          onTap: () {
-                              Navigator.pop(context);
-                              setState(() => _replyMessage = msg);
-                          },
-                      ),
-                      if (!isMe)
-                          ListTile(
-                              leading: const Icon(Icons.flag, color: Colors.red),
-                              title: const Text("Report User", style: TextStyle(color: Colors.red)),
-                              onTap: () {
-                                  Navigator.pop(context);
-                                  _reportUser(username);
-                              },
-                          ),
-                  ],
+    if (senderId == null && username == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unable to open this profile right now.")),
+        );
+      }
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicProfileScreen(
+          userId: senderId is int ? senderId : int.tryParse(senderId.toString()),
+          username: username?.toString(),
+          initialData: sender,
+        ),
+      ),
+    );
+  }
+
+  void _showMessageOptions(Map<String, dynamic> msg) {
+    final isMe = msg['is_me'];
+    final text = msg['text'];
+    final username = msg['sender']['username'];
+    final canViewProfile = widget.isCommunity && !isMe;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text("Copy Text"),
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: text));
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Copied to clipboard"),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.reply),
+              title: const Text("Reply"),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _replyMessage = msg);
+              },
+            ),
+            if (canViewProfile)
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text("View Profile"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openPublicProfile(msg);
+                },
               ),
-          ),
-      );
+            if (!isMe)
+              ListTile(
+                leading: const Icon(Icons.flag, color: Colors.red),
+                title: const Text(
+                  "Report User",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportUser(username);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _toggleFavorite() async {
