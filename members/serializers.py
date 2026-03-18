@@ -77,29 +77,21 @@ class ProfileSerializer(serializers.ModelSerializer):
             return obj.photo_url
 
         # Check for S3
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+            hasattr(settings, 'STORAGES') and 
+            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+        )
+
+        if not is_s3:
             try:
                 request = self.context.get('request')
                 return request.build_absolute_uri(obj.photo.url)
             except:
                 return obj.photo.url
 
-        # Generate Presigned URL
-        try:
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.photo.name},
-                ExpiresIn=3600 # 1 Hour
-            )
-            return url
-        except Exception:
-            return None
+        # Return static S3 URL for caching stability
+        # Format: https://bucket.s3.region.amazonaws.com/key
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.photo.name}"
 
 
 class BusinessProfileSerializer(serializers.ModelSerializer):
@@ -114,27 +106,17 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
         if not obj.logo:
             return None
         
-        # S3 Check & Presign
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
-                try:
-                    return obj.logo.url
-                except:
-                    return None
+        # S3 Check & Static URL
+        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+            hasattr(settings, 'STORAGES') and 
+            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+        )
 
-        try:
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            return s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.logo.name},
-                ExpiresIn=3600
-            )
-        except:
-            return None
+        if not is_s3:
+            try: return obj.logo.url
+            except: return None
+
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.logo.name}"
 
 class AdminBusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -165,21 +147,15 @@ class MarketingCommentSerializer(serializers.ModelSerializer):
             if not profile.photo:
                 return profile.photo_url
             
-            # S3 Check & Presign
-            if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+            is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+                hasattr(settings, 'STORAGES') and 
+                's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+            )
+
+            if not is_s3:
                  return profile.photo.url
 
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            return s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': profile.photo.name},
-                ExpiresIn=3600
-            )
+            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{profile.photo.name}"
         except:
             return None
 
@@ -215,45 +191,39 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
             if not profile.photo:
                 return profile.photo_url
             
-            # S3 Check & Presign
-            if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+            is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+                hasattr(settings, 'STORAGES') and 
+                's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+            )
+
+            if not is_s3:
                  return profile.photo.url
 
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            return s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': profile.photo.name},
-                ExpiresIn=3600
-            )
+            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{profile.photo.name}"
         except:
             return None
 
     def get_image_url(self, obj):
         if not obj.image: return None
-        # S3 Check & Presign
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+            hasattr(settings, 'STORAGES') and 
+            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+        )
+        if not is_s3:
                 try: return obj.image.url
                 except: return None
-        try:
-            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
-            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.image.name}, ExpiresIn=3600)
-        except: return None
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.image.name}"
 
     def get_video_url(self, obj):
         if not obj.video: return None
-        # S3 Check & Presign
-        if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+            hasattr(settings, 'STORAGES') and 
+            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+        )
+        if not is_s3:
                 try: return obj.video.url
                 except: return None
-        try:
-            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
-            return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.video.name}, ExpiresIn=3600)
-        except: return None
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.video.name}"
 
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
@@ -329,34 +299,30 @@ class StorySerializer(serializers.ModelSerializer):
 
     def get_user_photo(self, obj):
         if hasattr(obj.user, 'profile'):
-            # Re-use logic or quick access
             p = obj.user.profile
             if p.photo:
-                # Basic check, ideally use the profile logic but simple URL is fine for now
-                if 's3' not in settings.DEFAULT_FILE_STORAGE.lower() and 's3' not in settings.STORAGES['default']['BACKEND'].lower():
+                is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+                    hasattr(settings, 'STORAGES') and 
+                    's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+                )
+                if not is_s3:
                      try:
                         request = self.context.get('request')
                         if request: return request.build_absolute_uri(p.photo.url)
                      except: pass
                      return p.photo.url
                      
-                # S3 Presign (Duplicate logic from ProfileSerializer to avoid circular dep or heavy refactor)
-                try:
-                    s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, region_name=settings.AWS_S3_REGION_NAME)
-                    return s3_client.generate_presigned_url('get_object', Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': p.photo.name}, ExpiresIn=3600)
-                except: return p.photo_url
+                return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{p.photo.name}"
             return p.photo_url
         return None
 
     def get_media_url(self, obj):
         if not obj.media: return None
 
-        # Check for S3 usage
-        is_s3 = False
-        if hasattr(settings, 'DEFAULT_FILE_STORAGE') and 's3' in settings.DEFAULT_FILE_STORAGE.lower():
-            is_s3 = True
-        elif hasattr(settings, 'STORAGES') and 's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower():
-            is_s3 = True
+        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
+            hasattr(settings, 'STORAGES') and 
+            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
+        )
             
         if not is_s3:
             try:
@@ -367,24 +333,7 @@ class StorySerializer(serializers.ModelSerializer):
                 pass
             return obj.media.url
             
-        # S3 Presigned URL
-        try:
-            s3_client = boto3.client(
-                's3', 
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID, 
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, 
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-            return s3_client.generate_presigned_url(
-                'get_object', 
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': obj.media.name}, 
-                ExpiresIn=3600
-            )
-        except Exception as e:
-            # Fallback
-            print(f"Error generating presigned URL: {e}")
-            try: return obj.media.url
-            except: return None
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.media.name}"
 
 
 class StoryViewSerializer(serializers.ModelSerializer):
