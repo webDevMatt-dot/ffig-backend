@@ -109,13 +109,14 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     final lastName = _profileData['last_name'] ?? '';
     final fullName = (firstName + ' ' + lastName).trim();
     final username = _profileData['username'] ?? widget.username ?? 'Member';
+    final displayName = fullName.isNotEmpty ? fullName : username;
     final industry = _profileData['industry_label'] ?? _profileData['industry'] ?? 'General';
     final location = _profileData['location'] ?? 'Global';
     final bio = _profileData['bio'] ?? '';
     final userId = _profileData['user_id'] ?? _profileData['id'];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile")),
+      appBar: AppBar(title: Text(displayName)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -134,7 +135,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                      imageUrl: photoUrl,
                      firstName: firstName,
                      lastName: lastName,
-                     username: username,
+                     username: displayName,
                      textColor: Colors.black54,
                      backgroundColor: Colors.grey[200],
                    ),
@@ -144,12 +145,14 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                
                // Name & Business
                Text(
-                 fullName.isNotEmpty ? fullName : username,
+                 displayName,
+                 textAlign: TextAlign.center,
                  style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
                ),
                if (_profileData['business_name'] != null)
                  Text(
                    _profileData['business_name'], 
+                   textAlign: TextAlign.center,
                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: FfigTheme.primaryBrown, fontWeight: FontWeight.w600)
                  ),
 
@@ -168,7 +171,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                         MaterialPageRoute(
                           builder: (context) => ChatScreen(
                             recipientId: userId,
-                            recipientName: username,
+                            recipientName: displayName,
                           ),
                         ),
                       );

@@ -23,7 +23,7 @@ class ChatUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'tier', 'photo_url']
+        fields = ['id', 'username', 'first_name', 'last_name', 'tier', 'photo_url']
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = ChatUserSerializer(read_only=True)

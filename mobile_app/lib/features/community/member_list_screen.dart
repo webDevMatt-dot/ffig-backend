@@ -282,6 +282,10 @@ class _MemberListScreenState extends State<MemberListScreen> {
                   itemBuilder: (context, index) {
                     final member = _members[index];
                     final isPremium = member['is_premium'] ?? false;
+                    final firstName = (member['first_name'] ?? member['name'] ?? '').toString().trim();
+                    final lastName = (member['last_name'] ?? member['surname'] ?? '').toString().trim();
+                    final fullName = [firstName, lastName].where((p) => p.isNotEmpty).join(' ');
+                    final displayName = fullName.isNotEmpty ? fullName : (member['username'] ?? 'Member').toString();
                     
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -306,20 +310,19 @@ class _MemberListScreenState extends State<MemberListScreen> {
                               }
                               return url;
                             }(),
-                            username: member['username'],
-                            // member list often doesn't return full name in simple view, 
-                            // check if your API returns first_name/last_name. 
-                            // Based on ProfileScreen logic, it might not be in the list view payload.
-                            // We can safely fallback to username which IS available.
+                            username: displayName,
                             firstName: member['first_name'], 
                             lastName: member['last_name'],
                           ),
                         ),
                         title: Row(
                           children: [
-                            Text(
-                              member['username'].toString().toUpperCase(), 
-                              style: Theme.of(context).textTheme.labelLarge?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold)
+                            Flexible(
+                              child: Text(
+                                displayName.toUpperCase(), 
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             // Verified Badge Logic
@@ -347,7 +350,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                 MaterialPageRoute(
                                     builder: (context) => PublicProfileScreen(
                                         userId: member['user_id'],
-                                        username: member['username'],
+                                        username: displayName,
                                         initialData: member,
                                     ),
                                 ),

@@ -266,6 +266,21 @@ class _ChatScreenState extends State<ChatScreen> {
     return url;
   }
 
+  String _displayNameFromUser(Map<String, dynamic>? user, {String fallback = 'User'}) {
+    final firstName = (user?['first_name'] ?? user?['name'] ?? '').toString().trim();
+    final lastName = (user?['last_name'] ?? user?['surname'] ?? '').toString().trim();
+    final fullName = [firstName, lastName].where((part) => part.isNotEmpty).join(' ');
+    if (fullName.isNotEmpty) return fullName;
+
+    final username = (user?['username'] ?? '').toString().trim();
+    if (username.isNotEmpty) return username;
+
+    final email = (user?['email'] ?? '').toString().trim();
+    if (email.isNotEmpty) return email;
+
+    return fallback;
+  }
+
   /// Sends a message.
   /// - Handles optimistic local update (TODO).
   /// - Posts to `/chat/messages/send/`.
@@ -622,7 +637,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showMessageOptions(Map<String, dynamic> msg) {
     final isMe = msg['is_me'];
     final text = msg['text'];
-    final username = msg['sender']['username'];
+    final username = _displayNameFromUser(msg['sender']);
     final canViewProfile = widget.isCommunity && !isMe;
 
     showModalBottomSheet(
@@ -879,7 +894,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final isMe = msg['is_me'];
                 final isRead = msg['is_read'] ?? false;
                 final isHighlighted = msg['id'] == _highlightedMessageId;
-                final username = msg['sender']['username'] ?? 'Unknown';
+                final username = _displayNameFromUser(msg['sender'], fallback: 'Unknown');
                 final senderPhoto = _normalizeImageUrl(
                   msg['sender']['photo'] ??
                   msg['sender']['photo_url'] ??
@@ -1067,7 +1082,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
                                                           Text(
-                                                              replyContext['sender']['username'] ?? 'User', 
+                                                              _displayNameFromUser(replyContext['sender'], fallback: 'User'), 
                                                               style: TextStyle(
                                                                 fontSize: 11,
                                                                 fontWeight: FontWeight.w700,
@@ -1175,7 +1190,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Replying to ${_replyMessage!['sender']['username']}",
+                                      "Replying to ${_displayNameFromUser(_replyMessage!['sender'])}",
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold, 
                                         fontSize: 11,
