@@ -118,9 +118,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
        if (response.statusCode == 204 || response.statusCode == 200) {
            _fetchAllCategories(silent: true);
            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User deleted")));
+       } else {
+           if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(
+                       content: Text("Failed to delete user: ${response.statusCode} - ${response.body}"),
+                       backgroundColor: Colors.red,
+                   )
+               );
+           }
        }
      } catch (e) {
-       // Silent
+       if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                   content: Text("Error deleting user: $e"),
+                   backgroundColor: Colors.red,
+               )
+           );
+       }
      }
   }
 
