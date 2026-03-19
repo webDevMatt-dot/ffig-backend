@@ -49,9 +49,9 @@ class NotificationService {
 
     final DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
-      requestSoundPermission: false,
-      requestBadgePermission: false,
-      requestAlertPermission: false,
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
     );
 
     final InitializationSettings initializationSettings = InitializationSettings(
@@ -130,11 +130,26 @@ class NotificationService {
       );
     });
 
-    // 5. Setup Interacted Message (Background / Terminated taps)
-    _setupInteractedMessage();
-
     // 6. Get FCM Token (Send this to your Django Backend)
-    String? token = await _firebaseMessaging.getToken();
+    String? token;
+    
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      // On iOS, we MUST wait for the APNs token before getting the FCM token
+      // Otherwise FCM may return an invalid/empty registration token.
+      String? apnsToken = await _firebaseMessaging.getAPNSToken();
+      if (apnsToken == null) {
+        if (kDebugMode) print("🔔 Waiting for APNs token...");
+        // Wait a bit and retry up to 3 times
+        for (int i = 0; i < 3; i++) {
+           await Future.delayed(const Duration(seconds: 2));
+           apnsToken = await _firebaseMessaging.getAPNSToken();
+           if (apnsToken != null) break;
+        }
+      }
+      if (kDebugMode) print("🔔 APNs Token: $apnsToken");
+    }
+
+    token = await _firebaseMessaging.getToken();
     if (kDebugMode) print("FCM Token: $token");
     
     // Send to Backend
@@ -150,6 +165,10 @@ class NotificationService {
     });
 
     // 7. Subscribe to Community Topic
+    // Add a small delay for iOS to ensure token is synced before subscription
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+       await Future.delayed(const Duration(seconds: 1));
+    }
     try {
       await _firebaseMessaging.subscribeToTopic('community_chat');
       if (kDebugMode) print("🔔 Successfully subscribed to 'community_chat' topic");
