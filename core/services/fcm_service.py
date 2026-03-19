@@ -44,6 +44,25 @@ def send_push_notification(user, title, body, data=None, tag=None):
                 notification=messaging.AndroidNotification(tag=tag)
             )
 
+        apns_config = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+                "apns-push-type": "alert"
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    alert=messaging.ApsAlert(
+                        title=title,
+                        body=body,
+                    ),
+                    sound="default",
+                    badge=1,
+                    mutable_content=True,
+                    content_available=True,
+                ),
+            ),
+        )
+
         message = messaging.Message(
             notification=messaging.Notification(
                 title=title,
@@ -51,7 +70,8 @@ def send_push_notification(user, title, body, data=None, tag=None):
             ),
             data=data or {},
             token=user.profile.fcm_token,
-            android=android_config
+            android=android_config,
+            apns=apns_config
         )
         response = messaging.send(message)
         # print(f"Successfully sent message to {user.username}: {response}")
