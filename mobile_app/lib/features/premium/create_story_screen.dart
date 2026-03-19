@@ -85,17 +85,18 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.original,
-              lockAspectRatio: false,
+              lockAspectRatio: true,
             ),
             IOSUiSettings(
               title: 'Story',
-              aspectRatioLockEnabled: false,
-              aspectRatioPickerButtonHidden: false,
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
             ),
              WebUiSettings(
               context: context,
             ),
           ],
+          aspectRatio: const CropAspectRatio(ratioX: 9, ratioY: 16),
         );
 
         if (croppedFile != null) {

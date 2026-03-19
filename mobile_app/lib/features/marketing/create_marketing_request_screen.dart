@@ -59,18 +59,19 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
               toolbarTitle: 'Edit Image',
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.original,
-              lockAspectRatio: false,
+              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: true,
             ),
             IOSUiSettings(
               title: 'Edit Image',
-              aspectRatioLockEnabled: false,
-              aspectRatioPickerButtonHidden: false,
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
             ),
             WebUiSettings(
               context: context,
             ),
           ],
+          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
         );
 
         if (croppedFile != null) {

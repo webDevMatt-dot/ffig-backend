@@ -5,6 +5,7 @@ import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/utils/url_utils.dart';
 
 class EditEventScreen extends StatefulWidget {
@@ -72,9 +73,31 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: image.path,
+        aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Event Image',
+            toolbarColor: FfigTheme.primaryBrown,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.ratio16x9,
+            lockAspectRatio: true,
+            activeControlsWidgetColor: FfigTheme.accentBrown,
+          ),
+          IOSUiSettings(
+            title: 'Crop Event Image',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _selectedImage = File(croppedFile.path);
+        });
+      }
     }
   }
 
@@ -192,7 +215,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final List<String> currencies = ['USD', 'ZAR', 'EUR', 'GBP', 'KES', 'NGN', 'GHS'];
 
     _showFormDialog(item == null ? "Add Ticket Tier" : "Edit Ticket Tier", [
-      _buildStyledTextField(name, "Tier Name", icon: Icons.label),
+      _buildStyledTextField(name, "Tier Name", icon: Icons.label, validator: (v) => v!.isEmpty ? "Tier name is required" : null),
       const SizedBox(height: 12),
       StatefulBuilder(
         builder: (context, setDialogState) {
@@ -210,9 +233,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
         }
       ),
       const SizedBox(height: 12),
-      _buildStyledTextField(price, "Price", icon: Icons.payments, isNumber: true),
+      _buildStyledTextField(price, "Price", icon: Icons.payments, isNumber: true, validator: (v) => v!.isEmpty ? "Price is required" : null),
       const SizedBox(height: 12),
-      _buildStyledTextField(cap, "Capacity", icon: Icons.people, isNumber: true),
+      _buildStyledTextField(cap, "Capacity", icon: Icons.people, isNumber: true, validator: (v) => v!.isEmpty ? "Capacity is required" : null),
     ], () async {
        final data = {
          'name': name.text,
@@ -252,9 +275,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final role = TextEditingController(text: item?['role']?.toString() ?? '');
     final photo = TextEditingController(text: item?['photo_url']?.toString() ?? '');
     _showFormDialog(item == null ? "Add Speaker" : "Edit Speaker", [
-      _buildStyledTextField(name, "Full Name", icon: Icons.person),
+      _buildStyledTextField(name, "Full Name", icon: Icons.person, validator: (v) => v!.isEmpty ? "Name is required" : null),
       const SizedBox(height: 12),
-      _buildStyledTextField(role, "Role / Title", icon: Icons.work),
+      _buildStyledTextField(role, "Role / Title", icon: Icons.work, validator: (v) => v!.isEmpty ? "Role is required" : null),
       const SizedBox(height: 12),
       _buildStyledTextField(photo, "Photo URL", icon: Icons.image),
     ], () async {
@@ -281,12 +304,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final end = TextEditingController(text: item?['end_time']?.toString() ?? "10:00");
     final desc = TextEditingController(text: item?['description']?.toString() ?? '');
     _showFormDialog(item == null ? "Add Agenda Item" : "Edit Agenda Item", [
-      _buildStyledTextField(title, "Session Title", icon: Icons.event_note),
+      _buildStyledTextField(title, "Session Title", icon: Icons.event_note, validator: (v) => v!.isEmpty ? "Title is required" : null),
       const SizedBox(height: 12),
       Row(children: [
-          Expanded(child: _buildStyledTextField(start, "Start", icon: Icons.schedule)),
+          Expanded(child: _buildStyledTextField(start, "Start", icon: Icons.schedule, validator: (v) => v!.isEmpty ? "Required" : null)),
           const SizedBox(width: 8),
-          Expanded(child: _buildStyledTextField(end, "End", icon: Icons.schedule_send)),
+          Expanded(child: _buildStyledTextField(end, "End", icon: Icons.schedule_send, validator: (v) => v!.isEmpty ? "Required" : null)),
       ]),
       const SizedBox(height: 12),
       _buildStyledTextField(desc, "Description", icon: Icons.description, maxLines: 2),
@@ -313,9 +336,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final q = TextEditingController(text: item?['question']?.toString() ?? '');
     final a = TextEditingController(text: item?['answer']?.toString() ?? '');
     _showFormDialog(item == null ? "Add FAQ" : "Edit FAQ", [
-      _buildStyledTextField(q, "Question", icon: Icons.help_outline),
+      _buildStyledTextField(q, "Question", icon: Icons.help_outline, validator: (v) => v!.isEmpty ? "Question is required" : null),
       const SizedBox(height: 12),
-      _buildStyledTextField(a, "Answer", icon: Icons.info_outline, maxLines: 3),
+      _buildStyledTextField(a, "Answer", icon: Icons.info_outline, maxLines: 3, validator: (v) => v!.isEmpty ? "Answer is required" : null),
     ], () async {
        final data = {
          'question': q.text,
@@ -333,7 +356,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }, isEdit: item != null);
   }
 
-  Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon}) {
+  Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon, String? Function(String?)? validator}) {
       return TextFormField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
@@ -342,10 +365,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
               labelText: label,
               prefixIcon: icon != null ? Icon(icon, color: FfigTheme.primaryBrown) : null,
           ),
+          validator: validator,
       );
   }
 
   void _showFormDialog(String title, List<Widget> fields, Future<void> Function() onSave, {bool isEdit = false}) {
+    final subFormKey = GlobalKey<FormState>();
     showDialog(
       context: context, 
       builder: (ctx) => Dialog(
@@ -355,50 +380,54 @@ class _EditEventScreenState extends State<EditEventScreen> {
             padding: const EdgeInsets.all(24),
             constraints: const BoxConstraints(maxWidth: 400),
             child: SingleChildScrollView(
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        Text(title, style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
-                        const SizedBox(height: 8),
-                         Container(height: 2, width: 40, color: FfigTheme.accentBrown),
-                        const SizedBox(height: 24),
-                        ...fields,
-                        const SizedBox(height: 24),
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                                TextButton(
-                                    onPressed: () => Navigator.pop(ctx), 
-                                    child: const Text("CANCEL", style: TextStyle(color: Colors.grey))
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                        backgroundColor: FfigTheme.primaryBrown,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
+                child: Form(
+                    key: subFormKey,
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                            Text(title, style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
+                            const SizedBox(height: 8),
+                             Container(height: 2, width: 40, color: FfigTheme.accentBrown),
+                            const SizedBox(height: 24),
+                            ...fields,
+                            const SizedBox(height: 24),
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                    TextButton(
+                                        onPressed: () => Navigator.pop(ctx), 
+                                        child: const Text("CANCEL", style: TextStyle(color: Colors.grey))
                                     ),
-                                    onPressed: () async {
-                                      try {
-                                        if (widget.event != null) {
-                                           await onSave(); 
-                                           Navigator.pop(ctx);
-                                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated! Re-open to refresh." : "Added! Re-open to refresh.")));
-                                        } else {
-                                           // Local add/edit
-                                           await onSave();
-                                           Navigator.pop(ctx);
-                                        }
-                                      } catch(e) {
-                                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-                                      }
-                                    }, 
-                                    child: Text(isEdit ? "SAVE CHANGES" : "ADD ITEM")
-                                )
-                            ],
-                        )
-                    ],
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor: FfigTheme.primaryBrown,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
+                                        ),
+                                        onPressed: () async {
+                                          if (!subFormKey.currentState!.validate()) return;
+                                          try {
+                                            if (widget.event != null) {
+                                               await onSave(); 
+                                               Navigator.pop(ctx);
+                                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated! Re-open to refresh." : "Added! Re-open to refresh.")));
+                                            } else {
+                                               // Local add/edit
+                                               await onSave();
+                                               Navigator.pop(ctx);
+                                            }
+                                          } catch(e) {
+                                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                                          }
+                                        }, 
+                                        child: Text(isEdit ? "SAVE CHANGES" : "ADD ITEM")
+                                    )
+                                ],
+                            )
+                        ],
+                    ),
                 ),
             ),
         ),
