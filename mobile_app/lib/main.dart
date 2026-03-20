@@ -11,6 +11,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/services/version_service.dart';
+import 'core/services/iap_service.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'firebase_options.dart'; // Uncomment if you have generated firebase_options.dart using FlutterFire CLI
@@ -50,6 +51,9 @@ void main() async {
 
         // Initialize Notification Service
         await NotificationService().init();
+        
+        // Initialize Global IAP Service
+        IAPService().init();
         
         if (kDebugMode) print("Firebase & Notification Service initialized successfully.");
       } catch (e) {

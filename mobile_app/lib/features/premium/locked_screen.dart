@@ -14,8 +14,8 @@ class LockedScreen extends StatefulWidget {
 
 class _LockedScreenState extends State<LockedScreen> {
   /// Replace these IDs with the exact product identifiers created in App Store Connect.
-  static const String _standardProductId = 'ffig.standard.yearly';
-  static const String _premiumProductId = 'ffig.premium.yearly';
+  static const String _standardProductId = 'FFIG_STANDARD';
+  static const String _premiumProductId = 'FFIG_PREMIUM';
 
   // Your specific payment links
   /// Payment URL for Standard Plan
@@ -51,12 +51,6 @@ class _LockedScreenState extends State<LockedScreen> {
   }
 
   Future<void> _initIap() async {
-    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
-      _onPurchaseUpdated,
-      onDone: () => _purchaseSubscription?.cancel(),
-      onError: (_) {},
-    );
-
     final available = await _inAppPurchase.isAvailable();
     if (!mounted) return;
 
@@ -134,7 +128,6 @@ class _LockedScreenState extends State<LockedScreen> {
 
   @override
   void dispose() {
-    _purchaseSubscription?.cancel();
     super.dispose();
   }
 
@@ -174,11 +167,11 @@ class _LockedScreenState extends State<LockedScreen> {
               _buildPlanCard(
                 context,
                 title: "STANDARD MEMBER",
-                price: "\$200 / year",
+                price: "\$600 / year",
                 features: ["Global Networking", "Member Directory Access", "Basic Resources"],
                 buttonText: "JOIN STANDARD",
                 isRecommended: false,
-                onTap: () => _launchURL(context, _standardPlanUrl),
+                onTap: standard != null ? () => _buy(standard) : null,
               ),
 
               const SizedBox(height: 20),
@@ -187,11 +180,11 @@ class _LockedScreenState extends State<LockedScreen> {
               _buildPlanCard(
                 context,
                 title: "PREMIUM MEMBER",
-                price: "\$400 / year",
+                price: "\$800 / year",
                 features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
                 buttonText: "GO PREMIUM",
                 isRecommended: true,
-                onTap: () => _launchURL(context, _premiumPlanUrl),
+                onTap: premium != null ? () => _buy(premium) : null,
               ),
 
               const SizedBox(height: 40),

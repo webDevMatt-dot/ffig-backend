@@ -4,6 +4,13 @@ from rest_framework.response import Response
 from django.conf import settings
 from events.models import Event, Ticket, TicketTier, StripeConnectAccount
 import stripe
+from core.services.email_service import send_ticket_receipt
+import logging
+import requests
+from django.utils import timezone
+from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -172,9 +179,11 @@ def stripe_webhook(request):
         )
     except ValueError as e:
         # Invalid payload
+        logger.error(f"⚠️ Webhook Error: Invalid Payload - {e}")
         return Response(status=status.HTTP_400_BAD_REQUEST)
     except stripe.error.SignatureVerificationError as e:
         # Invalid signature
+        logger.error(f"⚠️ Webhook Error: Invalid Signature - {e}")
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # Handle the event
@@ -191,7 +200,7 @@ def stripe_webhook(request):
                 tier = TicketTier.objects.get(id=tier_id)
                 
                 # Fulfill the purchase (Create Ticket)
-                Ticket.objects.create(
+                ticket = Ticket.objects.create(
                     event_id=event_id,
                     tier_id=tier_id,
                     user_id=user_id,
@@ -202,9 +211,12 @@ def stripe_webhook(request):
                 if tier.available > 0:
                     tier.available -= 1
                     tier.save()
+                
+                # Send Receipt Email
+                send_ticket_receipt(ticket)
                     
             except Exception as e:
-                 print(f"Error fulfilling order: {e}")
+                 logger.error(f"❌ Error fulfilling order: {e}")
 
     return Response(status=status.HTTP_200_OK)
 
@@ -241,9 +253,139 @@ def register_free_ticket(request):
         tier.available -= 1
         tier.save()
         
+        # Send Receipt Email
+        send_ticket_receipt(ticket)
+        
         return Response({'status': 'success', 'ticket_id': ticket.id}, status=status.HTTP_201_CREATED)
         
     except TicketTier.DoesNotExist:
         return Response({'error': 'Invalid Ticket Tier'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def verify_ticket(request):
+    """
+    Verifies a ticket scanned by an admin and marks it as USED.
+    """
+    qr_data = request.data.get('qr_code_data')
+    
+    if not qr_data:
+        return Response({'error': 'QR code data is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    try:
+        # The QR code data format is: EVENT-{event_id}-TIER-{tier_id}-USER-{user_id}-PI-{payment_intent.id}
+        # or it could just be the Ticket ID (UUID). Let's be flexible.
+        
+        ticket = None
+        
+        # 1. Try finding by exactly matching qr_code_data
+        ticket = Ticket.objects.filter(qr_code_data=qr_data).first()
+        
+        # 2. Try finding by UUID if the scanner sent just the ID
+        if not ticket:
+            try:
+                ticket = Ticket.objects.get(id=qr_data)
+            except:
+                pass
+                
+        if not ticket:
+            return Response({'error': 'Invalid Ticket'}, status=status.HTTP_404_NOT_FOUND)
+            
+        if ticket.status == 'USED':
+            return Response({
+                'error': 'Ticket already used',
+                'user': ticket.user.username,
+                'event': ticket.event.title,
+                'tier': ticket.tier.name,
+                'purchase_date': ticket.purchase_date
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Success! Mark as USED
+        ticket.status = 'USED'
+        ticket.save()
+        
+        return Response({
+            'status': 'success',
+            'message': 'Ticket verified successfully',
+            'user': f"{ticket.user.first_name} {ticket.user.last_name}" if ticket.user.first_name else ticket.user.username,
+            'event': ticket.event.title,
+            'tier': ticket.tier.name
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def verify_subscription(request):
+    """
+    Verifies an Apple/Google IAP receipt and upgrades the user's tier.
+    """
+    platform = request.data.get('platform')
+    receipt_data = request.data.get('receipt_data')
+    product_id = request.data.get('product_id')
+
+    if not all([platform, receipt_data, product_id]):
+        return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Determine Tier from Product ID
+    tier_mapping = {
+        'FFIG_STANDARD': 'STANDARD',
+        'FFIG_PREMIUM': 'PREMIUM',
+    }
+    target_tier = tier_mapping.get(product_id)
+
+    if not target_tier:
+        return Response({'error': 'Unknown product ID'}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_valid = False
+
+    if platform == 'ios':
+        # Apple Verification
+        shared_secret = getattr(settings, 'APPLE_IAP_SHARED_SECRET', '')
+        payload = {
+            'receipt-data': receipt_data,
+            'password': shared_secret,
+            'exclude-old-transactions': True
+        }
+        
+        # Try production first
+        verify_url = 'https://buy.itunes.apple.com/verifyReceipt'
+        try:
+            resp = requests.post(verify_url, json=payload)
+            data = resp.json()
+            
+            # If the receipt is actually a sandbox receipt, Apple returns status 21007
+            if data.get('status') == 21007:
+                sandbox_url = 'https://sandbox.itunes.apple.com/verifyReceipt'
+                resp = requests.post(sandbox_url, json=payload)
+                data = resp.json()
+                
+            if data.get('status') == 0:
+                is_valid = True
+            else:
+                logger.error(f"Apple IAP Validation Failed: {data}")
+        except Exception as e:
+            logger.error(f"Error validating Apple Receipt: {e}")
+
+    elif platform == 'android':
+        # Android Validation (Placeholder - Requires Google Service Account)
+        # For now, we assume it's valid if they sent a receipt, but strongly advise
+        # implementing google-api-python-client verification for production.
+        logger.warning("Android IAP Verification is simplified. Implement real validation.")
+        if receipt_data: 
+            is_valid = True
+
+    if is_valid:
+        profile = request.user.profile
+        profile.tier = target_tier
+        # Set expiry to 1 year from now
+        profile.subscription_expiry = timezone.now() + timedelta(days=365)
+        profile.save()
+        
+        return Response({'status': 'success', 'tier': profile.tier})
+    else:
+        return Response({'error': 'Invalid Receipt'}, status=status.HTTP_400_BAD_REQUEST)
+

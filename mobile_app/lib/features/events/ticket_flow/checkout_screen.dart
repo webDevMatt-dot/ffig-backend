@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/stripe_service.dart';
 import '../../home/dashboard_screen.dart';
+import '../../tickets/my_tickets_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -29,7 +30,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment Successful! Your ticket is in My Tickets.")));
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          MaterialPageRoute(builder: (context) => MyTicketsScreen()),
           (route) => false,
         );
       } else {
@@ -56,7 +57,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registration Successful! Your ticket is in My Tickets.")));
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          MaterialPageRoute(builder: (context) => MyTicketsScreen()),
           (route) => false,
         );
       }

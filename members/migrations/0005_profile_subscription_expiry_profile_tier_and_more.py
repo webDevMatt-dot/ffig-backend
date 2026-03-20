@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='profile',
             name='tier',
-            field=models.CharField(choices=[('FREE', 'Free'), ('STANDARD', 'Standard (\\$200)'), ('PREMIUM', 'Premium (\\$400)')], default='FREE', max_length=20),
+            field=models.CharField(choices=[('FREE', 'Free'), ('STANDARD', 'Standard (\\$600)'), ('PREMIUM', 'Premium (\\$800)')], default='FREE', max_length=20),
         ),
         migrations.CreateModel(
             name='MarketingRequest',

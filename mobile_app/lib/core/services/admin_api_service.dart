@@ -609,6 +609,26 @@ class AdminApiService {
       await http.post(Uri.parse('${baseUrl}chat/community/mark-read/'), headers: {'Authorization': 'Bearer $token'});
   }
 
+  // --- TICKETING & VERIFICATION ---
+  Future<Map<String, dynamic>> verifyTicket(String qrCodeData) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('${baseUrl}payments/verify-ticket/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'qr_code_data': qrCodeData}),
+    );
+    
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['error'] ?? 'Failed to verify ticket');
+    }
+  }
+
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)
   Future<void> _uploadWithImage(String endpoint, Map<String, String> fields, dynamic imageFile, String fileField, {String? id, String method = 'POST'}) async {
     final token = await _getToken();

@@ -13,6 +13,7 @@ import 'events_management/manage_events_screen.dart';
 import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
 import 'moderation/admin_reports_screen.dart';
+import 'ticket_scanner_screen.dart';
 
 /// The main dashboard for Administrators.
 ///
@@ -164,6 +165,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: "View, edit, and delete users",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserManagementScreen())),
         ),
+        _buildAdminTile(
+          context,
+          icon: Icons.qr_code_scanner, 
+          title: "Scan Tickets",
+          subtitle: "Verify attendee QR codes",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TicketScannerScreen())),
+        ),
 
         const SizedBox(height: 24),
         _buildSectionHeader(context, "Approvals & Analytics"),
@@ -273,6 +281,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   "News Ticker", 
                   Icons.newspaper_outlined, 
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageTickerScreen()))
+                ),
+                 _buildWideTile(
+                  context, 
+                  "Scan Tickets", 
+                  Icons.qr_code_scanner, 
+                  () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TicketScannerScreen()))
                 ),
               ],
             ),
