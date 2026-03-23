@@ -80,8 +80,8 @@ flutter build ios --release --no-codesign
 # xcodebuild physically creates the App Store archive in Xcode Organizer
 xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -allowProvisioningUpdates archive || echo "⚠️ iOS Archive failed. Please archive manually in Xcode."
 
-echo "🏗️  Step 3: Building Web..."
-flutter build web --release --no-tree-shake-icons
+#echo "🏗️  Step 3: Building Web..."
+#flutter build web --release --no-tree-shake-icons
 
 cd ..
 
