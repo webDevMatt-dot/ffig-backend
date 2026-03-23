@@ -6,8 +6,9 @@ import '../../tickets/my_tickets_screen.dart';
 class CheckoutScreen extends StatefulWidget {
   final Map<String, dynamic> event;
   final Map<String, dynamic> tier;
+  final int quantity;
 
-  const CheckoutScreen({super.key, required this.event, required this.tier});
+  const CheckoutScreen({super.key, required this.event, required this.tier, this.quantity = 1});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -23,6 +24,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final stripeService = StripeService();
       final success = await stripeService.purchaseTicket(
         tierId: widget.tier['id'],
+        quantity: widget.quantity,
       );
 
       if (success && mounted) {
@@ -51,6 +53,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final stripeService = StripeService();
       final success = await stripeService.registerFreeTicket(
         tierId: widget.tier['id'],
+        quantity: widget.quantity,
       );
 
       if (success && mounted) {
@@ -73,11 +76,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final price = double.tryParse(widget.tier['price'].toString()) ?? 0.0;
+    final originalPrice = double.tryParse(widget.tier['price'].toString()) ?? 0.0;
+    final discountedPrice = widget.tier['discounted_price'] != null 
+        ? double.tryParse(widget.tier['discounted_price'].toString()) ?? originalPrice
+        : originalPrice;
+    
+    final hasDiscount = discountedPrice < originalPrice;
+    final effectivePrice = discountedPrice;
+    final total = effectivePrice * widget.quantity;
     final currency = (widget.tier['currency'] ?? 'usd').toString().toUpperCase();
     
     // Check if free ticket
-    if (price <= 0.0) {
+    if (originalPrice <= 0.0) {
         return Scaffold(
           appBar: AppBar(title: const Text("Checkout")),
           body: Center(
@@ -102,10 +112,53 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Text("Order Summary", style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             Card(
-              child: ListTile(
-                title: Text(widget.event['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text("${widget.tier['name']} Ticket"),
-                trailing: Text("$currency ${price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.event['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text("${widget.tier['name']} Ticket x ${widget.quantity}"),
+                            ],
+                          ),
+                        ),
+                        Text("$currency ${(originalPrice * widget.quantity).toStringAsFixed(2)}", 
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 16,
+                            decoration: hasDiscount ? TextDecoration.lineThrough : null,
+                            color: hasDiscount ? Colors.grey : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (hasDiscount) ...[
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Membership Discount", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                          Text("- $currency ${((originalPrice - discountedPrice) * widget.quantity).toStringAsFixed(2)}", 
+                            style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Total (Discounted)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          Text("$currency ${total.toStringAsFixed(2)}", 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).primaryColor)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -132,7 +185,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 child: _isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text("PAY $currency ${price.toStringAsFixed(2)}", textAlign: TextAlign.center),
+                    : Text("PAY $currency ${total.toStringAsFixed(2)}", textAlign: TextAlign.center),
               ),
             ),
             const SizedBox(height: 16),

@@ -9,6 +9,7 @@ import logging
 import requests
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ def create_payment_intent(request):
     Routes funds to the Event Organizer's Connect Account.
     """
     tier_id = request.data.get('tier_id')
+    quantity = int(request.data.get('quantity', 1))
     
     if not tier_id:
         return Response({'error': 'tier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -117,8 +119,8 @@ def create_payment_intent(request):
         tier = TicketTier.objects.get(id=tier_id)
         event = tier.event
         
-        if tier.available < 1:
-            return Response({'error': 'This ticket tier is sold out'}, status=status.HTTP_400_BAD_REQUEST)
+        if tier.available < quantity:
+            return Response({'error': f'Only {tier.available} tickets available'}, status=status.HTTP_400_BAD_REQUEST)
             
         organizer = event.organizer
         connect_account = None
@@ -129,8 +131,17 @@ def create_payment_intent(request):
                 return Response({'error': 'The organizer is not fully set up to receive payments'}, status=status.HTTP_400_BAD_REQUEST)
 
             
+        # Determine actual price based on tier discounts
+        actual_price = tier.price
+        profile = getattr(request.user, 'profile', None)
+        if profile:
+            if profile.tier == 'PREMIUM':
+                actual_price = actual_price * Decimal('0.80')
+            elif profile.tier == 'STANDARD':
+                actual_price = actual_price * Decimal('0.90')
+
         # Amount must be in cents
-        amount_cents = int(tier.price * 100)
+        amount_cents = int(actual_price * quantity * 100)
         
         # Calculate platform fee (optional) - e.g. 5%
         # application_fee_amount = int(amount_cents * 0.05)
@@ -143,7 +154,8 @@ def create_payment_intent(request):
             'metadata': {
                 'event_id': event.id,
                 'tier_id': tier.id,
-                'user_id': request.user.id
+                'user_id': request.user.id,
+                'quantity': str(quantity)
             }
         }
         
@@ -160,6 +172,40 @@ def create_payment_intent(request):
         
     except TicketTier.DoesNotExist:
         return Response({'error': 'Invalid Ticket Tier'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_membership_payment_intent(request):
+    """
+    Creates a Stripe PaymentIntent for a Membership Upgrade.
+    """
+    target_tier = request.data.get('target_tier')
+    
+    if target_tier not in ['STANDARD', 'PREMIUM']:
+        return Response({'error': 'Invalid membership tier'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    try:
+        # Hardcoded prices as per app requirements
+        # STANDARD: $600, PREMIUM: $800
+        price = 600 if target_tier == 'STANDARD' else 800
+        amount_cents = price * 100
+        
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency='usd', # Defaulting to USD for memberships
+            automatic_payment_methods={'enabled': True},
+            metadata={
+                'type': 'membership',
+                'user_id': request.user.id,
+                'target_tier': target_tier
+            }
+        )
+        
+        return Response({
+            'clientSecret': intent.client_secret,
+        })
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -191,29 +237,58 @@ def stripe_webhook(request):
         payment_intent = event['data']['object']
         
         # Extract metadata
-        tier_id = payment_intent.get('metadata', {}).get('tier_id')
-        user_id = payment_intent.get('metadata', {}).get('user_id')
-        event_id = payment_intent.get('metadata', {}).get('event_id')
+        metadata = payment_intent.get('metadata', {})
+        type = metadata.get('type')
+        user_id = metadata.get('user_id')
+        
+        if type == 'membership' and user_id:
+            try:
+                from members.models import Profile
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user = User.objects.get(id=user_id)
+                profile = user.profile
+                target_tier = metadata.get('target_tier')
+                
+                if target_tier in ['STANDARD', 'PREMIUM']:
+                    profile.tier = target_tier
+                    # Set expiry to 1 year from now
+                    profile.subscription_expiry = timezone.now() + timedelta(days=365)
+                    profile.save()
+                    logger.info(f"✅ Membership fulfilled for {user.email}: {target_tier}")
+            except Exception as e:
+                logger.error(f"❌ Error fulfilling membership: {e}")
+            return Response(status=status.HTTP_200_OK)
+
+        tier_id = metadata.get('tier_id')
+        event_id = metadata.get('event_id')
+        quantity = int(metadata.get('quantity', 1))
         
         if tier_id and user_id:
             try:
                 tier = TicketTier.objects.get(id=tier_id)
                 
-                # Fulfill the purchase (Create Ticket)
-                ticket = Ticket.objects.create(
-                    event_id=event_id,
-                    tier_id=tier_id,
-                    user_id=user_id,
-                    qr_code_data=f"EVENT-{event_id}-TIER-{tier_id}-USER-{user_id}-PI-{payment_intent.id}"
-                )
+                # Fulfill the purchase (Create Tickets)
+                for _ in range(quantity):
+                    ticket = Ticket.objects.create(
+                        event_id=event_id,
+                        tier_id=tier_id,
+                        user_id=user_id,
+                        purchase_price=Decimal(payment_intent.amount) / Decimal('100.00'),
+                        original_price=tier.price,
+                        qr_code_data=f"EVENT-{event_id}-TIER-{tier_id}-USER-{user_id}-PI-{payment_intent.id}-{Ticket.objects.count()}"
+                    )
+                    
+                    # Send Receipt Email (individually or wait? Individually ensures unique QR codes are sent)
+                    send_ticket_receipt(ticket)
                 
                 # Decrement availability
-                if tier.available > 0:
-                    tier.available -= 1
+                if tier.available >= quantity:
+                    tier.available -= quantity
                     tier.save()
-                
-                # Send Receipt Email
-                send_ticket_receipt(ticket)
+                elif tier.available > 0:
+                    tier.available = 0
+                    tier.save()
                     
             except Exception as e:
                  logger.error(f"❌ Error fulfilling order: {e}")
@@ -227,6 +302,7 @@ def register_free_ticket(request):
     Registers a user for a free ticket tier.
     """
     tier_id = request.data.get('tier_id')
+    quantity = int(request.data.get('quantity', 1))
     
     if not tier_id:
         return Response({'error': 'tier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -238,26 +314,31 @@ def register_free_ticket(request):
         if tier.price > 0:
             return Response({'error': 'This ticket tier is not free'}, status=status.HTTP_400_BAD_REQUEST)
             
-        if tier.available < 1:
-            return Response({'error': 'This ticket tier is sold out'}, status=status.HTTP_400_BAD_REQUEST)
+        if tier.available < quantity:
+            return Response({'error': f'Only {tier.available} tickets available'}, status=status.HTTP_400_BAD_REQUEST)
             
-        # Create Ticket
-        ticket = Ticket.objects.create(
-            event=event,
-            tier=tier,
-            user=request.user,
-            qr_code_data=f"EVENT-{event.id}-TIER-{tier.id}-USER-{request.user.id}-FREE-{tier.currency}"
-        )
+        # Create Tickets
+        first_ticket_id = None
+        for i in range(quantity):
+            ticket = Ticket.objects.create(
+                event=event,
+                tier=tier,
+                user=request.user,
+                purchase_price=0.00,
+                original_price=0.00,
+                qr_code_data=f"EVENT-{event.id}-TIER-{tier.id}-USER-{request.user.id}-FREE-{tier.currency}-{Ticket.objects.count()}-{i}"
+            )
+            if first_ticket_id is None:
+                first_ticket_id = ticket.id
+            
+            # Send Receipt Email
+            send_ticket_receipt(ticket)
         
         # Decrement availability
-        tier.available -= 1
+        tier.available -= quantity
         tier.save()
         
-        # Send Receipt Email
-        send_ticket_receipt(ticket)
-        
-        return Response({'status': 'success', 'ticket_id': ticket.id}, status=status.HTTP_201_CREATED)
-        
+        return Response({'status': 'success', 'ticket_id': first_ticket_id}, status=status.HTTP_201_CREATED)        
     except TicketTier.DoesNotExist:
         return Response({'error': 'Invalid Ticket Tier'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:

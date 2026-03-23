@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/services/iap_service.dart';
+import '../../core/services/stripe_service.dart';
+import '../../core/services/membership_service.dart';
 
 class LockedScreen extends StatefulWidget {
   const LockedScreen({super.key});
@@ -13,16 +17,8 @@ class LockedScreen extends StatefulWidget {
 }
 
 class _LockedScreenState extends State<LockedScreen> {
-  /// Replace these IDs with the exact product identifiers created in App Store Connect.
   static const String _standardProductId = 'FFIG_STANDARD';
   static const String _premiumProductId = 'FFIG_PREMIUM';
-
-  // Your specific payment links
-  /// Payment URL for Standard Plan
-  final String _standardPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiJhZDQwMzVkZi04MzA0LTRhMjctODZlNi0yY2ExMDNlNTNlNWIiLCJjaGVja291dEZsb3dJZCI6Ijk3ZjRiMjcwLTA5ZTUtNDIxOS1iYzNkLWE3ZjIxNWMwNTJjMCJ9";
-  
-  /// Payment URL for Premium Plan
-  final String _premiumPlanUrl = "https://www.femalefoundersinitiative.com/plans-pricing/payment/eyJpbnRlZ3JhdGlvbkRhdGEiOnt9LCJwbGFuSWQiOiI5YWQ4OTNlNi03ZTIzLTQ2NTAtYWY1OS1lMWNiMTU5NDA5OTQiLCJjaGVja291dEZsb3dJZCI6IjAwMTZmN2QxLTc2MzgtNDgyOS1hODVjLTU5MTYwYTdjMjYxNyJ9";
 
   Future<void> _launchURL(BuildContext context, String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -48,78 +44,103 @@ class _LockedScreenState extends State<LockedScreen> {
   void initState() {
     super.initState();
     _initIap();
+    
+    // Listen for global purchase success from IAPService
+    IAPService().purchaseSuccessNotifier.addListener(_handlePurchaseSuccess);
+  }
+
+  void _handlePurchaseSuccess() {
+    if (IAPService().purchaseSuccessNotifier.value && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Success! Your account has been upgraded. Please refresh your profile.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // Reset notifier for next time
+      IAPService().purchaseSuccessNotifier.value = false;
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _initIap() async {
-    final available = await _inAppPurchase.isAvailable();
-    if (!mounted) return;
+    try {
+      final available = await _inAppPurchase.isAvailable();
+      if (!mounted) return;
 
-    if (!available) {
+      if (!available) {
+        setState(() {
+          _isStoreAvailable = false;
+          _isLoadingProducts = false;
+        });
+        return;
+      }
+
+      final ProductDetailsResponse response =
+          await _inAppPurchase.queryProductDetails(_productIds);
+
+      if (!mounted) return;
+
       setState(() {
-        _isStoreAvailable = false;
+        _isStoreAvailable = true;
+        _products = response.productDetails;
         _isLoadingProducts = false;
       });
-      return;
+    } catch (e) {
+       if (mounted) setState(() => _isLoadingProducts = false);
     }
-
-    final ProductDetailsResponse response =
-        await _inAppPurchase.queryProductDetails(_productIds);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isStoreAvailable = true;
-      _products = response.productDetails;
-      _isLoadingProducts = false;
-    });
   }
 
-  Future<void> _buy(ProductDetails product) async {
-    setState(() => _isPurchasing = true);
-
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
-    await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
-  }
-
-  Future<void> _restorePurchases() async {
-    await _inAppPurchase.restorePurchases();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Restore request sent.')),
-    );
-  }
-
-  Future<void> _onPurchaseUpdated(List<PurchaseDetails> purchaseDetailsList) async {
-    for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
-      if (purchaseDetails.status == PurchaseStatus.pending) {
-        if (mounted) setState(() => _isPurchasing = true);
-      } else {
-        if (purchaseDetails.status == PurchaseStatus.error) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Purchase failed: ${purchaseDetails.error?.message ?? 'Unknown error'}')),
-            );
-          }
-        } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-            purchaseDetails.status == PurchaseStatus.restored) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Purchase successful. Premium access will sync after profile refresh.')),
-            );
-            Navigator.of(context).pop();
-          }
+  Future<void> _buy(ProductDetails? product, String tierName) async {
+    if (product != null) {
+      setState(() => _isPurchasing = true);
+      try {
+        final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+        await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+      } catch (e) {
+        if (mounted) {
+           setState(() => _isPurchasing = false);
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
         }
-
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _inAppPurchase.completePurchase(purchaseDetails);
+      }
+    } else {
+      // FALLBACK TO STRIPE
+      setState(() => _isPurchasing = true);
+      try {
+        if (kDebugMode) print("Product null, falling back to Stripe for $tierName");
+        final success = await StripeService().purchaseMembership(targetTier: tierName);
+        if (success && mounted) {
+          _handlePurchaseSuccess();
+          // Trigger dashboard update
+          IAPService().purchaseSuccessNotifier.value = true;
         }
-
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Payment Error: $e")));
+        }
+      } finally {
         if (mounted) setState(() => _isPurchasing = false);
       }
     }
   }
 
+  Future<void> _restorePurchases() async {
+    try {
+      await _inAppPurchase.restorePurchases();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restore request sent.')),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore failed: $e")));
+    }
+  }
+
+  // Obsolete: Replaced by IAPService handling
+  Future<void> _onPurchaseUpdated(List<PurchaseDetails> purchaseDetailsList) async {}
+
   ProductDetails? _findProduct(String productId) {
+    if (_products.isEmpty) return null;
     for (final product in _products) {
       if (product.id == productId) return product;
     }
@@ -128,6 +149,7 @@ class _LockedScreenState extends State<LockedScreen> {
 
   @override
   void dispose() {
+    IAPService().purchaseSuccessNotifier.removeListener(_handlePurchaseSuccess);
     super.dispose();
   }
 
@@ -169,9 +191,9 @@ class _LockedScreenState extends State<LockedScreen> {
                 title: "STANDARD MEMBER",
                 price: "\$600 / year",
                 features: ["Global Networking", "Member Directory Access", "Basic Resources"],
-                buttonText: "JOIN STANDARD",
+                buttonText: standard != null ? "JOIN STANDARD" : "JOIN VIA STRIPE",
                 isRecommended: false,
-                onTap: standard != null ? () => _buy(standard) : null,
+                onTap: () => _buy(standard, 'STANDARD'),
               ),
 
               const SizedBox(height: 20),
@@ -182,9 +204,9 @@ class _LockedScreenState extends State<LockedScreen> {
                 title: "PREMIUM MEMBER",
                 price: "\$800 / year",
                 features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
-                buttonText: "GO PREMIUM",
+                buttonText: premium != null ? "GO PREMIUM" : "UPGRADE VIA STRIPE",
                 isRecommended: true,
-                onTap: premium != null ? () => _buy(premium) : null,
+                onTap: () => _buy(premium, 'PREMIUM'),
               ),
 
               const SizedBox(height: 40),

@@ -14,6 +14,7 @@ import 'approvals/admin_approvals_screen.dart';
 import 'analytics/admin_analytics_screen.dart';
 import 'moderation/admin_reports_screen.dart';
 import 'ticket_scanner_screen.dart';
+import 'tickets/admin_tickets_screen.dart';
 
 /// The main dashboard for Administrators.
 ///
@@ -194,6 +195,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: "View platform growth & stats",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen())),
         ),
+        _buildAdminTile(
+          context,
+          icon: Icons.confirmation_number_outlined, 
+          title: "Purchased Tickets",
+          subtitle: "View all ticket buyers",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminTicketsScreen())),
+        ),
       ],
     );
   }
@@ -251,6 +259,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                    "Analytics", 
                    Icons.analytics_outlined, 
                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAnalyticsScreen()))
+                 ),
+                 _buildWideTile(
+                   context, 
+                   "Tickets", 
+                   Icons.confirmation_number_outlined, 
+                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminTicketsScreen()))
                  ),
                  _buildWideTile(
                   context, 

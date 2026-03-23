@@ -5,6 +5,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_app/core/api/constants.dart';
+import 'package:mobile_app/core/services/membership_service.dart';
 
 class IAPService {
   static final IAPService _instance = IAPService._internal();
@@ -13,6 +14,9 @@ class IAPService {
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
+
+  /// Notifies listeners when a purchase has been successfully verified on the backend.
+  final ValueNotifier<bool> purchaseSuccessNotifier = ValueNotifier<bool>(false);
   
   void init() {
     final purchaseUpdated = _inAppPurchase.purchaseStream;
@@ -39,8 +43,9 @@ class IAPService {
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
                    purchaseDetails.status == PurchaseStatus.restored) {
           bool valid = await _verifyPurchaseOnBackend(purchaseDetails);
-          if (valid && kDebugMode) {
-             print('Purchase verified successfully!');
+          if (valid) {
+             if (kDebugMode) print('Purchase verified successfully!');
+             purchaseSuccessNotifier.value = true;
           }
         }
         if (purchaseDetails.pendingCompletePurchase) {
@@ -74,7 +79,14 @@ class IAPService {
         }),
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          MembershipService.setTier(data['tier']);
+          return true;
+        }
+      }
+      return false;
     } catch (e) {
       if (kDebugMode) print('Backend verification error: $e');
       return false;

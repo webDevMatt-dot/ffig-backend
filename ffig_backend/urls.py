@@ -46,7 +46,8 @@ from members.views import (
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
-    StoryViewSet, AdminUserUpdateView, AdminLoginLogListView, wix_webhook
+    StoryViewSet, AdminUserUpdateView, AdminLoginLogListView, wix_webhook,
+    AdminTicketListView
 )
 from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
 from chat.views import (
@@ -91,6 +92,7 @@ urlpatterns = [
 
     # Phase 2: RBAC & Admin
     path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path('api/admin/tickets/', AdminTicketListView.as_view(), name='admin-tickets'),
     
     # Admin Approvals
     path('api/admin/approvals/business/', AdminBusinessProfileListView.as_view(), name='admin-business-list'),

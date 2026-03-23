@@ -43,14 +43,13 @@ echo "Backend is running!"
 echo "Starting Emulators & Flutter app..."
 echo "============================="
 
-# Start both emulators in the background/parallel
-./start_ios_simulator.sh &
+# Start ONLY the Android Emulator in the background
 ./start_android_emulator.sh &
 
-# Wait for both to be ready (enough for run command)
-echo "Waiting for devices to be ready..."
+# Wait for it to be ready
+echo "Waiting for Android emulator to be ready..."
 sleep 15
 
-# Run the frontend on ALL devices
-echo "Launching lib/main.dart on all devices..."
-cd mobile_app && flutter run -d all
+# Run the frontend on the Android Emulator
+echo "Launching lib/main.dart on Android Emulator..."
+cd mobile_app && flutter run -d emulator-5554

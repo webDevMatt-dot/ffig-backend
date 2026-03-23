@@ -517,6 +517,20 @@ class AdminApiService {
       throw Exception('Failed to load analytics: ${response.statusCode}');
     }
   }
+
+  Future<List<dynamic>> fetchAdminTickets() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('${baseUrl}admin/tickets/'),
+      headers: {'Authorization': 'Bearer $token'}
+    );
+     if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load tickets: ${response.statusCode}');
+    }
+  }
+
   Future<List<dynamic>> searchUsers(String query) async {
     final token = await _getToken();
     final response = await http.get(

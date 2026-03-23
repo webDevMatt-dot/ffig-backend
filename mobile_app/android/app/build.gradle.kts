@@ -60,6 +60,14 @@ android {
         checkReleaseBuilds = false
         abortOnError = false
     }
+
+    packagingOptions {
+        resources {
+            pickFirsts += "mlkit_barcode_models/barcode_ssd_mobilenet_v1_dmp25_quant.tflite"
+            pickFirsts += "mlkit_barcode_models/oned_auto_regressor_mobile.tflite"
+            pickFirsts += "mlkit_barcode_models/oned_feature_extractor_mobile.tflite"
+        }
+    }
 }
 
 // Disable the fragile lintVitalRelease task

@@ -20,7 +20,7 @@ class StripeService {
   /// 1. Calls our backend `/create-payment-intent/` to get the `clientSecret`.
   /// 2. Initializes the native Payment Sheet with `Stripe.instance.initPaymentSheet`.
   /// 3. Presents the sheet (`Stripe.instance.presentPaymentSheet`).
-  Future<bool> purchaseTicket({required int tierId}) async {
+  Future<bool> purchaseTicket({required int tierId, int quantity = 1}) async {
     try {
       // 1. Get token
       final token = await _storage.read(key: 'access_token');
@@ -36,6 +36,7 @@ class StripeService {
         },
         body: jsonEncode({
           'tier_id': tierId,
+          'quantity': quantity,
         }),
       );
 
@@ -123,7 +124,7 @@ class StripeService {
     }
   }
   /// Process a free ticket registration
-  Future<bool> registerFreeTicket({required int tierId}) async {
+  Future<bool> registerFreeTicket({required int tierId, int quantity = 1}) async {
     try {
       final token = await _storage.read(key: 'access_token');
       if (token == null) throw Exception("User not authenticated.");
@@ -135,7 +136,7 @@ class StripeService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'tier_id': tierId}),
+        body: jsonEncode({'tier_id': tierId, 'quantity': quantity}),
       );
 
       if (response.statusCode == 201) {
@@ -146,6 +147,47 @@ class StripeService {
       }
     } catch (e) {
       if (kDebugMode) print("Error during free registration: $e");
+      rethrow;
+    }
+  }
+
+  /// Processes a membership upgrade using the native Stripe Payment Sheet.
+  Future<bool> purchaseMembership({required String targetTier}) async {
+    try {
+      final token = await _storage.read(key: 'access_token');
+      if (token == null) throw Exception("User not authenticated.");
+
+      final url = Uri.parse('$_baseUrl/create-membership-payment-intent/');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'target_tier': targetTier}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception("Failed to create membership payment intent: ${response.body}");
+      }
+
+      final data = jsonDecode(response.body);
+      final clientSecret = data['clientSecret'];
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Female Founders Initiative',
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+      return true;
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) return false;
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) print("Membership Payment Error: $e");
       rethrow;
     }
   }

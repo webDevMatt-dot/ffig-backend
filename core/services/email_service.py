@@ -86,3 +86,54 @@ def send_ticket_receipt(ticket):
     except Exception as e:
         print(f"❌ Error sending ticket receipt to {user.email}: {e}")
         return False
+
+def send_membership_reminder_email(user, days_left):
+    """
+    Sends an email reminder about upcoming membership expiration.
+    """
+    subject = f"Your Membership Expires in {days_left} Days - Female Founders Initiative Global"
+    
+    html_message = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+            <h2 style="color: #8B4513;">Membership Expiration Reminder</h2>
+            <p>Hi {user.first_name or user.username},</p>
+            <p>This is a friendly reminder that your membership with the Female Founders Initiative Global will expire in <strong>{days_left} days</strong>.</p>
+            <p>Please renew your membership in the app to maintain access to premium features, exclusive events, and the community.</p>
+            <p>If you have already renewed, please ignore this message.</p>
+            <p>If you have any questions, please contact us at <a href="mailto:{settings.DEFAULT_FROM_EMAIL}">{settings.DEFAULT_FROM_EMAIL}</a>.</p>
+            <p>Best regards,<br>The Female Founders Initiative Global Team</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    plain_message = f"""
+    Hi {user.first_name or user.username},
+    
+    This is a friendly reminder that your membership with the Female Founders Initiative Global will expire in {days_left} days.
+    
+    Please renew your membership in the app to maintain access to premium features, exclusive events, and the community.
+    
+    If you have already renewed, please ignore this message.
+    
+    If you have any questions, please contact us at {settings.DEFAULT_FROM_EMAIL}.
+    
+    Best regards,
+    The Female Founders Initiative Global Team
+    """
+    
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"❌ Error sending membership reminder to {user.email}: {e}")
+        return False

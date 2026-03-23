@@ -17,6 +17,8 @@ from .serializers import (
     MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer,
     NotificationSerializer, LoginLogSerializer
 )
+from events.models import Ticket
+from events.serializers import AdminTicketSerializer
 from .models import Notification
 
 @api_view(['GET'])
@@ -296,7 +298,18 @@ class AdminAnalyticsView(APIView):
         premium = Profile.objects.filter(tier='PREMIUM').count()
         
         # Calculate Revenue (Ticket Sales)
+        from django.db.models import Sum
         ticket_revenue = Ticket.objects.aggregate(total=Sum('tier__price'))['total'] or 0
+        
+        # Calculate revenue per event directly from DB
+        revenue_per_event_data = Ticket.objects.values('event__title').annotate(
+            total_revenue=Sum('tier__price')
+        ).order_by('-total_revenue')
+
+        revenue_per_event = [
+            {"event": item['event__title'], "revenue": float(item['total_revenue'] or 0)} 
+            for item in revenue_per_event_data
+        ]
         
         # Calculate Rates
         conv_standard = f"{(standard / total_users * 100):.1f}%" if total_users > 0 else "0%"
@@ -313,8 +326,9 @@ class AdminAnalyticsView(APIView):
             },
             "revenue": {
                 "ads": 0, # Placeholder until Ads module tracks revenue
-                "events": ticket_revenue,
-                "total": ticket_revenue
+                "events": float(ticket_revenue),
+                "total": float(ticket_revenue),
+                "per_event": revenue_per_event
             }
         })
 
@@ -809,3 +823,11 @@ class AdminLoginLogListView(generics.ListAPIView):
     def get_queryset(self):
         from .models import LoginLog
         return LoginLog.objects.all().order_by('-timestamp')
+
+class AdminTicketListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = AdminTicketSerializer
+
+    def get_queryset(self):
+        from events.models import Ticket
+        return Ticket.objects.all().order_by('-purchase_date')

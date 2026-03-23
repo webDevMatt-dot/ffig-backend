@@ -18,6 +18,8 @@ import '../resources/resources_screen.dart';
 import '../events/events_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../premium/locked_screen.dart';
+import '../../core/services/iap_service.dart';
+import '../../core/services/membership_service.dart';
 import '../premium/premium_screen.dart';
 import '../premium/standard_screen.dart';
 import '../auth/login_screen.dart';
@@ -113,10 +115,20 @@ class _DashboardScreenState extends State<DashboardScreen>
     _notificationTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       _checkUnreadMessages();
     });
+
+    // Listen for IAP success to refresh UI
+    IAPService().purchaseSuccessNotifier.addListener(_handleIapSuccess);
+  }
+
+  void _handleIapSuccess() {
+    if (IAPService().purchaseSuccessNotifier.value && mounted) {
+      _checkPremiumStatus(); // Re-fetch profile to sync everything
+    }
   }
 
   @override
   void dispose() {
+    IAPService().purchaseSuccessNotifier.removeListener(_handleIapSuccess);
     _notificationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

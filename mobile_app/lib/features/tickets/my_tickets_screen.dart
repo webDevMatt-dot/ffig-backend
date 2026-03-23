@@ -52,27 +52,62 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                   itemCount: _tickets.length,
                   itemBuilder: (context, index) {
                     final t = _tickets[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: ExpansionTile(
-                         leading: const Icon(Icons.confirmation_number, color: Colors.purple),
-                         title: Text(t['eventName'] ?? 'Event Ticket', style: const TextStyle(fontWeight: FontWeight.bold)),
-                         subtitle: Text("${t['tierName']}"),
-                         children: [
-                           Padding(
-                             padding: const EdgeInsets.all(24.0),
-                             child: Column(
-                               children: [
-                                 QrImageView(
-                                   data: t['qr_code_data'] ?? '',
-                                   size: 200,
+                    final isUsed = t['status'] == 'USED';
+
+                    return Opacity(
+                      opacity: isUsed ? 0.5 : 1.0,
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: ExpansionTile(
+                           leading: Icon(
+                             Icons.confirmation_number, 
+                             color: isUsed ? Colors.grey : Colors.purple
+                           ),
+                           title: Row(
+                             children: [
+                               Expanded(
+                                 child: Text(
+                                   t['eventName'] ?? 'Event Ticket', 
+                                   style: const TextStyle(fontWeight: FontWeight.bold)
                                  ),
-                                 const SizedBox(height: 16),
-                                 const Text("Show this QR code at the entrance"),
-                               ],
-                             ),
-                           )
-                         ],
+                               ),
+                               if (isUsed)
+                                 Container(
+                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                   decoration: BoxDecoration(
+                                     color: Colors.grey,
+                                     borderRadius: BorderRadius.circular(4),
+                                   ),
+                                   child: const Text(
+                                     "USED", 
+                                     style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
+                                   ),
+                                 ),
+                             ],
+                           ),
+                           subtitle: Text("${t['tierName']}"),
+                           children: [
+                             Padding(
+                               padding: const EdgeInsets.all(24.0),
+                               child: Column(
+                                 children: [
+                                   if (isUsed) ...[
+                                     const Icon(Icons.check_circle, color: Colors.grey, size: 64),
+                                     const SizedBox(height: 16),
+                                     const Text("This ticket was used", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                   ] else ...[
+                                     QrImageView(
+                                       data: t['qr_code_data'] ?? '',
+                                       size: 200,
+                                     ),
+                                     const SizedBox(height: 16),
+                                     const Text("Show this QR code at the entrance"),
+                                   ],
+                                 ],
+                               ),
+                             )
+                           ],
+                        ),
                       ),
                     );
                   },
