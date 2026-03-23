@@ -560,6 +560,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   //
   // Triggered by the "+" button in the AppBar when on the VVIP tab.
   void _showCreationMenu() {
+    if (MembershipService.isFree) {
+      MembershipService.showUpgradeDialog(context, "Content Creation");
+      return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF161B22), // Obsidian lighter
@@ -593,8 +597,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   title: const Text("Add to Story", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   subtitle: const Text("Share a quick update (24h)", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateStoryScreen()));
+                    if (MembershipService.canPostStory) {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateStoryScreen()));
+                    } else {
+                      MembershipService.showUpgradeDialog(context, "Story");
+                    }
                   },
                 ),
                 ListTile(
@@ -606,8 +614,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   title: const Text("Post VVIP Reel / Ad", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   subtitle: const Text("Promote your business or share value", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateMarketingRequestScreen(type: 'Ad')));
+                    if (MembershipService.canAdvertise) {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (c) => const CreateMarketingRequestScreen(type: 'Ad')));
+                    } else {
+                      MembershipService.showUpgradeDialog(context, "VVIP Reel / Ad", requiredTier: UserTier.premium);
+                    }
                   },
                 ),
                 const SizedBox(height: 10),
@@ -639,7 +651,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
         // --- NEW: Leading Button Logic ---
         // Only shows when VVIP tab (Index 3) is selected
-        leading: _selectedIndex == 3
+        leading: (_selectedIndex == 3 && !MembershipService.isFree)
             ? IconButton(
                 icon: const Icon(Icons.add_circle_outline, color: FfigTheme.primaryBrown, size: 28),
                 onPressed: _showCreationMenu,

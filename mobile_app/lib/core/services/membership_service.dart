@@ -44,6 +44,9 @@ class MembershipService {
   
   /// Can post VVIP Reels/Ads? (Premium only)
   static bool get canAdvertise => isPremium;
+
+  /// Can post to stories? (Standard+)
+  static bool get canPostStory => !isFree;
   
   /// Can create a business directory profile? (Premium only)
   static bool get canCreateBusinessProfile => isPremium;
@@ -74,4 +77,3 @@ class MembershipService {
     );
   }
 }
-

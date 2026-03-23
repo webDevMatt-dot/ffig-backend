@@ -22,6 +22,12 @@ fi
 
 echo "Flutter project root: $(pwd)"
 
+# Ensure we are not using any cached proxy settings from the build environment.
+# Some CI environments have legacy or corporate proxies that interfere with git clones.
+git config --global --unset http.proxy || true
+git config --global --unset https.proxy || true
+git config --global url."https://github.com/".insteadOf "http://github.com/" || true
+
 # Install Flutter using git.
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter
 export PATH="$PATH:$HOME/flutter/bin"
