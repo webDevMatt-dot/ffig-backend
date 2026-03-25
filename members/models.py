@@ -75,12 +75,6 @@ class Profile(models.Model):
             missing.append("business_name")
         if not self.location or self.location.strip() == "":
             missing.append("location")
-        if self.industry == "OTH":
-            missing.append("industry")
-        if not self.photo:
-            # If no photo file, check if photo_url is still the default avatar
-            if "ui-avatars.com" in self.photo_url:
-                missing.append("photo")
         return missing
 
 class BusinessProfile(models.Model):

@@ -12,6 +12,7 @@ import '../tickets/my_tickets_screen.dart';
 import 'blocked_users_screen.dart';
 import '../../core/services/version_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/services/iap_service.dart';
 import '../home/dashboard_screen.dart';
 import '../../core/services/membership_service.dart';
 import '../marketing/business_profile_editor_screen.dart';
@@ -204,6 +205,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
        } catch (e) {
            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update privacy settings.")));
        }
+  }
+
+  Future<void> _restorePurchases() async {
+    try {
+      await IAPService().restorePurchases();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restore request sent. Please wait a moment.')),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore failed: $e")));
+    }
   }
 
   void _showPasswordChangeDialog() {
@@ -458,6 +471,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                        ),
                      )
                    ],
+                 ),
+                 const SizedBox(height: 16),
+                 SizedBox(
+                   width: double.infinity,
+                   child: OutlinedButton.icon(
+                     onPressed: _restorePurchases,
+                     icon: const Icon(Icons.restore, size: 18),
+                     label: const Text("RESTORE PURCHASES"),
+                     style: OutlinedButton.styleFrom(
+                       foregroundColor: Theme.of(context).colorScheme.primary,
+                       side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                     ),
+                   ),
                  ),
                ],
              ),

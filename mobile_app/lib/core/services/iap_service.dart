@@ -29,6 +29,11 @@ class IAPService {
     });
   }
 
+  Future<void> restorePurchases() async {
+    if (kDebugMode) print('Restoring purchases...');
+    await _inAppPurchase.restorePurchases();
+  }
+
   void dispose() {
     _subscription?.cancel();
   }

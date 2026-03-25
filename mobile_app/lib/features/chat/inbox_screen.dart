@@ -406,6 +406,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   final bool isUnread = unreadCount > 0;
 
                   return Container(
+                    key: ValueKey(chat['id']),
                     decoration: BoxDecoration(
                       color: isUnread ? (isDark ? Colors.white.withOpacity(0.05) : Colors.white) : Colors.transparent, // Highlight unread
                       border: Border(bottom: BorderSide(color: theme.dividerColor))
@@ -437,6 +438,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                }
                           },
                           child: UserAvatar(
+                            key: ValueKey(_normalizeImageUrl(
+                              others.isNotEmpty ? (others.first['photo'] ?? others.first['photo_url'] ?? others.first['profile_picture']) : null,
+                            )),
                             radius: 28,
                             firstName: others.isNotEmpty ? others.first['first_name']?.toString() : null,
                             lastName: others.isNotEmpty ? others.first['last_name']?.toString() : null,

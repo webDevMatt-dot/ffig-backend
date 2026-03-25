@@ -52,6 +52,15 @@ class NotificationService {
       requestSoundPermission: true,
       requestBadgePermission: true,
       requestAlertPermission: true,
+      notificationCategories: [
+        DarwinNotificationCategory(
+          'FLUTTER_NOTIFICATION_CLICK',
+          actions: [],
+          options: <DarwinNotificationCategoryOption>{
+            DarwinNotificationCategoryOption.allowAnnouncement,
+          },
+        ),
+      ],
     );
 
     final InitializationSettings initializationSettings = InitializationSettings(
@@ -89,23 +98,18 @@ class NotificationService {
     // 4. Foreground Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (kDebugMode) {
-        print("🔔 Received foreground message: ${message.messageId}");
-        print("🔔 Message Data: ${message.data}");
-        if (message.from != null) print("🔔 Message From: ${message.from}");
+        print("🔔 [FOREGROUND] Received message: ${message.messageId}");
+        print("🔔 [FOREGROUND] Data: ${message.data}");
+        print("🔔 [FOREGROUND] Notification: ${message.notification?.title}");
       }
 
-      // If app is in foreground, Firebase doesn't show notification automatically.
-      // We must show it manually using Local Notifications.
-      // Note: topic messages on Android can arrive with notification == null,
-      // so we always fall back to data fields.
       final notification = message.notification;
-      final String title = notification?.title 
-          ?? (message.data['type'] == 'community_chat' 
-              ? 'Community Chat: ${message.data['sender_name'] ?? 'New message'}' 
-              : 'Message from ${message.data['sender_name'] ?? 'Someone'}');
-      final String body = notification?.body 
-          ?? message.data['text']
-          ?? 'You have a new message';
+      final data = message.data;
+      
+      String title = notification?.title ?? data['title'] ?? 'New Message';
+      String body = notification?.body ?? data['body'] ?? data['text'] ?? '';
+
+      if (kDebugMode) print("🔔 [FOREGROUND] Showing Local Notification: $title - $body");
 
       _localNotifications.show(
         id: message.hashCode,
@@ -116,9 +120,9 @@ class NotificationService {
             channel.id,
             channel.name,
             channelDescription: channel.description,
-            icon: '@mipmap/ic_launcher',
             importance: Importance.max,
             priority: Priority.high,
+            showWhen: true,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -126,7 +130,7 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        payload: jsonEncode(message.data), // Pass data payload for tap handling
+        payload: jsonEncode(data),
       );
     });
 

@@ -125,14 +125,17 @@ class _LockedScreenState extends State<LockedScreen> {
   }
 
   Future<void> _restorePurchases() async {
+    setState(() => _isPurchasing = true);
     try {
-      await _inAppPurchase.restorePurchases();
+      await IAPService().restorePurchases();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Restore request sent.')),
       );
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore failed: $e")));
+    } finally {
+      if (mounted) setState(() => _isPurchasing = false);
     }
   }
 
@@ -213,6 +216,18 @@ class _LockedScreenState extends State<LockedScreen> {
               Text(
                 "Already upgraded? Pull to refresh your profile.",
                 style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _isPurchasing ? null : _restorePurchases,
+                child: Text(
+                  "RESTORE PURCHASES",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                  ),
+                ),
               ),
               const SizedBox(height: 50), // Additional padding at the bottom
             ],

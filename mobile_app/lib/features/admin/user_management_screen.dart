@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import 'dart:async';
 import 'edit_user_screen.dart';
+import '../../shared_widgets/user_avatar.dart';
 
 /// Screen for managing application users.
 ///
@@ -245,9 +246,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
           }
 
           return ListTile(
-            leading: CircleAvatar(
+            leading: UserAvatar(
+                radius: 24,
+                imageUrl: () {
+                  var url = user['photo'] ?? user['photo_url'];
+                  if (url != null && url.toString().startsWith('/')) {
+                    return '${baseUrl.replaceAll('/api/', '')}$url';
+                  }
+                  return url;
+                }(),
+                username: user['username'],
+                firstName: user['first_name'],
+                lastName: user['last_name'],
                 backgroundColor: isBlocked ? Colors.red : (isSuspended ? Colors.orange : null),
-                child: Text(user['username'][0].toUpperCase(), style: TextStyle(color: (isBlocked || isSuspended) ? Colors.white : null))
+                textColor: (isBlocked || isSuspended) ? Colors.white : null,
             ),
             title: Text(user['username']),
             subtitle: Column(

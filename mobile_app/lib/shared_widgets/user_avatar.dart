@@ -62,17 +62,33 @@ class UserAvatar extends StatelessWidget {
       child: ClipOval(
         child: SizedBox.fromSize(
           size: Size.fromRadius(radius),
-          child: useUrl 
-            ? CachedNetworkImage(
-                imageUrl: imageUrl!,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => _buildInitials(bgColor, txtColor),
-                errorWidget: (context, url, error) => _buildInitials(bgColor, txtColor),
-                // Ensure the same image isn't re-fetched if the URL is the same
-                fadeInDuration: Duration.zero,
-                fadeOutDuration: Duration.zero,
-              )
-            : _buildInitials(bgColor, txtColor),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 1. Bottom Layer: Initials (Always there as a fail-safe)
+              _buildInitials(bgColor, txtColor),
+              
+              // 2. Top Layer: Network Image (Fades in on top)
+              if (useUrl)
+                ClipOval(
+                  child: CachedNetworkImage(
+                    key: ValueKey(imageUrl), // Stabilize this image instance
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    width: radius * 2,
+                    height: radius * 2,
+                    // Transparent placeholder/error lets initials show through
+                    placeholder: (context, url) => Container(color: Colors.transparent),
+                    errorWidget: (context, url, error) => Container(color: Colors.transparent),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    memCacheWidth: (radius * 4).toInt(),
+                    memCacheHeight: (radius * 4).toInt(),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

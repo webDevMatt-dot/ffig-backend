@@ -2,31 +2,49 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 import os
 import json
+import traceback
 from django.conf import settings
 
 # Initialize Firebase Admin
-if not firebase_admin._apps:
-    try:
-        # 1. Try Environment Variable (For Production/Render)
-        firebase_creds = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
-        
-        if firebase_creds:
-            cred_dict = json.loads(firebase_creds)
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            print("🚀 Firebase Admin initialized via Environment Variable")
-        
-        # 2. Try Local File (For Development)
-        elif os.path.exists('serviceAccountKey.json'):
-            cred = credentials.Certificate('serviceAccountKey.json')
-            firebase_admin.initialize_app(cred)
-            print("🚀 Firebase Admin initialized via Local File")
+# Initialize Firebase Admin
+def initialize_firebase():
+    if not firebase_admin._apps:
+        try:
+            # 1. Try Environment Variables
+            # Check both possible names for consistency
+            firebase_creds = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON') or os.environ.get('FIREBASE_CREDENTIALS')
             
-        else:
-            print("⚠️ Firebase Admin NOT initialized: Missing credentials")
+            if firebase_creds:
+                cred_dict = json.loads(firebase_creds)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                print("🚀 Firebase Admin initialized via Environment Variable")
+                return True
             
-    except Exception as e:
-        print(f"❌ Firebase Init Error: {e}")
+            # 2. Try Local File (For Development)
+            # Use absolute path to avoid CWD issues
+            base_dir = Path(__file__).resolve().parent.parent.parent
+            key_path = base_dir / 'serviceAccountKey.json'
+            
+            if key_path.exists():
+                cred = credentials.Certificate(str(key_path))
+                firebase_admin.initialize_app(cred)
+                print(f"🚀 Firebase Admin initialized via Local File: {key_path}")
+                return True
+            else:
+                print(f"⚠️ Firebase Admin NOT initialized: Key file not found at {key_path}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Firebase Init Error: {e}")
+            traceback.print_exc()
+            return False
+    return True
+
+# Ensure it's initialized when module is imported
+# This handles cases where fcm_service is imported by signals or views
+from pathlib import Path
+initialize_firebase()
 
 def send_push_notification(user, title, body, data=None, tag=None):
     """
@@ -47,7 +65,8 @@ def send_push_notification(user, title, body, data=None, tag=None):
         apns_config = messaging.APNSConfig(
             headers={
                 "apns-priority": "10",
-                "apns-push-type": "alert"
+                "apns-push-type": "alert",
+                "apns-topic": "com.femalefoundersinitiative.ffig"  # Ensure it matches your Apple Bundle ID
             },
             payload=messaging.APNSPayload(
                 aps=messaging.Aps(
@@ -57,8 +76,6 @@ def send_push_notification(user, title, body, data=None, tag=None):
                     ),
                     sound="default",
                     badge=1,
-                    mutable_content=True,
-                    content_available=True,
                 ),
             ),
         )
@@ -78,6 +95,7 @@ def send_push_notification(user, title, body, data=None, tag=None):
         return True
     except Exception as e:
         print(f"Error sending message to {user.username}: {e}")
+        traceback.print_exc()
         # Optional: Invalidate token if error indicates it's invalid
         return False
 def send_topic_notification(topic, title, body, data=None):
@@ -90,7 +108,8 @@ def send_topic_notification(topic, title, body, data=None):
         apns_config = messaging.APNSConfig(
             headers={
                 "apns-priority": "10",
-                "apns-push-type": "alert"
+                "apns-push-type": "alert",
+                "apns-topic": "com.femalefoundersinitiative.ffig"
             },
             payload=messaging.APNSPayload(
                 aps=messaging.Aps(
@@ -100,8 +119,6 @@ def send_topic_notification(topic, title, body, data=None):
                     ),
                     sound="default",
                     badge=1,
-                    mutable_content=True,
-                    content_available=True,
                 ),
             ),
         )

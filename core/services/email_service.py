@@ -29,7 +29,10 @@ def send_ticket_receipt(ticket):
     <html>
     <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
         <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
-            <h2 style="color: #8B4513;">Ticket Receipt</h2>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+            </div>
+            <h2 style="color: #8B4513; margin-top: 0;">Ticket Receipt</h2>
             <p>Hi {user.first_name or user.username},</p>
             <p>Thank you for your purchase! Your ticket for <strong>{event.title}</strong> is confirmed.</p>
             
@@ -97,12 +100,20 @@ def send_membership_reminder_email(user, days_left):
     <html>
     <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
         <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
-            <h2 style="color: #8B4513;">Membership Expiration Reminder</h2>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+            </div>
+            <h2 style="color: #8B4513; margin-top: 0;">Membership Expiration Reminder</h2>
             <p>Hi {user.first_name or user.username},</p>
-            <p>This is a friendly reminder that your membership with the Female Founders Initiative Global will expire in <strong>{days_left} days</strong>.</p>
-            <p>Please renew your membership in the app to maintain access to premium features, exclusive events, and the community.</p>
+            <p>This is a friendly reminder that your membership with the **Female Founders Initiative Global** will expire in <strong>{days_left} days</strong>.</p>
+            
+            <div style="background-color: #fce4ec; border-left: 5px solid #8B4513; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0;">Please renew your membership in the app to maintain access to premium features, exclusive events, and our global community.</p>
+            </div>
+            
             <p>If you have already renewed, please ignore this message.</p>
-            <p>If you have any questions, please contact us at <a href="mailto:{settings.DEFAULT_FROM_EMAIL}">{settings.DEFAULT_FROM_EMAIL}</a>.</p>
+            <p>If you have any questions, please contact us at <a href="mailto:{settings.DEFAULT_FROM_EMAIL}" style="color: #8B4513;">{settings.DEFAULT_FROM_EMAIL}</a>.</p>
+            
             <p>Best regards,<br>The Female Founders Initiative Global Team</p>
         </div>
     </body>

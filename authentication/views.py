@@ -62,14 +62,42 @@ class PasswordResetRequestOTPView(APIView):
             
             # Send Email
             subject = 'Your Password Reset OTP'
-            message = f'Your one-time password to reset your FFIG account password is: {otp}\n\nIt will expire in 10 minutes.'
+            
+            # HTML Template (Branded)
+            html_message = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+                    </div>
+                    <h2 style="color: #8B4513; margin-top: 0;">Password Reset OTP</h2>
+                    <p>Hi {user.first_name or user.username},</p>
+                    <p>We received a request to reset your password. Please use the following one-time password (OTP) to proceed:</p>
+                    
+                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                        <span style="font-size: 32px; font-weight: bold; color: #8B4513; letter-spacing: 5px;">{otp}</span>
+                    </div>
+                    
+                    <p>This code will expire in <strong>10 minutes</strong>.</p>
+                    
+                    <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+                    
+                    <p>Best regards,<br>The Female Founders Initiative Global Team</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            plain_message = f'Your one-time password to reset your FFIG account password is: {otp}\n\nIt will expire in 10 minutes.'
             
             try:
                  send_mail(
                     subject,
-                    message,
+                    plain_message,
                     sender_email,
                     [email],
+                    html_message=html_message,
                     fail_silently=False,
                 )
             except Exception as e:

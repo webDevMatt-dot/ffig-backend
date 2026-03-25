@@ -69,7 +69,7 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DEBUG', False)
 
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1,192.168.0.3,*')
 
 # Automatically append Render hostnames if running on Render
 render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')

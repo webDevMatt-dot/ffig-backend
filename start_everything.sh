@@ -28,7 +28,7 @@ echo "Cleaning up any old background processes on port 8000..."
 lsof -ti :8000 | xargs kill -9 2>/dev/null || true
 
 # Start backend server in the background
-python manage.py runserver &
+python manage.py runserver 0.0.0.0:8000 &
 BACKEND_PID=$!
 
 # Trap Ctrl+C to kill the backend too
