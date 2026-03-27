@@ -53,7 +53,9 @@ class AdminTicketSerializer(serializers.ModelSerializer):
     buyer_name = serializers.SerializerMethodField()
     buyer_email = serializers.CharField(source='user.email', read_only=True)
     buyer_photo = serializers.SerializerMethodField()
+    event_id = serializers.IntegerField(source='event.id', read_only=True)
     event_title = serializers.CharField(source='event.title', read_only=True)
+    event_date = serializers.DateField(source='event.date', read_only=True)
     tier_name = serializers.CharField(source='tier.name', read_only=True)
     price = serializers.DecimalField(source='tier.price', max_digits=10, decimal_places=2, read_only=True)
     currency = serializers.CharField(source='tier.currency', read_only=True)
@@ -64,7 +66,7 @@ class AdminTicketSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Ticket
-        fields = ['id', 'buyer_name', 'buyer_email', 'buyer_photo', 'event_title', 'tier_name', 'price', 'purchase_price', 'original_price', 'discount_label', 'currency', 'purchase_date', 'status']
+        fields = ['id', 'buyer_name', 'buyer_email', 'buyer_photo', 'event_id', 'event_title', 'event_date', 'tier_name', 'price', 'purchase_price', 'original_price', 'discount_label', 'currency', 'purchase_date', 'status']
 
     def get_discount_label(self, obj):
         if obj.original_price > 0 and obj.purchase_price < obj.original_price:

@@ -36,6 +36,8 @@ def send_ticket_receipt(ticket):
             <p>Hi {user.first_name or user.username},</p>
             <p>Thank you for your purchase! Your ticket for <strong>{event.title}</strong> is confirmed.</p>
             
+            {f'<div style="background-color: #fff3e0; border-left: 5px solid #8B4513; padding: 15px; margin: 20px 0; white-space: pre-wrap;">{event.email_automation_text}</div>' if event.email_automation_text else ''}
+
             <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">Event Details</h3>
                 <p><strong>Date:</strong> {event.date} {f'- {event.end_date}' if event.end_date else ''}</p>
@@ -60,6 +62,8 @@ def send_ticket_receipt(ticket):
     
     Thank you for your purchase! Your ticket for {event.title} is confirmed.
     
+    {event.email_automation_text if event.email_automation_text else ''}
+
     Event Details:
     - Date: {event.date}
     - Location: {event.location}

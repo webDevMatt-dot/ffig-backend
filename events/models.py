@@ -25,6 +25,8 @@ class Event(models.Model):
     price_label = models.CharField(max_length=50, default="Free", help_text="e.g. '$50' or 'Starting at $99'")
     is_sold_out = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True) # Soft Delete / Deactivation
+    is_rsvp_only = models.BooleanField(default=False, help_text="If true, users can RSVP without selecting a ticket tier.")
+    email_automation_text = models.TextField(blank=True, null=True, help_text="Custom message sent to ticket purchasers.")
 
     def __str__(self):
         return self.title

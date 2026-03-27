@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/utils/url_utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class EditEventScreen extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -20,18 +21,19 @@ class _EditEventScreenState extends State<EditEventScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _dateController = TextEditingController();
-  final _endDateController = TextEditingController(); // NEW
+  final _endDateController = TextEditingController();
   final _locationController = TextEditingController();
   final _priceLabelController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _imageUrlController = TextEditingController();
   final _virtualLinkController = TextEditingController();
+  final _emailAutomationController = TextEditingController();
   bool _isVirtual = false;
+  bool _isRsvpOnly = false;
   File? _selectedImage;
 
   bool _isLoading = false;
 
-  // Local state for creation flow
   final List<Map<String, dynamic>> _localTiers = [];
   final List<Map<String, dynamic>> _localSpeakers = [];
   final List<Map<String, dynamic>> _localAgenda = [];
@@ -65,16 +67,55 @@ class _EditEventScreenState extends State<EditEventScreen> {
       _descriptionController.text = widget.event!['description'] ?? '';
       _imageUrlController.text = widget.event!['image_url'] ?? '';
       _virtualLinkController.text = widget.event!['virtual_link'] ?? '';
+      _emailAutomationController.text = widget.event!['email_automation_text'] ?? '';
       _isVirtual = widget.event!['is_virtual'] ?? false;
+      _isRsvpOnly = widget.event!['is_rsvp_only'] ?? false;
     }
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Event Image',
+              toolbarColor: FfigTheme.primaryBrown,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: true,
+              activeControlsWidgetColor: FfigTheme.accentBrown,
+            ),
+            IOSUiSettings(
+              title: 'Crop Event Image',
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+          setState(() {
+            _selectedImage = File(croppedFile.path);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cropping failed: $e")));
+      }
+    }
+  }
+
+  Future<void> _cropExisting() async {
+    if (_selectedImage == null) return;
+    try {
       final croppedFile = await ImageCropper().cropImage(
-        sourcePath: image.path,
+        sourcePath: _selectedImage!.path,
         aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
         uiSettings: [
           AndroidUiSettings(
@@ -97,6 +138,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
         setState(() {
           _selectedImage = File(croppedFile.path);
         });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cropping failed: $e")));
       }
     }
   }
@@ -127,7 +172,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
         'price_label': _priceLabelController.text,
         'description': _descriptionController.text,
         'is_virtual': _isVirtual.toString(),
+        'is_rsvp_only': _isRsvpOnly.toString(),
         'virtual_link': normalizeUrl(_virtualLinkController.text),
+        'email_automation_text': _emailAutomationController.text,
       };
       
       final api = AdminApiService();
@@ -146,11 +193,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
 
   Future<void> _createWithSubItems(Map<String, dynamic> eventData) async {
       final api = AdminApiService();
-      // 1. Create Event
       final newEvent = await api.createEvent(eventData, imageFile: _selectedImage);
       final eventId = newEvent['id'];
 
-      // 2. Create Sub-items
       try {
         for (var t in _localTiers) {
            await api.createTicketTier({...t, 'event': eventId});
@@ -174,10 +219,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
       }
   }
 
-  // --- Sub-Item logic ---
   Future<void> _deleteItem(String type, int indexOrId) async {
     if (widget.event == null) {
-       // Local delete
        setState(() {
          if (type == 'tier') _localTiers.removeAt(indexOrId);
          if (type == 'speaker') _localSpeakers.removeAt(indexOrId);
@@ -186,7 +229,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
        });
        return;
     }
-    // API delete
     try {
       final api = AdminApiService();
       if (type == 'tier') await api.deleteTicketTier(indexOrId);
@@ -356,13 +398,14 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }, isEdit: item != null);
   }
 
-  Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon, String? Function(String?)? validator}) {
+  Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon, String? Function(String?)? validator, String? helperText}) {
       return TextFormField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
           maxLines: maxLines,
           decoration: InputDecoration(
               labelText: label,
+              helperText: helperText,
               prefixIcon: icon != null ? Icon(icon, color: FfigTheme.primaryBrown) : null,
           ),
           validator: validator,
@@ -414,7 +457,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                                Navigator.pop(ctx);
                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated! Re-open to refresh." : "Added! Re-open to refresh.")));
                                             } else {
-                                               // Local add/edit
                                                await onSave();
                                                Navigator.pop(ctx);
                                             }
@@ -451,9 +493,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  const SizedBox(height: 12),
                  TextFormField(
                    controller: _dateController,
-                   decoration: InputDecoration(
+                   decoration: const InputDecoration(
                      labelText: "Date",
-                     prefixIcon: const Icon(Icons.calendar_today, color: FfigTheme.primaryBrown),
+                     prefixIcon: Icon(Icons.calendar_today, color: FfigTheme.primaryBrown),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -472,7 +514,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
                        }
                      );
                      if (picked != null) {
-                       // Format: YYYY-MM-DD
                        setState(() {
                        _dateController.text = "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
                        });
@@ -483,9 +524,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  const SizedBox(height: 12),
                  TextFormField(
                    controller: _endDateController,
-                   decoration: InputDecoration(
+                   decoration: const InputDecoration(
                      labelText: "End Date (Optional)",
-                     prefixIcon: const Icon(Icons.calendar_month, color: FfigTheme.primaryBrown),
+                     prefixIcon: Icon(Icons.calendar_month, color: FfigTheme.primaryBrown),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -515,35 +556,50 @@ class _EditEventScreenState extends State<EditEventScreen> {
                  const SizedBox(height: 12),
                  _buildStyledTextField(_priceLabelController, "Price Label (e.g. 'From \$20')"),
                  const SizedBox(height: 12),
-                 InkWell(
-                   onTap: _pickImage,
-                   child: Container(
-                     height: 150,
-                     width: double.infinity,
-                     decoration: BoxDecoration(
-                         color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
-                         borderRadius: BorderRadius.circular(12),
-                         border: Border.all(color: Theme.of(context).colorScheme.outline)
-                     ),
-                     child: _selectedImage != null
-                         ? ClipRRect(
+                 Stack(
+                   children: [
+                     InkWell(
+                       onTap: _pickImage,
+                       child: Container(
+                         height: 150,
+                         width: double.infinity,
+                         decoration: BoxDecoration(
+                             color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
                              borderRadius: BorderRadius.circular(12),
-                             child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                           )
-                         : (_imageUrlController.text.isNotEmpty && _imageUrlController.text.startsWith('http')
+                             border: Border.all(color: Theme.of(context).colorScheme.outline)
+                         ),
+                         child: _selectedImage != null
                              ? ClipRRect(
                                  borderRadius: BorderRadius.circular(12),
-                                 child: Image.network(_imageUrlController.text, fit: BoxFit.cover),
+                                 child: Image.file(_selectedImage!, fit: BoxFit.cover),
                                )
-                             : Column(
-                                 mainAxisAlignment: MainAxisAlignment.center,
-                                 children: [
-                                     Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
-                                     const SizedBox(height: 8),
-                                     Text(widget.event != null ? "Change Cover Image" : "Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
-                                 ],
-                               )),
-                   ),
+                             : (_imageUrlController.text.isNotEmpty && _imageUrlController.text.startsWith('http')
+                                 ? ClipRRect(
+                                     borderRadius: BorderRadius.circular(12),
+                                     child: CachedNetworkImage(imageUrl: _imageUrlController.text, fit: BoxFit.cover, placeholder: (c,u) => const Center(child: CircularProgressIndicator()), errorWidget: (c,u,e) => const Icon(Icons.error)),
+                                   )
+                                 : Column(
+                                     mainAxisAlignment: MainAxisAlignment.center,
+                                     children: [
+                                         Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
+                                         const SizedBox(height: 8),
+                                         Text(widget.event != null ? "Change Cover Image" : "Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                     ],
+                                   )),
+                       ),
+                     ),
+                     if (_selectedImage != null)
+                        Positioned(
+                          top: 8, right: 8,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.black54,
+                            child: IconButton(
+                              icon: const Icon(Icons.crop, color: Colors.white),
+                              onPressed: _cropExisting,
+                            ),
+                          ),
+                        ),
+                   ],
                  ),
                  const SizedBox(height: 12),
                  _buildStyledTextField(_descriptionController, "Description", maxLines: 3),
@@ -555,6 +611,22 @@ class _EditEventScreenState extends State<EditEventScreen> {
                      onChanged: (v) => setState(() => _isVirtual = v)
                  ),
                  if (_isVirtual) _buildStyledTextField(_virtualLinkController, "Meeting Link", icon: Icons.link),
+                 const SizedBox(height: 12),
+                  SwitchListTile(
+                      title: const Text("Is RSVP Only?"), 
+                      subtitle: const Text("Users can RSVP without buying tickets."),
+                      activeThumbColor: FfigTheme.primaryBrown,
+                      value: _isRsvpOnly, 
+                      onChanged: (v) => setState(() => _isRsvpOnly = v)
+                  ),
+                  const SizedBox(height: 12),
+                 _buildStyledTextField(
+                   _emailAutomationController, 
+                   "Email Automation Text", 
+                   icon: Icons.auto_fix_high, 
+                   maxLines: 5,
+                   helperText: "Custom message sent to ticket purchasers immediately after purchase.",
+                 ),
               ]),
               
               const SizedBox(height: 24),

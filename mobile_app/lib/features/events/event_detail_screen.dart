@@ -38,6 +38,11 @@ class EventDetailScreen extends StatelessWidget {
       return;
     }
 
+    if (event['is_rsvp_only'] == true) {
+      _onRSVP(context);
+      return;
+    }
+    
     // If ticket_tiers exist, go to In-App Selection
     // Else fall back to external URL
     final tiers = event['ticket_tiers'] as List?;
@@ -45,6 +50,30 @@ class EventDetailScreen extends StatelessWidget {
       Navigator.push(context, MaterialPageRoute(builder: (context) => TicketSelectionScreen(event: event)));
     } else {
       _launchExternalUrl(context, event['ticket_url']);
+    }
+  }
+
+  void _onRSVP(BuildContext context) async {
+    final tiers = event['ticket_tiers'] as List?;
+    if (tiers == null || tiers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No RSVP options available for this event.")));
+      return;
+    }
+    
+    // Find the first free tier
+    final freeTier = tiers.firstWhere(
+      (t) => (double.tryParse(t['price'].toString()) ?? 0.0) <= 0.0, 
+      orElse: () => null
+    );
+    
+    if (freeTier != null) {
+      Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (context) => CheckoutScreen(event: event, tier: freeTier, quantity: 1))
+      );
+    } else {
+      // If no free tier, just go to selection anyway or show error
+      Navigator.push(context, MaterialPageRoute(builder: (context) => TicketSelectionScreen(event: event)));
     }
   }
 
@@ -138,7 +167,11 @@ class EventDetailScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
               child: Text(
-                _isConcluded() ? "EVENT CONCLUDED" : (event['is_sold_out'] == true ? "SOLD OUT" : "GET TICKETS"),
+                _isConcluded() 
+                  ? "EVENT CONCLUDED" 
+                  : (event['is_sold_out'] == true 
+                      ? "SOLD OUT" 
+                      : (event['is_rsvp_only'] == true ? "RSVP NOW" : "GET TICKETS")),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),

@@ -5,6 +5,7 @@ import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'edit_event_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class ManageEventsScreen extends StatefulWidget {
   const ManageEventsScreen({super.key});
@@ -108,9 +109,70 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
         final ImagePicker picker = ImagePicker();
         final XFile? image = await picker.pickImage(source: ImageSource.gallery);
         if (image != null) {
-            setModalState(() {
-                _selectedImage = File(image.path);
-            });
+            final croppedFile = await ImageCropper().cropImage(
+                sourcePath: image.path,
+                aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
+                uiSettings: [
+                    AndroidUiSettings(
+                        toolbarTitle: 'Crop Event Image',
+                        toolbarColor: FfigTheme.primaryBrown,
+                        toolbarWidgetColor: Colors.white,
+                        initAspectRatio: CropAspectRatioPreset.ratio16x9,
+                        lockAspectRatio: true,
+                        activeControlsWidgetColor: FfigTheme.accentBrown,
+                    ),
+                    IOSUiSettings(
+                        title: 'Crop Event Image',
+                        aspectRatioLockEnabled: true,
+                        resetAspectRatioEnabled: false,
+                    ),
+                ],
+            );
+
+            if (croppedFile != null) {
+                setModalState(() {
+                    _selectedImage = File(croppedFile.path);
+                });
+            }
+        }
+    }
+
+    Future<void> _cropExisting(void Function(void Function()) setModalState) async {
+        String? path;
+        if (_selectedImage != null) {
+            path = _selectedImage!.path;
+        } else if (_imgController.text.isNotEmpty && _imgController.text.startsWith('http')) {
+            // Need to download for network image - for now just skip or guide user to re-pick
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("To re-crop a saved image, please tap it to pick it again.")));
+            return;
+        }
+        
+        if (path != null) {
+            final croppedFile = await ImageCropper().cropImage(
+                sourcePath: path,
+                aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
+                uiSettings: [
+                    AndroidUiSettings(
+                        toolbarTitle: 'Crop Event Image',
+                        toolbarColor: FfigTheme.primaryBrown,
+                        toolbarWidgetColor: Colors.white,
+                        initAspectRatio: CropAspectRatioPreset.ratio16x9,
+                        lockAspectRatio: true,
+                        activeControlsWidgetColor: FfigTheme.accentBrown,
+                    ),
+                    IOSUiSettings(
+                        title: 'Crop Event Image',
+                        aspectRatioLockEnabled: true,
+                        resetAspectRatioEnabled: false,
+                    ),
+                ],
+            );
+
+            if (croppedFile != null) {
+                setModalState(() {
+                    _selectedImage = File(croppedFile.path);
+                });
+            }
         }
     }
 
@@ -193,35 +255,50 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         },
                     ),
                     const SizedBox(height: 24),
-                    InkWell(
-                        onTap: () => _pickImage(setModalState),
-                        child: Container(
-                            height: 150,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[300]!)
-                            ),
-                            child: _selectedImage != null
-                                ? ClipRRect(
+                    Stack(
+                      children: [
+                        InkWell(
+                            onTap: () => _pickImage(setModalState),
+                            child: Container(
+                                height: 150,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                    color: Colors.grey[100],
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                                  )
-                                : (_imgController.text.isNotEmpty && _imgController.text.startsWith('http')
+                                    border: Border.all(color: Colors.grey[300]!)
+                                ),
+                                child: _selectedImage != null
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(_imgController.text, fit: BoxFit.cover),
+                                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
                                       )
-                                    : Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                            Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
-                                            const SizedBox(height: 8),
-                                            Text("Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
-                                        ],
-                                      )),
+                                    : (_imgController.text.isNotEmpty && _imgController.text.startsWith('http')
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Image.network(_imgController.text, fit: BoxFit.cover),
+                                          )
+                                        : Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                                Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey[400]),
+                                                const SizedBox(height: 8),
+                                                Text("Upload Cover Image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                            ],
+                                          )),
+                            ),
                         ),
+                        if (_selectedImage != null)
+                          Positioned(
+                            top: 8, right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: const Icon(Icons.crop, color: Colors.white),
+                                onPressed: () => _cropExisting(setModalState),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     
