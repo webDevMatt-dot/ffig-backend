@@ -124,7 +124,7 @@ class StripeService {
     }
   }
   /// Process a free ticket registration
-  Future<bool> registerFreeTicket({required int tierId, int quantity = 1}) async {
+  Future<bool> registerFreeTicket({required int tierId, int quantity = 1, String? firstName, String? lastName, String? email}) async {
     try {
       final token = await _storage.read(key: 'access_token');
       if (token == null) throw Exception("User not authenticated.");
@@ -136,7 +136,13 @@ class StripeService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'tier_id': tierId, 'quantity': quantity}),
+        body: jsonEncode({
+          'tier_id': tierId, 
+          'quantity': quantity,
+          'first_name': firstName,
+          'last_name': lastName,
+          'email': email,
+        }),
       );
 
       if (response.statusCode == 201) {

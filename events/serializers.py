@@ -43,6 +43,8 @@ class TicketTierSerializer(serializers.ModelSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     eventName = serializers.ReadOnlyField()
     tierName = serializers.ReadOnlyField(source='tier.name')
+    isVirtual = serializers.ReadOnlyField()
+    virtualLink = serializers.ReadOnlyField()
     price = serializers.ReadOnlyField(source='tier.price')
     
     class Meta:
@@ -56,6 +58,7 @@ class AdminTicketSerializer(serializers.ModelSerializer):
     event_id = serializers.IntegerField(source='event.id', read_only=True)
     event_title = serializers.CharField(source='event.title', read_only=True)
     event_date = serializers.DateField(source='event.date', read_only=True)
+    is_virtual = serializers.BooleanField(source='event.is_virtual', read_only=True)
     tier_name = serializers.CharField(source='tier.name', read_only=True)
     price = serializers.DecimalField(source='tier.price', max_digits=10, decimal_places=2, read_only=True)
     currency = serializers.CharField(source='tier.currency', read_only=True)
@@ -66,7 +69,7 @@ class AdminTicketSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Ticket
-        fields = ['id', 'buyer_name', 'buyer_email', 'buyer_photo', 'event_id', 'event_title', 'event_date', 'tier_name', 'price', 'purchase_price', 'original_price', 'discount_label', 'currency', 'purchase_date', 'status']
+        fields = ['id', 'buyer_name', 'buyer_email', 'buyer_photo', 'event_id', 'event_title', 'event_date', 'is_virtual', 'tier_name', 'price', 'purchase_price', 'original_price', 'discount_label', 'currency', 'purchase_date', 'status', 'first_name', 'last_name', 'email']
 
     def get_discount_label(self, obj):
         if obj.original_price > 0 and obj.purchase_price < obj.original_price:
@@ -76,6 +79,10 @@ class AdminTicketSerializer(serializers.ModelSerializer):
         return None
 
     def get_buyer_name(self, obj):
+        # Prefer guest name if available
+        if obj.first_name or obj.last_name:
+            return f"{obj.first_name or ''} {obj.last_name or ''}".strip()
+            
         name = obj.user.get_full_name()
         if not name or not name.strip():
             # fallback to profile business name or username

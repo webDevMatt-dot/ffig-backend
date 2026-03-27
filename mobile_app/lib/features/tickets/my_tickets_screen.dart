@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/ticket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Displays the User's Purchased Tickets.
 ///
@@ -36,6 +37,18 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       // Handle error
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _launchUrl(String? urlString) async {
+    if (urlString == null || urlString.isEmpty) return;
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Could not launch virtual link')),
+         );
+       }
     }
   }
 
@@ -95,6 +108,29 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                                      const Icon(Icons.check_circle, color: Colors.grey, size: 64),
                                      const SizedBox(height: 16),
                                      const Text("This ticket was used", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                   ] else if (t['isVirtual'] == true) ...[
+                                     const Icon(Icons.videocam, size: 60, color: Color(0xFF8B4513)),
+                                     const SizedBox(height: 16),
+                                     const Text(
+                                       "Virtual Event",
+                                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                     ),
+                                     const SizedBox(height: 8),
+                                     if (t['virtualLink'] != null && t['virtualLink'].toString().isNotEmpty)
+                                       InkWell(
+                                         onTap: () => _launchUrl(t['virtualLink']),
+                                         child: const Text(
+                                           "Join Virtual Meeting",
+                                           style: TextStyle(
+                                             color: Colors.blue,
+                                             fontSize: 16,
+                                             decoration: TextDecoration.underline,
+                                             fontWeight: FontWeight.bold,
+                                           ),
+                                         ),
+                                       )
+                                     else
+                                       const Text("Link not yet available."),
                                    ] else ...[
                                      QrImageView(
                                        data: t['qr_code_data'] ?? '',
@@ -102,6 +138,17 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                                      ),
                                      const SizedBox(height: 16),
                                      const Text("Show this QR code at the entrance"),
+                                   ],
+                                   if (t['first_name'] != null || t['last_name'] != null) ...[
+                                     const SizedBox(height: 16),
+                                     const Divider(),
+                                     const SizedBox(height: 8),
+                                     Text(
+                                       "Guest: ${t['first_name'] ?? ''} ${t['last_name'] ?? ''}".trim(), 
+                                       style: const TextStyle(fontWeight: FontWeight.bold)
+                                     ),
+                                     if (t['email'] != null)
+                                       Text("Email: ${t['email']}"),
                                    ],
                                  ],
                                ),

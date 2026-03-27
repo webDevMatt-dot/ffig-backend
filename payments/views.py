@@ -304,6 +304,11 @@ def register_free_ticket(request):
     tier_id = request.data.get('tier_id')
     quantity = int(request.data.get('quantity', 1))
     
+    # Guest Info
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    email = request.data.get('email')
+    
     if not tier_id:
         return Response({'error': 'tier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -326,6 +331,9 @@ def register_free_ticket(request):
                 user=request.user,
                 purchase_price=0.00,
                 original_price=0.00,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
                 qr_code_data=f"EVENT-{event.id}-TIER-{tier.id}-USER-{request.user.id}-FREE-{tier.currency}-{Ticket.objects.count()}-{i}"
             )
             if first_ticket_id is None:

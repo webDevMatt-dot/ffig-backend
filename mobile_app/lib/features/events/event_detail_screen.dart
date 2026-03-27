@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ticket_flow/ticket_selection_screen.dart';
+import 'ticket_flow/checkout_screen.dart';
 import '../../core/services/membership_service.dart';
+import '../../core/services/stripe_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../tickets/my_tickets_screen.dart';
 
 /// Displays detailed information about a specific Event.
 ///
@@ -67,14 +70,220 @@ class EventDetailScreen extends StatelessWidget {
     );
     
     if (freeTier != null) {
-      Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (context) => CheckoutScreen(event: event, tier: freeTier, quantity: 1))
-      );
+      _showRSVPDialog(context, freeTier);
     } else {
       // If no free tier, just go to selection anyway or show error
       Navigator.push(context, MaterialPageRoute(builder: (context) => TicketSelectionScreen(event: event)));
     }
+  }
+
+  void _showRSVPDialog(BuildContext context, Map<String, dynamic> tier) {
+    final firstNameController = TextEditingController();
+    final lastNameController = TextEditingController();
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Center(
+        child: SingleChildScrollView(
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            title: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B4513).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.event_available, color: Color(0xFF8B4513), size: 32),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Confirm RSVP",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   const Text(
+                    "Please provide your details below to secure your spot for this event.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildPremiumField(
+                    controller: firstNameController,
+                    label: "First Name",
+                    icon: Icons.person_outline,
+                    validator: (v) => v!.isEmpty ? "Please enter your first name" : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPremiumField(
+                    controller: lastNameController,
+                    label: "Last Name",
+                    icon: Icons.person_outline,
+                    validator: (v) => v!.isEmpty ? "Please enter your last name" : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPremiumField(
+                    controller: emailController,
+                    label: "Email Address",
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v!.isEmpty) return "Please enter your email";
+                      if (!v.contains('@')) return "Please enter a valid email";
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Colors.white60,
+                      ),
+                      child: const Text("CANCEL"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          Navigator.pop(context);
+                          _processRSVP(context, tier, firstNameController.text, lastNameController.text, emailController.text);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B4513),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: const Text("CONFIRM", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white60),
+        prefixIcon: Icon(icon, color: const Color(0xFF8B4513), size: 20),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF8B4513), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      ),
+    );
+  }
+
+  void _processRSVP(BuildContext context, Map<String, dynamic> tier, String first, String last, String email) async {
+      try {
+        final success = await StripeService().registerFreeTicket(
+          tierId: tier['id'],
+          firstName: first,
+          lastName: last,
+          email: email,
+        );
+        if (success && context.mounted) {
+           showDialog(
+             context: context,
+             barrierDismissible: false,
+             builder: (ctx) => AlertDialog(
+               backgroundColor: const Color(0xFF1A1A1A),
+               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+               content: Column(
+                 mainAxisSize: MainAxisSize.min,
+                 children: [
+                   const Icon(Icons.check_circle_outline, color: Color(0xFF8B4513), size: 80),
+                   const SizedBox(height: 24),
+                   const Text(
+                     "RSVP Sent!",
+                     style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                   ),
+                   const SizedBox(height: 12),
+                   const Text(
+                     "Your registration has been successfully sent. You can find your ticket in the 'My Tickets' section.",
+                     textAlign: TextAlign.center,
+                     style: TextStyle(color: Colors.white70, fontSize: 16),
+                   ),
+                   const SizedBox(height: 32),
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton(
+                       onPressed: () {
+                         Navigator.pop(ctx);
+                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
+                       },
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: const Color(0xFF8B4513),
+                         foregroundColor: Colors.white,
+                         padding: const EdgeInsets.symmetric(vertical: 16),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                       ),
+                       child: const Text("VIEW MY TICKETS", style: TextStyle(fontWeight: FontWeight.bold)),
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+           );
+        }
+      } catch (e) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("RSVP Failed: $e")));
+      }
   }
 
   bool _isConcluded() {
@@ -227,20 +436,6 @@ class EventDetailScreen extends StatelessWidget {
                Expanded(child: Text("${event['location']}", style: const TextStyle(fontWeight: FontWeight.bold))),
              ],
            ),
-           if (event['is_virtual'] == true)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.video_camera_front, color: Colors.blue),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () => _launchExternalUrl(context, event['virtual_link']),
-                      child: const Text("Join Virtual Link", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                    ),
-                  ],
-                ),
-              ),
 
            const Divider(height: 48),
            

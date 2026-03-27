@@ -1,7 +1,6 @@
 from django.core.mail import send_mail
 from django.conf import settings
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from datetime import datetime
 
 def send_ticket_receipt(ticket):
     """
@@ -13,18 +12,42 @@ def send_ticket_receipt(ticket):
     
     subject = f"Your Ticket for {event.title} - Female Founders Initiative Global"
     
-    # Context for the email
-    context = {
-        'user': user,
-        'event': event,
-        'tier': tier,
-        'ticket': ticket,
-        'support_email': settings.DEFAULT_FROM_EMAIL
-    }
+    # Recipient Name
+    recipient_name = ticket.first_name or user.first_name or user.username
+    # Recipient Email
+    recipient_email = ticket.email or user.email
     
-    # We could use a template here if we want to be fancy.
-    # For now, let's create a clean plain-text/HTML body.
-    
+    # Prepare dynamic sections
+    automation_html = ""
+    if event.email_automation_text:
+        automation_html = f'<div style="background-color: #fff3e0; border-left: 5px solid #8B4513; padding: 15px; margin: 20px 0; white-space: pre-wrap;">{event.email_automation_text}</div>'
+
+    event_details_html = ""
+    if not (ticket.original_price == 0 and event.email_automation_text):
+        end_date_str = f" - {event.end_date}" if event.end_date else ""
+        location_text = f"Virtual Event" if event.is_virtual else event.location
+        
+        virtual_link_html = ""
+        if event.is_virtual and event.virtual_link:
+            virtual_link_html = f"""
+                <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px; text-align: center;">
+                    <p style="margin-top: 0; font-weight: bold; color: #0d47a1;">Virtual Event Access</p>
+                    <a href="{event.virtual_link}" style="display: inline-block; padding: 12px 24px; background-color: #1976d2; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">JOIN VIRTUAL MEETING</a>
+                    <p style="margin-bottom: 0; font-size: 12px; color: #555; margin-top: 10px;">Link: {event.virtual_link}</p>
+                </div>
+            """
+            
+        event_details_html = f"""
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">Event Details</h3>
+                <p><strong>Date:</strong> {event.date}{end_date_str}</p>
+                <p><strong>Location:</strong> {location_text}</p>
+                <p><strong>Ticket Type:</strong> {tier.name}</p>
+                <p><strong>Price:</strong> {tier.currency.upper()} {tier.price}</p>
+                {virtual_link_html}
+            </div>
+        """
+
     html_message = f"""
     <html>
     <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -33,23 +56,11 @@ def send_ticket_receipt(ticket):
                 <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
             </div>
             <h2 style="color: #8B4513; margin-top: 0;">Ticket Receipt</h2>
-            <p>Hi {user.first_name or user.username},</p>
-            <p>Thank you for your purchase! Your ticket for <strong>{event.title}</strong> is confirmed.</p>
+            <p>Hi {recipient_name},</p>
+            <p>Thank you for your registration! Your spot for <strong>{event.title}</strong> is confirmed.</p>
             
-            {f'<div style="background-color: #fff3e0; border-left: 5px solid #8B4513; padding: 15px; margin: 20px 0; white-space: pre-wrap;">{event.email_automation_text}</div>' if event.email_automation_text else ''}
-
-            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin-top: 0;">Event Details</h3>
-                <p><strong>Date:</strong> {event.date} {f'- {event.end_date}' if event.end_date else ''}</p>
-                <p><strong>Location:</strong> {event.location}</p>
-                <p><strong>Ticket Type:</strong> {tier.name}</p>
-                <p><strong>Price:</strong> {tier.currency.upper()} {tier.price}</p>
-            </div>
-            
-            <p>Your Ticket ID is: <code>{ticket.id}</code></p>
-            <p>You can view your QR code and ticket details directly in the Female Founders Initiative app.</p>
-            
-            <p>If you have any questions, please contact us at <a href="mailto:{settings.DEFAULT_FROM_EMAIL}">{settings.DEFAULT_FROM_EMAIL}</a>.</p>
+            {automation_html}
+            {event_details_html}
             
             <p>Best regards,<br>The Female Founders Initiative Global Team</p>
         </div>
@@ -57,24 +68,33 @@ def send_ticket_receipt(ticket):
     </html>
     """
     
-    plain_message = f"""
-    Hi {user.first_name or user.username},
-    
-    Thank you for your purchase! Your ticket for {event.title} is confirmed.
-    
-    {event.email_automation_text if event.email_automation_text else ''}
-
+    # Plain text version
+    automation_text = f"\n{event.email_automation_text}\n" if event.email_automation_text else ""
+    event_details_text = ""
+    if not (ticket.original_price == 0 and event.email_automation_text):
+        end_date_str = f" - {event.end_date}" if event.end_date else ""
+        location_text = f"Virtual Event" if event.is_virtual else event.location
+        
+        virtual_link_text = ""
+        if event.is_virtual and event.virtual_link:
+            virtual_link_text = f"\nVirtual Event Link: {event.virtual_link}\n"
+            
+        event_details_text = f"""
     Event Details:
-    - Date: {event.date}
-    - Location: {event.location}
+    - Date: {event.date}{end_date_str}
+    - Location: {location_text}
     - Ticket Type: {tier.name}
     - Price: {tier.currency.upper()} {tier.price}
+    {virtual_link_text}
+    """
+
+    plain_message = f"""
+    Hi {recipient_name},
     
-    Your Ticket ID is: {ticket.id}
+    Thank you for your registration! Your spot for {event.title} is confirmed.
     
-    You can view your QR code and ticket details directly in the Female Founders Initiative app.
-    
-    If you have any questions, please contact us at {settings.DEFAULT_FROM_EMAIL}.
+    {automation_text}
+    {event_details_text}
     
     Best regards,
     The Female Founders Initiative Global Team
@@ -85,13 +105,13 @@ def send_ticket_receipt(ticket):
             subject,
             plain_message,
             settings.DEFAULT_FROM_EMAIL,
-            [user.email],
+            [recipient_email],
             html_message=html_message,
             fail_silently=False,
         )
         return True
     except Exception as e:
-        print(f"❌ Error sending ticket receipt to {user.email}: {e}")
+        print(f"❌ Error sending ticket receipt to {recipient_email}: {e}")
         return False
 
 def send_membership_reminder_email(user, days_left):

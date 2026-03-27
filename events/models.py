@@ -48,6 +48,19 @@ def create_stripe_connect_account(sender, instance, created, **kwargs):
     if created:
         StripeConnectAccount.objects.create(user=instance)
 
+@receiver(post_save, sender=Event)
+def ensure_rsvp_tier(sender, instance, **kwargs):
+    if instance.is_rsvp_only:
+        # Check if a free tier already exists
+        if not TicketTier.objects.filter(event=instance, price=0).exists():
+            TicketTier.objects.create(
+                event=instance,
+                name="General RSVP",
+                price=0,
+                capacity=1000,
+                available=1000
+            )
+
 class EventSpeaker(models.Model):
     event = models.ForeignKey(Event, related_name='speakers', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
@@ -99,9 +112,22 @@ class Ticket(models.Model):
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     original_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
+    # Guest Info (Required for RSVPs and useful for all tickets)
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+
     def __str__(self):
         return f"{self.user.username} - {self.eventName}"
 
     @property
     def eventName(self):
         return self.event.title
+
+    @property
+    def isVirtual(self):
+        return self.event.is_virtual
+
+    @property
+    def virtualLink(self):
+        return self.event.virtual_link
