@@ -4,6 +4,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
+from PIL import Image, ImageOps
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -60,6 +63,23 @@ class Profile(models.Model):
     photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
     last_seen = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        if self.photo:
+             try:
+                img = Image.open(self.photo)
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                img.thumbnail((1024, 1024))
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                self.photo = ContentFile(output.read(), name=self.photo.name.split('/')[-1])
+             except Exception:
+                pass 
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.username}'s Profile ({self.tier})"
 
@@ -99,6 +119,21 @@ class BusinessProfile(models.Model):
             profile.location = self.location
             profile.save()
 
+        if self.logo:
+             try:
+                img = Image.open(self.logo)
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                img.thumbnail((1024, 1024))
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                self.logo = ContentFile(output.read(), name=self.logo.name.split('/')[-1])
+             except Exception:
+                pass 
+
     def __str__(self):
         return self.company_name
 
@@ -115,6 +150,23 @@ class MarketingRequest(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     feedback = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.image:
+             try:
+                img = Image.open(self.image)
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                img.thumbnail((1024, 1024))
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                self.image = ContentFile(output.read(), name=self.image.name.split('/')[-1])
+             except Exception:
+                pass 
+        super().save(*args, **kwargs)
 
 class ContentReport(models.Model):
     STATUS_CHOICES = [('OPEN', 'Open'), ('RESOLVED', 'Resolved')]
@@ -173,6 +225,24 @@ class Story(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     media = models.FileField(upload_to='stories/')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # Only process if it looks like an image
+        if self.media and any(self.media.name.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png']):
+             try:
+                img = Image.open(self.media)
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                img.thumbnail((1024, 1024))
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                self.media = ContentFile(output.read(), name=self.media.name.split('/')[-1])
+             except Exception:
+                pass 
+        super().save(*args, **kwargs)
 
     @property
     def is_active(self):

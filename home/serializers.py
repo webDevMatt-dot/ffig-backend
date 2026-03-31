@@ -37,7 +37,7 @@ class FounderProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = FounderProfile
-        fields = ['id', 'user', 'name', 'photo', 'photo_url', 'bio', 'country', 'business_name', 'is_premium', 'is_active', 'expires_at', 'created_at']
+        fields = ['id', 'user', 'name', 'photo', 'photo_url', 'bio', 'country', 'business_name', 'tier', 'is_premium', 'is_active', 'expires_at', 'created_at']
 
     def get_photo_url(self, obj):
         # 1. Use uploaded photo if available
@@ -86,7 +86,7 @@ class BusinessOfMonthSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BusinessOfMonth
-        fields = ['id', 'name', 'image', 'image_url', 'website', 'location', 'description', 'is_premium', 'is_active', 'order', 'owner_id', 'owner_name', 'owner_photo', 'created_at']
+        fields = ['id', 'name', 'image', 'image_url', 'website', 'location', 'description', 'tier', 'is_premium', 'is_active', 'order', 'owner', 'owner_id', 'owner_name', 'owner_photo', 'created_at']
 
     def get_owner_name(self, obj):
         if not obj.owner: return None

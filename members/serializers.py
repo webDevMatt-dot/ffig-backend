@@ -89,9 +89,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             except:
                 return obj.photo.url
 
-        # Return static S3 URL for caching stability
-        # Format: https://bucket.s3.region.amazonaws.com/key
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.photo.name}"
+        return obj.photo.url
 
 
 class BusinessProfileSerializer(serializers.ModelSerializer):
@@ -107,16 +105,7 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
             return None
         
         # S3 Check & Static URL
-        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-            hasattr(settings, 'STORAGES') and 
-            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-        )
-
-        if not is_s3:
-            try: return obj.logo.url
-            except: return None
-
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.logo.name}"
+        return obj.logo.url
 
 class AdminBusinessProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -147,15 +136,7 @@ class MarketingCommentSerializer(serializers.ModelSerializer):
             if not profile.photo:
                 return profile.photo_url
             
-            is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-                hasattr(settings, 'STORAGES') and 
-                's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-            )
-
-            if not is_s3:
-                 return profile.photo.url
-
-            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{profile.photo.name}"
+            return profile.photo.url
         except:
             return None
 
@@ -191,39 +172,17 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
             if not profile.photo:
                 return profile.photo_url
             
-            is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-                hasattr(settings, 'STORAGES') and 
-                's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-            )
-
-            if not is_s3:
-                 return profile.photo.url
-
-            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{profile.photo.name}"
+            return profile.photo.url
         except:
             return None
 
     def get_image_url(self, obj):
         if not obj.image: return None
-        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-            hasattr(settings, 'STORAGES') and 
-            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-        )
-        if not is_s3:
-                try: return obj.image.url
-                except: return None
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.image.name}"
+        return obj.image.url
 
     def get_video_url(self, obj):
         if not obj.video: return None
-        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-            hasattr(settings, 'STORAGES') and 
-            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-        )
-        if not is_s3:
-                try: return obj.video.url
-                except: return None
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.video.name}"
+        return obj.video.url
 
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
@@ -301,39 +260,14 @@ class StorySerializer(serializers.ModelSerializer):
         if hasattr(obj.user, 'profile'):
             p = obj.user.profile
             if p.photo:
-                is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-                    hasattr(settings, 'STORAGES') and 
-                    's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-                )
-                if not is_s3:
-                     try:
-                        request = self.context.get('request')
-                        if request: return request.build_absolute_uri(p.photo.url)
-                     except: pass
-                     return p.photo.url
-                     
-                return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{p.photo.name}"
+                return p.photo.url
             return p.photo_url
         return None
 
     def get_media_url(self, obj):
-        if not obj.media: return None
-
-        is_s3 = 's3' in settings.DEFAULT_FILE_STORAGE.lower() or (
-            hasattr(settings, 'STORAGES') and 
-            's3' in settings.STORAGES.get('default', {}).get('BACKEND', '').lower()
-        )
-            
-        if not is_s3:
-            try:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(obj.media.url)
-            except:
-                pass
-            return obj.media.url
-            
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.media.name}"
+        if not obj.media:
+            return None
+        return obj.media.url
 
 
 class StoryViewSerializer(serializers.ModelSerializer):

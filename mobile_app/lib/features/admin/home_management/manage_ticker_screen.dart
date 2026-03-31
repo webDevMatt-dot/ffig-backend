@@ -47,12 +47,20 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
   }
   
   void _filterItems() {
-    if (_searchQuery.isEmpty) {
-      _filteredTickerItems = _tickerItems;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      _filteredTickerItems = List.from(_tickerItems);
     } else {
-      _filteredTickerItems = _tickerItems.where((i) => 
-         (i['text'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
+      final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
+      _filteredTickerItems = _tickerItems.where((i) {
+         final text = (i['text'] ?? '').toString().toLowerCase();
+         final url = (i['url'] ?? '').toString().toLowerCase();
+         
+         return terms.every((term) => 
+            text.contains(term) || 
+            url.contains(term)
+         );
+      }).toList();
     }
   }
 
@@ -252,9 +260,26 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
                                     hintText: "Search news...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterItems();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),

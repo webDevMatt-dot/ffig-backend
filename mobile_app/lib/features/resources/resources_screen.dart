@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart'; 
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/url_utils.dart';
+import 'pdf_viewer_screen.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 
@@ -206,7 +208,13 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
          ]
        ),
        child: InkWell(
-         onTap: () => _launchURL(res['url']),
+        onTap: () {
+           if (res['file'] != null && res['file'].toString().isNotEmpty) {
+               Navigator.push(context, MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfUrl: res['file'], title: res['title'])));
+           } else {
+               _launchURL(res['url']);
+           }
+        },
          borderRadius: BorderRadius.circular(16),
          child: Column(
            crossAxisAlignment: CrossAxisAlignment.start,

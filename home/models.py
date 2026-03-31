@@ -1,5 +1,5 @@
 from django.db import models
-from PIL import Image
+from PIL import Image, ImageOps
 from io import BytesIO
 from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
@@ -31,6 +31,7 @@ class HeroItem(models.Model):
         if self.image:
              try:
                 img = Image.open(self.image)
+                img = ImageOps.exif_transpose(img)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
@@ -60,6 +61,12 @@ class FounderProfile(models.Model):
     bio = models.TextField(blank=True)
     country = models.CharField(max_length=100, blank=True)
     business_name = models.CharField(max_length=200, blank=True)
+    TIER_CHOICES = [
+        ('FREE', 'Free'),
+        ('STANDARD', 'Standard ($600)'),
+        ('PREMIUM', 'Premium ($800)'),
+    ]
+    tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     is_premium = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     expires_at = models.DateTimeField(null=True, blank=True, help_text="Defaults to 7 days from now")
@@ -89,7 +96,10 @@ class FounderProfile(models.Model):
                 if not self.bio:
                     self.bio = user_profile.bio
                 
-                # Check tier for premium status logic (if applicable)
+                # Check tier for visual badge logic
+                if user_profile.tier:
+                    self.tier = user_profile.tier
+                
                 if user_profile.tier == 'PREMIUM':
                     self.is_premium = True
                 
@@ -100,6 +110,7 @@ class FounderProfile(models.Model):
         if self.photo:
              try:
                 img = Image.open(self.photo)
+                img = ImageOps.exif_transpose(img)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
@@ -178,6 +189,12 @@ class BusinessOfMonth(models.Model):
     website = models.URLField(blank=True)
     location = models.CharField(max_length=200)
     description = models.TextField()
+    TIER_CHOICES = [
+        ('FREE', 'Free'),
+        ('STANDARD', 'Standard ($600)'),
+        ('PREMIUM', 'Premium ($800)'),
+    ]
+    tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     is_premium = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
@@ -193,6 +210,7 @@ class BusinessOfMonth(models.Model):
         if self.image:
              try:
                 img = Image.open(self.image)
+                img = ImageOps.exif_transpose(img)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 

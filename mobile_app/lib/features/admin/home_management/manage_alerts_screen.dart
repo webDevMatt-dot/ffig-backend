@@ -43,14 +43,21 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
   }
   
   void _filterItems() {
-    if (_searchQuery.isEmpty) {
-      _filteredAlerts = _alerts;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      _filteredAlerts = List.from(_alerts);
     } else {
+      final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
       _filteredAlerts = _alerts.where((a) {
         final title = (a['title'] ?? '').toString().toLowerCase();
         final msg = (a['message'] ?? '').toString().toLowerCase();
-        final q = _searchQuery.toLowerCase();
-        return title.contains(q) || msg.contains(q);
+        final type = (a['type'] ?? '').toString().toLowerCase();
+        
+        return terms.every((term) => 
+          title.contains(term) || 
+          msg.contains(term) || 
+          type.contains(term)
+        );
       }).toList();
     }
   }
@@ -148,7 +155,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                     const SizedBox(height: 20),
                     
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedType,
+                      value: _selectedType,
                       decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
                       items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                       onChanged: (v) => setModalState(() => _selectedType = v!),
@@ -204,7 +211,7 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                             child: OutlinedButton(
                               onPressed: () {
                                  Navigator.pop(ctx);
-                                 _toggleActive(item);
+                                 _toggleActive(item!);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -341,9 +348,26 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
                                     hintText: "Search alerts...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterItems();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),

@@ -211,10 +211,30 @@ class AdminPasswordResetView(APIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+from rest_framework import filters
+
 class AdminUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdminUser]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    
+    def get_search_param(self, request):
+        return request.query_params.get('q') or super().get_search_param(request)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        q = self.request.query_params.get('q')
+        if q:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(username__icontains=q) |
+                Q(email__icontains=q) |
+                Q(first_name__icontains=q) |
+                Q(last_name__icontains=q)
+            )
+        return queryset
 
 class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()

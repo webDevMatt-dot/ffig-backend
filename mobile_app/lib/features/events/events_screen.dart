@@ -3,8 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'event_detail_screen.dart';
-import 'event_detail_screen.dart';
-import '../../core/api/constants.dart'; // Import the details screen
+import '../../core/api/constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:intl/intl.dart';

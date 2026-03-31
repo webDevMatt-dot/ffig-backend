@@ -7,6 +7,7 @@ class BusinessProfile {
   final String website;
   final String? linkedinUrl;
   final bool isPremium;
+  final String tier; // NEW
   final int? ownerId;
   final String? ownerName;
   final String? ownerPhoto;
@@ -20,6 +21,7 @@ class BusinessProfile {
     required this.website,
     this.linkedinUrl,
     this.isPremium = false,
+    this.tier = 'FREE',
     this.ownerId,
     this.ownerName,
     this.ownerPhoto,
@@ -29,12 +31,13 @@ class BusinessProfile {
     return BusinessProfile(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
-      imageUrl: json['image_url'] ?? json['photo_url'] ?? '', // Handle potential backend naming variations
+      imageUrl: json['image_url'] ?? json['photo_url'] ?? '', 
       description: json['description'] ?? json['bio'] ?? '',
       location: json['location'] ?? json['country'] ?? '',
       website: json['website'] ?? '',
       linkedinUrl: json['linkedin_url'],
       isPremium: json['is_premium'] ?? false,
+      tier: json['tier'] ?? 'FREE',
       ownerId: json['owner_id'],
       ownerName: json['owner_name'],
       ownerPhoto: json['owner_photo'],

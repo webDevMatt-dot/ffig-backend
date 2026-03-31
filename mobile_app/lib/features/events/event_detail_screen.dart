@@ -314,33 +314,90 @@ class EventDetailScreen extends StatelessWidget {
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                expandedHeight: 350.0,
+                expandedHeight: 450.0,
                 pinned: true,
                 floating: false,
-                flexibleSpace: FlexibleSpaceBar(
-                  centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 16, bottom: 60, right: 16),
-                  title: Text(
-                      event['title'], 
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white, // AppBar title in expanded state needs to be visible on image
-                        shadows: [const Shadow(color: Colors.black, blurRadius: 4)]
-                      )
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.share_outlined),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Link copied to clipboard!")),
+                      );
+                    },
                   ),
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                       CachedNetworkImage(
-                         imageUrl: event['image_url'],
-                         fit: BoxFit.cover,
-                         placeholder: (_,__) => Container(color: Colors.grey[200]),
-                         errorWidget: (_,__,___) => Container(color: Colors.grey),
-                       ),
-                       const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]))),
-                    ],
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  title: innerBoxIsScrolled 
+                    ? Text(
+                        event['title'], 
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                      )
+                    : null,
+                  background: Container(
+                    color: const Color(0xFF0F0F0F), // Deep black-charcoal
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 60),
+                        // Flyer with Shadow & Rounded corners
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.5),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: event['image_url'],
+                                  fit: BoxFit.contain,
+                                  placeholder: (_, __) => Container(color: Colors.grey[900]),
+                                  errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white54, size: 50),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Premium Typographic Title Area
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                          child: Column(
+                            children: [
+                               Text(
+                                event['title'].toString().toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: 40,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).primaryColor,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 bottom: const TabBar(

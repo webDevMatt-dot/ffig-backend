@@ -70,6 +70,24 @@ class AdminApiService {
     }
   }
 
+  // Fetch Users for Picker
+  Future<List<dynamic>> searchUsers(String query) async {
+    final token = await _getToken();
+    final url = query.isEmpty 
+        ? '${baseUrl}admin/users/' 
+        : '${baseUrl}admin/users/?q=$query';
+    
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to search users: ${response.statusCode}');
+    }
+  }
+
   // Generic DELETE
   Future<void> deleteItem(String endpoint, int id) async {
     final token = await _getToken();
@@ -229,7 +247,9 @@ class AdminApiService {
       Uri.parse('$_eventsBaseUrl/$endpoint/$id/'),
       headers: {'Authorization': 'Bearer $token'}
     );
-     if (response.statusCode != 204) throw Exception('Failed to delete item');
+     if (response.statusCode != 204 && response.statusCode != 200) {
+       throw Exception('Failed to delete item: ${response.statusCode}');
+     }
   }
 
   Future<void> _updateSubItem(String endpoint, int id, Map<String, dynamic> data) async {
@@ -531,25 +551,6 @@ class AdminApiService {
     }
   }
 
-  Future<List<dynamic>> searchUsers(String query) async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_membersBaseUrl/?search=$query'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data is List) {
-          return data;
-      } else if (data is Map && data.containsKey('results')) {
-          return data['results'];
-      }
-      return [];
-    } else {
-      throw Exception('Failed to search users: ${response.statusCode}');
-    }
-  }
-
   // --- ADMIN APPROVALS ---
   
   Future<List<dynamic>> fetchBusinessApprovals() async {
@@ -641,6 +642,85 @@ class AdminApiService {
     } else {
       throw Exception(data['error'] ?? 'Failed to verify ticket');
     }
+  }
+
+  // --- ADMIN RESOURCE MANAGEMENT ---
+  Future<Map<String, dynamic>> createAdminResource(Map<String, dynamic> data, {dynamic imageFile, dynamic pdfFile}) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('${baseUrl}admin/resources/'));
+    request.headers['Authorization'] = 'Bearer $token';
+    data.forEach((key, value) {
+      if (value != null) request.fields[key] = value.toString();
+    });
+
+    if (imageFile != null) {
+      if (imageFile is File) {
+        request.files.add(await http.MultipartFile.fromPath('thumbnail_url', imageFile.path, contentType: MediaType('image', 'jpeg')));
+      }
+    }
+    if (pdfFile != null) {
+      if (pdfFile is File) {
+        request.files.add(await http.MultipartFile.fromPath('file', pdfFile.path, contentType: MediaType('application', 'pdf')));
+      }
+    }
+
+    final response = await request.send();
+    final respStr = await response.stream.bytesToString();
+    if (response.statusCode != 201) throw Exception('Failed to create resource: $respStr');
+    return jsonDecode(respStr);
+  }
+
+  Future<void> updateAdminResource(int id, Map<String, dynamic> data, {dynamic imageFile, dynamic pdfFile}) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('PATCH', Uri.parse('${baseUrl}admin/resources/$id/'));
+    request.headers['Authorization'] = 'Bearer $token';
+    data.forEach((key, value) {
+      if (value != null) request.fields[key] = value.toString();
+    });
+
+    if (imageFile != null) {
+      if (imageFile is File) {
+        request.files.add(await http.MultipartFile.fromPath('thumbnail_url', imageFile.path, contentType: MediaType('image', 'jpeg')));
+      } else if (imageFile is String) {
+        request.fields['thumbnail_url'] = imageFile;
+      }
+    }
+    if (pdfFile != null) {
+      if (pdfFile is File) {
+        request.files.add(await http.MultipartFile.fromPath('file', pdfFile.path, contentType: MediaType('application', 'pdf')));
+      }
+    }
+
+    final response = await request.send();
+    if (response.statusCode != 200) {
+      final respStr = await response.stream.bytesToString();
+      throw Exception('Failed to update resource: $respStr');
+    }
+  }
+
+  Future<void> addResourceGalleryImage(int resourceId, File image, {String? description}) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('${baseUrl}admin/resources/images/'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['resource'] = resourceId.toString();
+    if (description != null) request.fields['description'] = description;
+    
+    request.files.add(await http.MultipartFile.fromPath('image', image.path, contentType: MediaType('image', 'jpeg')));
+    
+    final response = await request.send();
+    if (response.statusCode != 201) {
+      final respStr = await response.stream.bytesToString();
+      throw Exception('Failed to add gallery image: $respStr');
+    }
+  }
+
+  Future<void> deleteResourceGalleryImage(int imageId) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${baseUrl}admin/resources/images/$imageId/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) throw Exception('Failed to delete gallery image');
   }
 
   // Helper for Multipart requests (Handles Web (Uint8List), Mobile (File), and URL String)

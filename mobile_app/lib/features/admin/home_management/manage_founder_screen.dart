@@ -6,9 +6,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../shared_widgets/user_avatar.dart';
+import '../../home/models/founder_profile.dart';
+import '../../home/widgets/founder_spotlight_card.dart';
+import '../widgets/user_picker_dialog.dart';
 
 class ManageFounderScreen extends StatefulWidget {
   const ManageFounderScreen({super.key});
@@ -28,15 +34,18 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   final _bioController = TextEditingController();
   
   bool _isPremium = false;
+  String _tier = 'FREE'; // NEW
   dynamic _selectedImageBytes; 
   File? _selectedImageFile;
   String? _existingPhotoUrl; 
   String? _editingId; 
+  int? _linkedUserId;
 
   bool _isLoading = false;
   List<dynamic> _profiles = [];
   List<dynamic> _filteredProfiles = [];
   String _searchQuery = "";
+  Map<String, dynamic>? _initialData; // For Undo feature
 
   @override
   void initState() {
@@ -45,14 +54,23 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   }
 
   void _filterItems() {
-    if (_searchQuery.isEmpty) {
-      _filteredProfiles = _profiles;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      _filteredProfiles = List.from(_profiles);
     } else {
+      final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
       _filteredProfiles = _profiles.where((p) {
         final name = (p['name'] ?? '').toString().toLowerCase();
         final biz = (p['business_name'] ?? '').toString().toLowerCase();
-        final q = _searchQuery.toLowerCase();
-        return name.contains(q) || biz.contains(q);
+        final country = (p['country'] ?? '').toString().toLowerCase();
+        final bio = (p['bio'] ?? '').toString().toLowerCase();
+        
+        return terms.every((term) => 
+          name.contains(term) || 
+          biz.contains(term) || 
+          country.contains(term) || 
+          bio.contains(term)
+        );
       }).toList();
     }
   }
@@ -98,19 +116,27 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   }
 
   Future<File?> _cropImage(File imageFile) async {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    // Match exactly the dashboard's padding (24 on each side)
+    final double cardWidth = screenWidth - 48; 
+    final double cardHeight = 340.0; // Updated from 300 to match live card
+
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
+      aspectRatio: CropAspectRatio(ratioX: cardWidth, ratioY: cardHeight),
       compressQuality: 90,
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Founder Photo',
           toolbarColor: FfigTheme.primaryBrown,
           toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.square,
+          initAspectRatio: CropAspectRatioPreset.original,
           lockAspectRatio: true,
         ),
         IOSUiSettings(
           title: 'Crop Founder Photo',
+          aspectRatioPickerButtonHidden: true,
+          resetAspectRatioEnabled: false,
         ),
       ],
     );
@@ -118,13 +144,84 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     return null;
   }
 
+  Future<void> _cropExistingImage(StateSetter setModalState) async {
+    // Determine the source
+    dynamic source = _selectedImageBytes ?? _existingPhotoUrl;
+    if (source == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      File? imageFile;
+      if (source is String && source.startsWith('http')) {
+        // Download existing URL
+        final response = await http.get(Uri.parse(source));
+        if (response.statusCode == 200) {
+          final tempDir = await getTemporaryDirectory();
+          imageFile = File('${tempDir.path}/temp_crop_image.jpg');
+          await imageFile.writeAsBytes(response.bodyBytes);
+        }
+      } else if (source is Uint8List) {
+        // Use existing bytes
+        final tempDir = await getTemporaryDirectory();
+        imageFile = File('${tempDir.path}/temp_crop_image.jpg');
+        await imageFile.writeAsBytes(source);
+      } else if (_selectedImageFile != null) {
+        imageFile = _selectedImageFile;
+      }
+
+      if (imageFile != null) {
+        final croppedFile = await _cropImage(imageFile);
+        if (croppedFile != null) {
+          final bytes = await croppedFile.readAsBytes();
+          setModalState(() {
+            _selectedImageBytes = bytes;
+            _selectedImageFile = croppedFile;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) DialogUtils.showError(context, "Adjustment Failed", e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+
+  void _undoChanges(StateSetter setModalState) {
+    setModalState(() {
+      if (_initialData != null) {
+        _nameController.text = _initialData!['name'] ?? '';
+        _businessController.text = _initialData!['business_name'] ?? '';
+        _countryController.text = _initialData!['country'] ?? '';
+        _bioController.text = _initialData!['bio'] ?? '';
+        _isPremium = _initialData!['is_premium'] ?? false;
+        _tier = _initialData!['tier'] ?? 'FREE';
+        _existingPhotoUrl = _initialData!['photo'];
+        _selectedImageBytes = null;
+        _selectedImageFile = null;
+        _linkedUserId = _initialData!['user'] is int ? _initialData!['user'] : null;
+      } else {
+        _nameController.clear();
+        _businessController.clear();
+        _countryController.clear();
+        _bioController.clear();
+        _isPremium = false;
+        _tier = 'FREE';
+        _existingPhotoUrl = null;
+        _selectedImageBytes = null;
+        _selectedImageFile = null;
+        _linkedUserId = null;
+      }
+    });
+  }
 
   Future<void> _showUserPicker(StateSetter setModalState) async {
     await showDialog(
       context: context,
-      builder: (context) => _UserPickerDialog(
+      builder: (context) => UserPickerDialog(
         onUserSelected: (user) {
           setModalState(() {
+            _linkedUserId = user['user_id'] ?? user['id']; // user['id'] usually or user_id mapping
             final String first = user['first_name'] ?? '';
             final String last = user['last_name'] ?? '';
             _nameController.text = first.isNotEmpty ? "$first $last".trim() : (user['username'] ?? '');
@@ -142,10 +239,19 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
             if (user['bio'] != null) {
               _bioController.text = user['bio'];
             }
-            // Warning about image
+            
+            _isPremium = user['is_premium'] ?? false;
+            _tier = user['tier'] ?? 'FREE';
+            
+            String? photoUrl = user['photo_url'] ?? user['photo'];
+            if (photoUrl != null && photoUrl.isNotEmpty && photoUrl != "null" && !photoUrl.contains("ui-avatars.com")) {
+              _selectedImageBytes = photoUrl;
+              _selectedImageFile = null;
+            }
+            
           });
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Details populated. Please upload a high-res photo if needed.")),
+              SnackBar(content: Text(_selectedImageBytes != null ? "Details and photo populated!" : "Details populated. Please upload a high-res photo if needed.")),
           );
         },
       ),
@@ -153,6 +259,8 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   }
 
   void _showEditor(Map<String, dynamic>? item) {
+    _initialData = item; // Capture for undo
+    
     if (item != null) {
       _editingId = item['id'].toString();
       _nameController.text = item['name'] ?? '';
@@ -160,8 +268,12 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       _countryController.text = item['country'] ?? '';
       _bioController.text = item['bio'] ?? '';
       _isPremium = item['is_premium'] ?? false;
-      _existingPhotoUrl = item['photo'];
+      _tier = item['tier'] ?? 'FREE';
+      _existingPhotoUrl = item['photo_url'] ?? item['photo'];
+      _editingId = item['id'].toString();
+      _linkedUserId = item['user'] is int ? item['user'] : null;
       _selectedImageBytes = null;
+      _selectedImageFile = null;
     } else {
       _editingId = null;
       _nameController.clear();
@@ -169,180 +281,326 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       _countryController.clear();
       _bioController.clear();
       _isPremium = false;
+      _tier = 'FREE';
       _existingPhotoUrl = null;
       _selectedImageBytes = null;
       _selectedImageFile = null;
+      _linkedUserId = null;
     }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
           return Container(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
-              top: 20, left: 20, right: 20
+              top: 10, left: 20, right: 20
             ),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                            Text(
-                              _editingId != null ? "Edit Founder" : "Add Founder", 
-                              style: Theme.of(context).textTheme.titleLarge
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag Handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 20),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                    Flexible(
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            icon: const Icon(Icons.close),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            tooltip: "Close",
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _editingId != null ? "Edit Founder" : "Add Founder", 
+                                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TextButton.icon(
+                                            onPressed: () => _showUserPicker(setModalState),
+                                            icon: const Icon(Icons.search, size: 18),
+                                            label: const Text("User", style: TextStyle(fontSize: 12)),
+                                            style: TextButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                                            ),
+                                        )
+                                      ],
+                                    )
+                                ],
                             ),
-                            TextButton.icon(
-                                onPressed: () => _showUserPicker(setModalState),
-                                icon: const Icon(Icons.search),
-                                label: const Text("Pick Existing User"),
-                            )
-                        ],
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // Photo
-                    Center(
-                      child: GestureDetector(
-                        onTap: () => _pickImage(setModalState),
-                        child: Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _selectedImageBytes != null
-                              ? (_selectedImageBytes is Uint8List
-                                    ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
-                                    : Image.network(_selectedImageBytes as String, fit: BoxFit.cover))
-                              : (_existingPhotoUrl != null
-                                    ? Image.network(_existingPhotoUrl!, fit: BoxFit.cover)
-                                    : const Icon(Icons.person_add, size: 40, color: Colors.grey)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _businessController,
-                      decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    GestureDetector(
-                      onTap: () {
-                        showCountryPicker(
-                          context: context,
-                          showPhoneCode: false,
-                          onSelect: (Country country) {
-                            setModalState(() {
-                              _countryController.text = country.name;
-                            });
-                          },
-                        );
-                      },
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: _countryController,
-                          decoration: const InputDecoration(
-                            labelText: 'Country',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.arrow_drop_down),
-                          ),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _bioController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Bio', border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    SwitchListTile(
-                      title: const Text("Is Premium Member?"),
-                      value: _isPremium,
-                      onChanged: (v) => setModalState(() => _isPremium = v),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                     Row(
-                      children: [
-                        if (_editingId != null) ...[
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                               Navigator.pop(ctx);
-                               _confirmDelete(int.parse(_editingId!));
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                 Navigator.pop(ctx);
-                                 _toggleActive(item);
+                            const SizedBox(height: 20),
+                            
+                            // LIVE PREVIEW
+                            const Text("LIVE PREVIEW", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                            const SizedBox(height: 12),
+                            FounderSpotlightCard(
+                              isPreview: true,
+                              localImageBytes: _selectedImageBytes is Uint8List ? _selectedImageBytes as Uint8List : null,
+                              profile: FounderProfile(
+                                id: _editingId ?? 'preview',
+                                name: _nameController.text,
+                                businessName: _businessController.text,
+                                bio: _bioController.text,
+                                country: _countryController.text,
+                                photoUrl: _existingPhotoUrl ?? '',
+                                isPremium: _isPremium,
+                                tier: _tier,
+                                userId: _linkedUserId,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            
+                            Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                            const SizedBox(height: 16),
+                            
+                            // Photo
+                            Center(
+                              child: GestureDetector(
+                                onTap: () async {
+                                  if (_selectedImageBytes != null || _existingPhotoUrl != null) {
+                                    // Show options
+                                    showModalBottomSheet(
+                                      context: context,
+                                      builder: (c) => SafeArea(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            ListTile(
+                                              leading: const Icon(Icons.photo_library),
+                                              title: const Text("Select New Photo"),
+                                              onTap: () {
+                                                Navigator.pop(c);
+                                                _pickImage(setModalState);
+                                              },
+                                            ),
+                                            ListTile(
+                                              leading: const Icon(Icons.crop_rotate),
+                                              title: const Text("Adjust Current Photo"),
+                                              onTap: () {
+                                                Navigator.pop(c);
+                                                _cropExistingImage(setModalState);
+                                              },
+                                            ),
+                                            if (_selectedImageBytes is Uint8List || (_selectedImageBytes != null && _initialData != null && _selectedImageBytes != _initialData!['photo']))
+                                              ListTile(
+                                                leading: const Icon(Icons.history),
+                                                title: const Text("Reset to Original Photo"),
+                                                onTap: () {
+                                                  Navigator.pop(c);
+                                                  setModalState(() {
+                                                    if (_initialData != null && _initialData!['photo'] != null) {
+                                                      _selectedImageBytes = _initialData!['photo'];
+                                                    } else {
+                                                      _selectedImageBytes = null;
+                                                    }
+                                                    _selectedImageFile = null;
+                                                  });
+                                                },
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    _pickImage(setModalState);
+                                  }
+                                },
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      height: 100,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Theme.of(context).dividerColor),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: _selectedImageBytes != null
+                                          ? (_selectedImageBytes is Uint8List
+                                                ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
+                                                : Image.network(_selectedImageBytes as String, fit: BoxFit.cover, errorBuilder: (c, e, s) => _buildImageError()))
+                                          : (_existingPhotoUrl != null
+                                                ? Image.network(_existingPhotoUrl!, fit: BoxFit.cover, errorBuilder: (c, e, s) => _buildImageError())
+                                                : const Icon(Icons.person_add, size: 40, color: Colors.grey)),
+                                    ),
+                                    if (_selectedImageBytes != null || _existingPhotoUrl != null)
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(
+                                            color: FfigTheme.primaryBrown,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.crop, size: 16, color: Colors.white),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            TextFormField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
+                              validator: (v) => v!.isEmpty ? 'Required' : null,
+                              onChanged: (v) => setModalState(() {}),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            TextFormField(
+                              controller: _businessController,
+                              decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
+                              validator: (v) => v!.isEmpty ? 'Required' : null,
+                              onChanged: (v) => setModalState(() {}),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            GestureDetector(
+                              onTap: () {
+                                showCountryPicker(
+                                  context: context,
+                                  showPhoneCode: false,
+                                  onSelect: (Country country) {
+                                    setModalState(() {
+                                      _countryController.text = country.name;
+                                    });
+                                  },
+                                );
                               },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              child: Icon(
-                                (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
-                                color: (item['is_active'] ?? true) ? Colors.grey : Colors.green
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  controller: _countryController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Country',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon: Icon(Icons.arrow_drop_down),
+                                  ),
+                                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            onPressed: _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: FfigTheme.primaryBrown,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            const SizedBox(height: 16),
+                            
+                            TextFormField(
+                              controller: _bioController,
+                              maxLines: 3,
+                              decoration: const InputDecoration(labelText: 'Bio', border: OutlineInputBorder()),
+                              validator: (v) => v!.isEmpty ? 'Required' : null,
+                              onChanged: (v) => setModalState(() {}),
                             ),
-                            child: Text(_editingId != null ? "Save Changes" : "Create Founder"),
-                          ),
+                            const SizedBox(height: 16),
+                            
+                            SwitchListTile(
+                              title: const Text("Is Premium Member?"),
+                              value: _isPremium,
+                              onChanged: (v) => setModalState(() => _isPremium = v),
+                            ),
+                            
+                            const SizedBox(height: 24),
+                            
+                             Row(
+                              children: [
+                                if (_editingId != null) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                       Navigator.pop(ctx);
+                                       _confirmDelete(int.parse(_editingId!));
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () {
+                                         Navigator.pop(ctx);
+                                         _toggleActive(item);
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                      ),
+                                      child: Icon(
+                                        (item!['is_active'] ?? true) ? Icons.visibility_off : Icons.visibility,
+                                        color: (item['is_active'] ?? true) ? Colors.grey : Colors.green
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                
+                                Expanded(
+                                  flex: 2,
+                                  child: ElevatedButton(
+                                    onPressed: _submitForm,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: FfigTheme.primaryBrown,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                    ),
+                                    child: Text(_editingId != null ? "Save Changes" : "Create Founder"),
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
                         ),
-                      ],
-                    )
-                  ],
-                ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         }
       )
+    );
+  }
+  
+  Widget _buildImageError() {
+    return Container(
+      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade300,
+      alignment: Alignment.center,
+      child: const Icon(Icons.person, size: 40, color: Colors.grey),
     );
   }
 
@@ -365,11 +623,18 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
         'country': _countryController.text,
         'bio': _bioController.text,
         'is_premium': _isPremium.toString(),
+        'tier': _tier,
         'is_active': 'true',
       };
+      
+      if (_linkedUserId != null) {
+        fields['user'] = _linkedUserId.toString();
+      }
 
       dynamic imageToUpload;
-      if (_selectedImageBytes != null) {
+      if (_selectedImageBytes is String) {
+        imageToUpload = _selectedImageBytes;
+      } else if (_selectedImageBytes != null) {
         imageToUpload = kIsWeb ? _selectedImageBytes : _selectedImageFile;
       }
 
@@ -441,6 +706,26 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    _filteredProfiles.sort((a, b) {
+      final aDate = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0);
+      final bDate = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0);
+      return bDate.compareTo(aDate);
+    });
+
+    int? liveId;
+    try {
+      final liveItem = _profiles.where((p) {
+        final active = p['is_active'] ?? true;
+        final expires = p['expires_at'] != null ? DateTime.tryParse(p['expires_at']) : null;
+        return active && (expires == null || expires.isAfter(now));
+      }).toList();
+      
+      if (liveItem.isNotEmpty) {
+        liveId = liveItem.first['id'];
+      }
+    } catch (_) {}
+
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Founder Spotlight")),
       body: Padding(
@@ -452,9 +737,26 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
                                     hintText: "Search founders...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterItems();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),
@@ -505,12 +807,48 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                             backgroundImage: item['photo'] != null ? NetworkImage(item['photo']) : null,
                                             child: item['photo'] == null ? const Icon(Icons.person) : null,
                                         ),
-                                        title: Text(
-                                            item['name'] ?? 'No Name', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
+                                        title: Row(
+                                          children: [
+                                            Text(
+                                                item['name'] ?? 'No Name', 
+                                                style: const TextStyle(fontWeight: FontWeight.bold)
+                                            ),
+                                            if (item['tier'] == 'PREMIUM' || item['tier'] == 'STANDARD')
+                                              Padding(
+                                                padding: const EdgeInsets.only(left: 6),
+                                                child: Icon(
+                                                  Icons.verified,
+                                                  size: 14,
+                                                  color: item['tier'] == 'PREMIUM' 
+                                                      ? const Color(0xFFD4AF37) 
+                                                      : const Color(0xFF007AFF),
+                                                ),
+                                              ),
+                                            const Spacer(),
+                                            if (item['id'] == liveId)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.green, width: 0.5),
+                                                ),
+                                                child: const Text("LIVE", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              )
+                                            else if (!isActive)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.red, width: 0.5),
+                                                ),
+                                                child: const Text("INACTIVE", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              )
+                                          ],
                                         ),
                                         subtitle: Text(
-                                          "${item['business_name']} • ${item['country']}",
+                                          "${item['business_name'] ?? ''} • ${item['country'] ?? ''}",
                                           maxLines: 1, overflow: TextOverflow.ellipsis
                                         ),
                                         trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
@@ -523,102 +861,6 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
             ],
         ),
       ),
-    );
-  }
-}
-
-class _UserPickerDialog extends StatefulWidget {
-  final Function(Map<String, dynamic>) onUserSelected;
-  const _UserPickerDialog({required this.onUserSelected});
-
-  @override
-  State<_UserPickerDialog> createState() => _UserPickerDialogState();
-}
-
-class _UserPickerDialogState extends State<_UserPickerDialog> {
-  final _searchController = TextEditingController();
-  List<dynamic> _results = [];
-  bool _loading = false;
-  Timer? _debounce;
-  final _api = AdminApiService();
-
-  @override
-  void initState() {
-    super.initState();
-    _search(''); 
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _search(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (mounted) setState(() => _loading = true);
-      try {
-        final results = await _api.searchUsers(query);
-        if (mounted) setState(() => _results = results);
-      } catch (e) {
-        if (kDebugMode) print("User Search Error: $e");
-      } finally {
-        if (mounted) setState(() => _loading = false);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Select User"),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: "Search by name or email...",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: _search,
-            ),
-            const SizedBox(height: 16),
-            Flexible(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _results.isEmpty
-                  ? const Text("No users found", style: TextStyle(color: Colors.grey))
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _results.length,
-                      separatorBuilder: (c, i) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final user = _results[index];
-                        final name = user['username'] ?? 'Unknown';
-                        final sub = user['email'] ?? '';
-                        return ListTile(
-                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(sub),
-                          onTap: () {
-                            widget.onUserSelected(user);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-      ],
     );
   }
 }

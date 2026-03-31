@@ -44,8 +44,9 @@ class EventRevenueScreen extends StatelessWidget {
                           enabled: true,
                           touchTooltipData: BarTouchTooltipData(
                             getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                              final currency = eventData[groupIndex]["currency"] ?? 'USD';
                               return BarTooltipItem(
-                                '${eventData[groupIndex]["event"]}\n\$${rod.toY.toStringAsFixed(2)}',
+                                '${eventData[groupIndex]["event"]}\n${_getCurrencySymbol(currency)}${rod.toY.toStringAsFixed(2)}',
                                 const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                               );
                             },
@@ -108,6 +109,7 @@ class EventRevenueScreen extends StatelessWidget {
                     separatorBuilder: (_, __) => const Divider(),
                     itemBuilder: (context, index) {
                       final item = eventData[index];
+                      final currency = item['currency'] ?? 'USD';
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor: FfigTheme.primaryBrown.withOpacity(0.1),
@@ -115,7 +117,7 @@ class EventRevenueScreen extends StatelessWidget {
                         ),
                         title: Text(item['event'] ?? 'Unknown Event'),
                         trailing: Text(
-                          "\$${(item['revenue'] ?? 0).toStringAsFixed(2)}",
+                          "${_getCurrencySymbol(currency)}${(item['revenue'] ?? 0).toStringAsFixed(2)}",
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                       );
@@ -125,5 +127,17 @@ class EventRevenueScreen extends StatelessWidget {
               ],
             ),
     );
+  }
+
+  String _getCurrencySymbol(String code) {
+    switch (code.toUpperCase()) {
+      case 'USD': return '\$';
+      case 'EUR': return '€';
+      case 'GBP': return '£';
+      case 'NGN': return '₦';
+      case 'KES': return 'KSh ';
+      case 'ZAR': return 'R ';
+      default: return '$code ';
+    }
   }
 }

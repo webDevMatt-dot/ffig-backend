@@ -11,6 +11,7 @@ import '../../core/theme/ffig_theme.dart';
 import '../../shared_widgets/user_avatar.dart';
 import '../../core/services/membership_service.dart';
 import 'public_profile_screen.dart';
+import 'widgets/filter_bottom_sheet.dart'; // Add this for Filtering
 
 /// Displays the Community Member Directory.
 ///
@@ -33,28 +34,40 @@ class _MemberListScreenState extends State<MemberListScreen> {
   
   // --- FILTER VARIABLES ---
   String _searchQuery = "";
-  String _selectedIndustry = "ALL"; // Default to show all
+  List<String> _selectedIndustries = [];
+  List<String> _selectedCountries = [];
+  List<String> _selectedTiers = [];
+  List<String> _availableCountries = [];
   String _sortBy = "name"; // Options: name, industry
   bool _premiumOnly = false;
   bool _amIAdmin = false; // Admin Checking
   String? _myUsername;
   Timer? _debounce; // To stop API calls on every keystroke
 
-  final List<DropdownMenuItem<String>> _industryOptions = [
-    const DropdownMenuItem(value: 'ALL', child: Text('All Industries')),
-    const DropdownMenuItem(value: 'TECH', child: Text('Technology')),
-    const DropdownMenuItem(value: 'FIN', child: Text('Finance')),
-    const DropdownMenuItem(value: 'HLTH', child: Text('Healthcare')),
-    const DropdownMenuItem(value: 'RET', child: Text('Retail')),
-    const DropdownMenuItem(value: 'EDU', child: Text('Education')),
-    const DropdownMenuItem(value: 'MED', child: Text('Media')),
-    const DropdownMenuItem(value: 'OTH', child: Text('Other')),
-  ];
+  final Map<String, String> _industryMapping = {
+    'TECH': 'Technology',
+    'FIN': 'Finance',
+    'HLTH': 'Healthcare',
+    'RET': 'Retail',
+    'EDU': 'Education',
+    'MED': 'Media & Arts',
+    'LEG': 'Legal',
+    'FASH': 'Fashion',
+    'MAN': 'Manufacturing',
+    'OTH': 'Other',
+  };
+
+  final Map<String, String> _tierMapping = {
+    'FREE': 'Free',
+    'STANDARD': 'Standard',
+    'PREMIUM': 'Premium',
+  };
 
   @override
   void initState() {
     super.initState();
     _checkAdminStatus();
+    _fetchAvailableCountries();
     _fetchMembers();
   }
 
@@ -84,6 +97,27 @@ class _MemberListScreenState extends State<MemberListScreen> {
   }
 
   // --- API CALL ---
+  Future<void> _fetchAvailableCountries() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}members/unique-locations/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        if (mounted) {
+           setState(() => _availableCountries = data.map((e) => e.toString()).toList()..sort());
+        }
+      }
+    } catch(e) {
+      print("Error fetching locations: $e");
+    }
+  }
+
+  // --- API CALL ---
   /// Fetches members from the backend based on filters.
   /// - Supports Search (`?search=query`).
   /// - Supports Industry filtering (`&industry=TECH`).
@@ -101,8 +135,19 @@ class _MemberListScreenState extends State<MemberListScreen> {
       // Build the URL with query parameters
       String url = '${baseUrl}members/?search=$_searchQuery';
       
-      if (_selectedIndustry != 'ALL') {
-        url += '&industry=$_selectedIndustry';
+      // Multi-select Industries
+      for (var ind in _selectedIndustries) {
+        url += '&industry=$ind';
+      }
+      
+      // Multi-select Tiers
+      for (var t in _selectedTiers) {
+        url += '&tier=$t';
+      }
+      
+      // Multi-select Locations
+      for (var loc in _selectedCountries) {
+        url += '&location=$loc';
       }
       
       // Note: Backend typically sorts by Premium first automatically.
@@ -153,6 +198,29 @@ class _MemberListScreenState extends State<MemberListScreen> {
     }
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => FilterBottomSheet(
+        initialSelectedIndustries: _selectedIndustries,
+        initialSelectedCountries: _selectedCountries,
+        initialSelectedTiers: _selectedTiers,
+        availableCountries: _availableCountries,
+        onApply: (inds, countries, tiers) {
+          setState(() {
+            _selectedIndustries = inds;
+            _selectedCountries = countries;
+            _selectedTiers = tiers;
+            _isLoading = true;
+          });
+          _fetchMembers();
+        },
+      ),
+    );
+  }
+
   // --- SEARCH DEBOUNCE ---
   // Waits 500ms after user stops typing before calling API
   void _onSearchChanged(String query) {
@@ -187,84 +255,94 @@ class _MemberListScreenState extends State<MemberListScreen> {
             ),
             child: Column(
               children: [
-                // 1. Search Box (Sharp)
-                TextField(
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: const InputDecoration(
-                    hintText: "SEARCH MEMBERS...",
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: _onSearchChanged,
-                ),
-                const SizedBox(height: 12),
-                
-                // 2. Dropdowns Row
+                // 1. Search Box with Filter Icon Side-by-Side
                 Row(
                   children: [
-                    // Industry Dropdown
                     Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(4)),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedIndustry,
-                            dropdownColor: Theme.of(context).cardTheme.color,
-                            isExpanded: true,
-                            items: _industryOptions,
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedIndustry = val!;
-                                _isLoading = true;
-                              });
-                              _fetchMembers();
-                            },
-                          ),
+                      child: TextField(
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        decoration: const InputDecoration(
+                          hintText: "SEARCH MEMBERS...",
+                          prefixIcon: Icon(Icons.search),
                         ),
+                        onChanged: _onSearchChanged,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Sort Dropdown
-                    Expanded(
-                      flex: 1,
+                    InkWell(
+                      onTap: _showFilterSheet,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(4)),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _sortBy,
-                            dropdownColor: Theme.of(context).cardTheme.color,
-                            isExpanded: true,
-                            items: const [
-                              DropdownMenuItem(value: 'name', child: Text('Sort: Name')),
-                              DropdownMenuItem(value: 'industry', child: Text('Sort: Industry')),
-                            ],
-                            onChanged: (val) {
-                                setState(() => _sortBy = val!);
-                                _fetchMembers(); // Re-sort list
-                            },
-                          ),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardTheme.color,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (_selectedIndustries.isNotEmpty || _selectedCountries.isNotEmpty || _selectedTiers.isNotEmpty)
+                                ? FfigTheme.primaryBrown
+                                : Colors.transparent,
+                          )
+                        ),
+                        child: Icon(
+                          Icons.tune, 
+                          color: (_selectedIndustries.isNotEmpty || _selectedCountries.isNotEmpty || _selectedTiers.isNotEmpty)
+                              ? FfigTheme.primaryBrown
+                              : Colors.grey,
                         ),
                       ),
                     ),
                   ],
                 ),
                 
-                // 3. Premium Filter Checkbox
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _premiumOnly, 
-                      activeColor: Colors.amber,
-                      onChanged: (val) {
-                        setState(() => _premiumOnly = val!);
-                        _fetchMembers();
-                      }
+                // 2. Filter Chips (Horizontal List)
+                if (_selectedIndustries.isNotEmpty || _selectedCountries.isNotEmpty || _selectedTiers.isNotEmpty)
+                  Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(top: 8),
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        ..._selectedTiers.map((t) => _buildChip(t, _tierMapping[t] ?? t, () {
+                          setState(() => _selectedTiers.remove(t));
+                          _fetchMembers();
+                        })),
+                        ..._selectedIndustries.map((i) => _buildChip(i, _industryMapping[i] ?? i, () {
+                          setState(() => _selectedIndustries.remove(i));
+                          _fetchMembers();
+                        })),
+                        ..._selectedCountries.map((c) => _buildChip(c, c, () {
+                          setState(() => _selectedCountries.remove(c));
+                          _fetchMembers();
+                        })),
+                      ],
                     ),
-                    const Text("Show Premium Members Only"),
+                  ),
+
+                // 3. Sort Dropdown (Simplified)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "FOUND ${_members.length} MEMBERS",
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _sortBy,
+                        dropdownColor: Theme.of(context).cardTheme.color,
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 16),
+                        items: const [
+                          DropdownMenuItem(value: 'name', child: Text('Sort: Name')),
+                          DropdownMenuItem(value: 'industry', child: Text('Sort: Industry')),
+                        ],
+                        onChanged: (val) {
+                            setState(() => _sortBy = val!);
+                            _fetchMembers(); // Re-sort list
+                        },
+                      ),
+                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -418,6 +496,20 @@ class _MemberListScreenState extends State<MemberListScreen> {
           ],
         );
       }
+    );
+  }
+
+  Widget _buildChip(String key, String label, VoidCallback onDeleted) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: Chip(
+        label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+        deleteIcon: const Icon(Icons.close, size: 14),
+        onDeleted: onDeleted,
+        backgroundColor: FfigTheme.primaryBrown.withOpacity(0.1),
+        side: BorderSide(color: FfigTheme.primaryBrown.withOpacity(0.3)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
     );
   }
 }

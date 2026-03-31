@@ -10,6 +10,9 @@ import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/utils/url_utils.dart';
+import '../../home/models/business_profile.dart';
+import '../../home/widgets/business_card.dart';
+import '../widgets/user_picker_dialog.dart';
 
 class ManageBusinessScreen extends StatefulWidget {
   const ManageBusinessScreen({super.key});
@@ -29,11 +32,14 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
   final _descriptionController = TextEditingController();
   
   bool _isPremium = false;
+  String _tier = 'FREE';
   dynamic _selectedImageBytes; 
   File? _selectedImageFile;
   String? _existingImageUrl; 
   String? _editingId; 
-
+  int? _ownerId;
+  String? _ownerName;
+  String? _ownerPhoto;
   bool _isLoading = false;
   List<dynamic> _items = [];
   List<dynamic> _filteredItems = [];
@@ -46,13 +52,23 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
   }
 
   void _filterItems() {
-    if (_searchQuery.isEmpty) {
-      _filteredItems = _items;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      _filteredItems = List.from(_items);
     } else {
+      final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
       _filteredItems = _items.where((p) {
         final name = (p['name'] ?? '').toString().toLowerCase();
-        final q = _searchQuery.toLowerCase();
-        return name.contains(q);
+        final loc = (p['location'] ?? p['country'] ?? '').toString().toLowerCase();
+        final desc = (p['description'] ?? p['bio'] ?? '').toString().toLowerCase();
+        final web = (p['website'] ?? '').toString().toLowerCase();
+        
+        return terms.every((term) => 
+          name.contains(term) || 
+          loc.contains(term) || 
+          desc.contains(term) || 
+          web.contains(term)
+        );
       }).toList();
     }
   }
@@ -118,6 +134,54 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
     return null;
   }
 
+  Future<void> _showUserPicker(StateSetter setModalState) async {
+    await showDialog(
+      context: context,
+      builder: (context) => UserPickerDialog(
+        onUserSelected: (user) {
+          setModalState(() {
+            _ownerId = user['user_id'] ?? user['id'];
+            _ownerName = (user['first_name'] ?? '') + ' ' + (user['last_name'] ?? '');
+            if (_ownerName!.trim().isEmpty) _ownerName = user['username'];
+            _ownerPhoto = user['photo_url'] ?? user['photo'];
+            
+            final String first = user['first_name'] ?? '';
+            final String last = user['last_name'] ?? '';
+            
+            // Auto-populate business name if empty or generic
+            if (_nameController.text.isEmpty) {
+              _nameController.text = user['business_name'] ?? (first.isNotEmpty ? "$first's Business" : (user['username'] ?? ''));
+            }
+
+            if (_websiteController.text.isEmpty && user['website'] != null) {
+              _websiteController.text = user['website'];
+            }
+
+            if (_locationController.text.isEmpty && user['location'] != null) {
+              _locationController.text = user['location'];
+            }
+
+            if (_descriptionController.text.isEmpty && user['bio'] != null) {
+              _descriptionController.text = user['bio'];
+            }
+            
+            _tier = user['tier'] ?? 'FREE';
+            _isPremium = _tier == 'PREMIUM';
+            
+            // photoUrl = user['photo_url'] ?? user['photo'];
+            // if (photoUrl != null && photoUrl.isNotEmpty && photoUrl != "null" && !photoUrl.contains("ui-avatars.com")) {
+            //   _selectedImageBytes = photoUrl;
+            //   _selectedImageFile = null;
+            // }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("User details linked!")),
+          );
+        },
+      ),
+    );
+  }
+
   void _showEditor(Map<String, dynamic>? item) {
     if (item != null) {
       _editingId = item['id'].toString();
@@ -126,7 +190,11 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
       _locationController.text = item['location'] ?? item['country'] ?? '';
       _descriptionController.text = item['description'] ?? item['bio'] ?? '';
       _isPremium = item['is_premium'] ?? false;
+      _tier = item['tier'] ?? 'FREE';
       _existingImageUrl = item['image_url'] ?? item['photo_url'];
+      _ownerId = item['owner_id'] is int ? item['owner_id'] : null;
+      _ownerName = item['owner_name'];
+      _ownerPhoto = item['owner_photo'];
       _selectedImageBytes = null;
     } else {
       _editingId = null;
@@ -135,9 +203,13 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
       _locationController.clear();
       _descriptionController.clear();
       _isPremium = false;
+      _tier = 'FREE';
       _existingImageUrl = null;
       _selectedImageBytes = null;
       _selectedImageFile = null;
+      _ownerId = null;
+      _ownerName = null;
+      _ownerPhoto = null;
     }
 
     showModalBottomSheet(
@@ -162,33 +234,97 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _editingId != null ? "Edit Business" : "Add Business", 
-                      style: Theme.of(context).textTheme.titleLarge
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _editingId != null ? "Edit Business" : "Add Business", 
+                          style: Theme.of(context).textTheme.titleLarge
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     
-                    // Photo
+                    // LIVE PREVIEW
+                    const Text("LIVE PREVIEW", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
+                    BusinessCard(
+                      isPreview: true,
+                      localImageBytes: _selectedImageBytes is Uint8List ? _selectedImageBytes as Uint8List : null,
+                      profile: BusinessProfile(
+                        id: _editingId ?? 'new',
+                        name: _nameController.text,
+                        location: _locationController.text,
+                        description: _descriptionController.text,
+                        website: _websiteController.text,
+                        imageUrl: _selectedImageBytes is String ? _selectedImageBytes as String : (_existingImageUrl ?? ''),
+                        isPremium: _isPremium,
+                        tier: _tier,
+                        ownerId: _ownerId,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    
                     Center(
-                      child: GestureDetector(
-                        onTap: () => _pickImage(setModalState),
-                        child: Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _selectedImageBytes != null
-                              ? (_selectedImageBytes is Uint8List
-                                    ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
-                                    : Image.network(_selectedImageBytes as String, fit: BoxFit.cover))
-                              : (_existingImageUrl != null
-                                    ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
-                                    : const Icon(Icons.add_business, size: 40, color: Colors.grey)),
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showUserPicker(setModalState),
+                        icon: const Icon(Icons.person_add),
+                        label: Text(_ownerId != null ? "Change Linked User" : "Link to Existing User"),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    const SizedBox(height: 32),
+                    
+                    Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 16),
+                    
+                    // Business Logo / Media
+                    Center(
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _pickImage(setModalState),
+                            child: Container(
+                              height: 120,
+                              width: 120,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Theme.of(context).dividerColor),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _selectedImageBytes != null
+                                  ? (_selectedImageBytes is Uint8List
+                                        ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
+                                        : Image.network(_selectedImageBytes as String, fit: BoxFit.cover))
+                                  : (_existingImageUrl != null
+                                        ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
+                                        : Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
+                                              SizedBox(height: 4),
+                                              Text("Business Logo", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                            ],
+                                          )),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => _pickImage(setModalState),
+                            icon: const Icon(Icons.edit, size: 14),
+                            label: const Text("Change Business Logo", style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -197,6 +333,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                       controller: _nameController,
                       decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
+                      onChanged: (v) => setModalState(() {}),
                     ),
                     const SizedBox(height: 16),
                     
@@ -238,6 +375,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                       maxLines: 3,
                       decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
+                      onChanged: (v) => setModalState(() {}),
                     ),
                     const SizedBox(height: 16),
                     
@@ -246,6 +384,47 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                       value: _isPremium,
                       onChanged: (v) => setModalState(() => _isPremium = v),
                     ),
+                    
+                    if (_ownerId != null) ...[
+                      const Divider(height: 32),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            if (_ownerPhoto != null && _ownerPhoto!.isNotEmpty)
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundImage: NetworkImage(_ownerPhoto!),
+                              )
+                            else
+                              const Icon(Icons.person_pin, color: Colors.brown, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_ownerName ?? "Owner Linked", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  const Text("Will display 'chat to the founder' at bottom", style: TextStyle(fontSize: 11, color: Colors.brown)),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => setModalState(() {
+                                _ownerId = null;
+                                _ownerName = null;
+                                _ownerPhoto = null;
+                              }),
+                              child: const Text("Unlink", style: TextStyle(color: Colors.red, fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     
                     const SizedBox(height: 24),
                     
@@ -324,8 +503,13 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
         'location': _locationController.text,
         'description': _descriptionController.text,
         'is_premium': _isPremium.toString(),
+        'tier': _tier,
         'is_active': 'true',
       };
+
+      if (_ownerId != null) {
+        fields['owner'] = _ownerId.toString();
+      }
 
       dynamic imageToUpload;
       if (_selectedImageBytes != null) {
@@ -400,6 +584,26 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    _filteredItems.sort((a, b) {
+      final aDate = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0);
+      final bDate = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0);
+      return bDate.compareTo(aDate);
+    });
+
+    int? liveId;
+    try {
+      final liveItem = _items.where((p) {
+        final active = p['is_active'] ?? true;
+        // Business uses 'tier' or 'is_premium' but selection is just first active
+        return active;
+      }).toList();
+      
+      if (liveItem.isNotEmpty) {
+        liveId = liveItem.first['id'];
+      }
+    } catch (_) {}
+
     return Scaffold(
       appBar: AppBar(title: const Text("Manage Business of Month")),
       body: Padding(
@@ -411,9 +615,26 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
                                     hintText: "Search businesses...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterItems();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),
@@ -464,9 +685,45 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                                             backgroundImage: item['image_url'] != null ? NetworkImage(item['image_url']) : null,
                                             child: item['image_url'] == null ? const Icon(Icons.business) : null,
                                         ),
-                                        title: Text(
-                                            item['name'] ?? 'No Name', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
+                                        title: Row(
+                                          children: [
+                                            Text(
+                                                item['name'] ?? 'No Name', 
+                                                style: const TextStyle(fontWeight: FontWeight.bold)
+                                            ),
+                                            if (item['tier'] == 'PREMIUM' || item['tier'] == 'STANDARD')
+                                              Padding(
+                                                padding: const EdgeInsets.only(left: 6),
+                                                child: Icon(
+                                                  Icons.verified,
+                                                  size: 14,
+                                                  color: item['tier'] == 'PREMIUM' 
+                                                      ? const Color(0xFFD4AF37) 
+                                                      : const Color(0xFF007AFF),
+                                                ),
+                                              ),
+                                            const Spacer(),
+                                            if (item['id'] == liveId)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.green, width: 0.5),
+                                                ),
+                                                child: const Text("LIVE", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              )
+                                            else if (!isActive)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.red, width: 0.5),
+                                                ),
+                                                child: const Text("INACTIVE", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              )
+                                          ],
                                         ),
                                         subtitle: Text(
                                           "${item['website'] ?? ''} • ${item['location'] ?? ''}",

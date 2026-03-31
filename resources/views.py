@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .models import Resource
-from .serializers import ResourceSerializer
+from .models import Resource, ResourceImage
+from .serializers import ResourceSerializer, ResourceImageSerializer
 
 class ResourceListView(generics.ListAPIView):
     serializer_class = ResourceSerializer
@@ -54,4 +54,18 @@ class AdminResourceListCreateView(generics.ListCreateAPIView):
 class AdminResourceDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
+    permission_classes = [IsAdminUser]
+
+class ResourceImageCreateView(generics.CreateAPIView):
+    serializer_class = ResourceImageSerializer
+    permission_classes = [IsAdminUser]
+
+    def perform_create(self, serializer):
+        resource_id = self.request.data.get('resource')
+        resource = Resource.objects.get(id=resource_id)
+        serializer.save(resource=resource)
+
+class ResourceImageDeleteView(generics.DestroyAPIView):
+    queryset = ResourceImage.objects.all()
+    serializer_class = ResourceImageSerializer
     permission_classes = [IsAdminUser]

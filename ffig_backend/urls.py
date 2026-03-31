@@ -47,9 +47,12 @@ from members.views import (
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
     StoryViewSet, AdminUserUpdateView, AdminLoginLogListView, wix_webhook,
-    AdminTicketListView
+    AdminTicketListView, UniqueLocationsView
 )
-from resources.views import ResourceListView, AdminResourceListCreateView, AdminResourceDetailView
+from resources.views import (
+    ResourceListView, AdminResourceListCreateView, AdminResourceDetailView,
+    ResourceImageCreateView, ResourceImageDeleteView
+)
 from chat.views import (
     ConversationListView, MessageListView, SendMessageView, 
     UnreadCountView, CommunityChatView, ChatSearchView, 
@@ -75,6 +78,7 @@ urlpatterns = [
     path('api/events/tiers/', TicketTierCreateView.as_view(), name='tier-create'),
     path('api/events/tiers/<int:pk>/', TicketTierDeleteView.as_view(), name='tier-delete'),
     path('api/members/', MemberListView.as_view(), name='member-list'),
+    path('api/members/unique-locations/', UniqueLocationsView.as_view(), name='unique-locations'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
@@ -89,6 +93,8 @@ urlpatterns = [
     # Admin Resource Management
     path('api/admin/resources/', AdminResourceListCreateView.as_view(), name='admin-resource-list'),
     path('api/admin/resources/<int:pk>/', AdminResourceDetailView.as_view(), name='admin-resource-detail'),
+    path('api/admin/resources/images/', ResourceImageCreateView.as_view(), name='admin-resource-image-create'),
+    path('api/admin/resources/images/<int:pk>/', ResourceImageDeleteView.as_view(), name='admin-resource-image-delete'),
 
     # Phase 2: RBAC & Admin
     path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),

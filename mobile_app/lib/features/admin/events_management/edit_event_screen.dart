@@ -34,15 +34,20 @@ class _EditEventScreenState extends State<EditEventScreen> {
 
   bool _isLoading = false;
 
-  final List<Map<String, dynamic>> _localTiers = [];
-  final List<Map<String, dynamic>> _localSpeakers = [];
-  final List<Map<String, dynamic>> _localAgenda = [];
-  final List<Map<String, dynamic>> _localFaqs = [];
+  final List<dynamic> _tiers = [];
+  final List<dynamic> _speakers = [];
+  final List<dynamic> _agenda = [];
+  final List<dynamic> _faqs = [];
 
   @override
   void initState() {
     super.initState();
     if (widget.event != null) {
+        _tiers.addAll(widget.event!['tiers'] ?? []);
+        _speakers.addAll(widget.event!['speakers'] ?? []);
+        _agenda.addAll(widget.event!['agenda'] ?? []);
+        _faqs.addAll(widget.event!['faqs'] ?? []);
+
       _titleController.text = widget.event!['title'] ?? '';
       
       final rawDate = widget.event!['date'] ?? '';
@@ -197,16 +202,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
       final eventId = newEvent['id'];
 
       try {
-        for (var t in _localTiers) {
+        for (var t in _tiers) {
            await api.createTicketTier({...t, 'event': eventId});
         }
-        for (var s in _localSpeakers) {
+        for (var s in _speakers) {
            await api.createEventSpeaker({...s, 'event': eventId});
         }
-        for (var a in _localAgenda) {
+        for (var a in _agenda) {
            await api.createAgendaItem({...a, 'event': eventId});
         }
-        for (var f in _localFaqs) {
+        for (var f in _faqs) {
            await api.createEventFAQ({...f, 'event': eventId});
         }
         
@@ -219,23 +224,28 @@ class _EditEventScreenState extends State<EditEventScreen> {
       }
   }
 
-  Future<void> _deleteItem(String type, int indexOrId) async {
-    if (widget.event == null) {
-       setState(() {
-         if (type == 'tier') _localTiers.removeAt(indexOrId);
-         if (type == 'speaker') _localSpeakers.removeAt(indexOrId);
-         if (type == 'agenda') _localAgenda.removeAt(indexOrId);
-         if (type == 'faq') _localFaqs.removeAt(indexOrId);
-       });
-       return;
-    }
+  Future<void> _deleteItem(String type, int idOrIndex) async {
     try {
-      final api = AdminApiService();
-      if (type == 'tier') await api.deleteTicketTier(indexOrId);
-      if (type == 'speaker') await api.deleteEventSpeaker(indexOrId);
-      if (type == 'agenda') await api.deleteAgendaItem(indexOrId);
-      if (type == 'faq') await api.deleteEventFAQ(indexOrId);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deleted. Re-open to refresh.")));
+      if (widget.event != null) {
+        if (type == 'tier') await AdminApiService().deleteTicketTier(idOrIndex);
+        if (type == 'speaker') await AdminApiService().deleteEventSpeaker(idOrIndex);
+        if (type == 'agenda') await AdminApiService().deleteAgendaItem(idOrIndex);
+        if (type == 'faq') await AdminApiService().deleteEventFAQ(idOrIndex);
+        
+        setState(() {
+          if (type == 'tier') _tiers.removeWhere((t) => t['id'] == idOrIndex);
+          if (type == 'speaker') _speakers.removeWhere((s) => s['id'] == idOrIndex);
+          if (type == 'agenda') _agenda.removeWhere((a) => a['id'] == idOrIndex);
+          if (type == 'faq') _faqs.removeWhere((f) => f['id'] == idOrIndex);
+        });
+      } else {
+        setState(() {
+          if (type == 'tier') _tiers.removeAt(idOrIndex);
+          if (type == 'speaker') _speakers.removeAt(idOrIndex);
+          if (type == 'agenda') _agenda.removeAt(idOrIndex);
+          if (type == 'faq') _faqs.removeAt(idOrIndex);
+        });
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
@@ -287,26 +297,17 @@ class _EditEventScreenState extends State<EditEventScreen> {
          if (item == null) 'available': int.tryParse(cap.text) ?? 100
        };
        if (widget.event == null) {
-          setState(() => item == null ? _localTiers.add(data) : _localTiers[indexOrId!] = data);
+          setState(() => item == null ? _tiers.add(data) : _tiers[indexOrId!] = data);
        } else {
           if (item == null) {
-              final newTier = await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
-              if (widget.event!['ticket_tiers'] != null) {
-                setState(() {
-                  (widget.event!['ticket_tiers'] as List).add(newTier);
-                });
-              }
+              final newItem = await AdminApiService().createTicketTier({...data, 'event': widget.event!['id']});
+              setState(() => _tiers.add(newItem));
           } else {
               await AdminApiService().updateTicketTier(indexOrId!, data);
-              if (widget.event!['ticket_tiers'] != null) {
-                setState(() {
-                  final tiers = widget.event!['ticket_tiers'] as List;
-                  final idx = tiers.indexWhere((t) => t['id'] == indexOrId);
-                  if (idx != -1) {
-                    tiers[idx] = {...tiers[idx], ...data};
-                  }
-                });
-              }
+              setState(() {
+                  final idx = _tiers.indexWhere((t) => t['id'] == indexOrId);
+                  if (idx != -1) _tiers[idx] = {..._tiers[idx], ...data};
+              });
           }
        }
     }, isEdit: item != null);
@@ -316,7 +317,114 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final role = TextEditingController(text: item?['role']?.toString() ?? '');
     final photo = TextEditingController(text: item?['photo_url']?.toString() ?? '');
+
+    void _showUserSearch() {
+        final searchController = TextEditingController();
+        List<dynamic> users = [];
+        bool searchLoading = true; // Auto-trigger search on open
+
+        showDialog(
+            context: context,
+            builder: (ctx) => StatefulBuilder(
+                builder: (context, setDialogState) {
+                    // Logic to load users on first opening
+                    if (users.isEmpty && searchLoading && searchController.text.isEmpty) {
+                        AdminApiService().searchUsers("").then((results) {
+                            if (ctx.mounted) {
+                                setDialogState(() {
+                                    users = results;
+                                    searchLoading = false;
+                                });
+                            }
+                        }).catchError((e) {
+                             if (ctx.mounted) setDialogState(() => searchLoading = false);
+                        });
+                    }
+
+                    return AlertDialog(
+                        title: const Text("Select User as Speaker"),
+                        content: SizedBox(
+                            width: double.maxFinite,
+                            child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                    TextField(
+                                        controller: searchController,
+                                        decoration: InputDecoration(
+                                            hintText: "Search users...",
+                                            suffixIcon: IconButton(
+                                                icon: const Icon(Icons.search),
+                                                onPressed: () async {
+                                                    setDialogState(() => searchLoading = true);
+                                                    try {
+                                                        final results = await AdminApiService().searchUsers(searchController.text);
+                                                        setDialogState(() => users = results);
+                                                    } finally {
+                                                        setDialogState(() => searchLoading = false);
+                                                    }
+                                                },
+                                            ),
+                                        ),
+                                        onSubmitted: (_) async {
+                                            setDialogState(() => searchLoading = true);
+                                            try {
+                                                final results = await AdminApiService().searchUsers(searchController.text);
+                                                setDialogState(() => users = results);
+                                            } finally {
+                                                setDialogState(() => searchLoading = false);
+                                            }
+                                        },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (searchLoading) const Center(child: CircularProgressIndicator()),
+                                    SizedBox(
+                                        height: 300,
+                                        child: ListView.builder(
+                                            itemCount: users.length,
+                                            itemBuilder: (context, index) {
+                                                final u = users[index];
+                                                final profile = u['profile'] ?? {};
+                                                return ListTile(
+                                                    leading: CircleAvatar(
+                                                        backgroundImage: profile['photo'] != null ? NetworkImage(profile['photo']) : null,
+                                                        child: profile['photo'] == null ? const Icon(Icons.person) : null,
+                                                    ),
+                                                    title: Text("${u['first_name']} ${u['last_name']}"),
+                                                    subtitle: Text(profile['business_name'] ?? profile['tier'] ?? 'Member'),
+                                                    onTap: () {
+                                                        setState(() {
+                                                            name.text = "${u['first_name']} ${u['last_name']}";
+                                                            role.text = profile['business_name'] ?? profile['tier'] ?? '';
+                                                            photo.text = profile['photo'] ?? '';
+                                                        });
+                                                        Navigator.pop(ctx);
+                                                    },
+                                                );
+                                            },
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    );
+                }
+            )
+        );
+    }
+
     _showFormDialog(item == null ? "Add Speaker" : "Edit Speaker", [
+      ElevatedButton.icon(
+          onPressed: _showUserSearch, 
+          icon: const Icon(Icons.person_search), 
+          label: const Text("SEARCH EXISTING USERS"),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: FfigTheme.accentBrown.withOpacity(0.1),
+              foregroundColor: FfigTheme.primaryBrown,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 12)
+          ),
+      ),
+      const SizedBox(height: 16),
       _buildStyledTextField(name, "Full Name", icon: Icons.person, validator: (v) => v!.isEmpty ? "Name is required" : null),
       const SizedBox(height: 12),
       _buildStyledTextField(role, "Role / Title", icon: Icons.work, validator: (v) => v!.isEmpty ? "Role is required" : null),
@@ -329,12 +437,17 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'photo_url': normalizeUrl(photo.text),
        };
        if (widget.event == null) {
-          setState(() => item == null ? _localSpeakers.add(data) : _localSpeakers[indexOrId!] = data);
+          setState(() => item == null ? _speakers.add(data) : _speakers[indexOrId!] = data);
        } else {
           if (item == null) {
-              await AdminApiService().createEventSpeaker({...data, 'event': widget.event!['id']});
+              final newItem = await AdminApiService().createEventSpeaker({...data, 'event': widget.event!['id']});
+              setState(() => _speakers.add(newItem));
           } else {
               await AdminApiService().updateEventSpeaker(indexOrId!, data);
+              setState(() {
+                  final idx = _speakers.indexWhere((s) => s['id'] == indexOrId);
+                  if (idx != -1) _speakers[idx] = {..._speakers[idx], ...data};
+              });
           }
        }
     }, isEdit: item != null);
@@ -363,7 +476,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'description': desc.text,
        };
        if (widget.event == null) {
-          setState(() => item == null ? _localAgenda.add(data) : _localAgenda[indexOrId!] = data);
+          setState(() => item == null ? _agenda.add(data) : _agenda[indexOrId!] = data);
        } else {
           if (item == null) {
               await AdminApiService().createAgendaItem({...data, 'event': widget.event!['id']});
@@ -387,7 +500,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'answer': a.text,
        };
        if (widget.event == null) {
-          setState(() => item == null ? _localFaqs.add(data) : _localFaqs[indexOrId!] = data);
+          setState(() => item == null ? _faqs.add(data) : _faqs[indexOrId!] = data);
        } else {
           if (item == null) {
               await AdminApiService().createEventFAQ({...data, 'event': widget.event!['id']});
@@ -630,10 +743,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
               ]),
               
               const SizedBox(height: 24),
-              _buildListSection("Ticket Tiers", 'tier', widget.event != null ? widget.event!['ticket_tiers'] : _localTiers, (i) => "${i['name']} (${(i['currency'] ?? 'USD').toString().toUpperCase()} ${i['price']})", Icons.airplane_ticket),
-              _buildListSection("Speakers", 'speaker', widget.event != null ? widget.event!['speakers'] : _localSpeakers, (i) => "${i['name']} (${i['role']})", Icons.mic),
-              _buildListSection("Agenda", 'agenda', widget.event != null ? widget.event!['agenda'] : _localAgenda, (i) => "${i['start_time']} - ${i['title']}", Icons.calendar_view_day),
-              _buildListSection("FAQ", 'faq', widget.event != null ? widget.event!['faqs'] : _localFaqs, (i) => i['question'], Icons.help),
+              _buildListSection("Ticket Tiers", 'tier', _tiers, (i) => "${i['name']} (${(i['currency'] ?? 'USD').toString().toUpperCase()} ${i['price']})", Icons.airplane_ticket),
+              _buildListSection("Speakers", 'speaker', _speakers, (i) => "${i['name']} (${i['role']})", Icons.mic),
+              _buildListSection("Agenda", 'agenda', _agenda, (i) => "${i['start_time']} - ${i['title']}", Icons.calendar_view_day),
+              _buildListSection("FAQ", 'faq', _faqs, (i) => i['question'], Icons.help),
 
                const SizedBox(height: 100),
             ],

@@ -54,14 +54,18 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   }
   
   void _filterEvents() {
-    if (_searchQuery.isEmpty) {
-      _filteredEvents = _events;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      _filteredEvents = List.from(_events);
     } else {
+      final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
       _filteredEvents = _events.where((e) {
-        final t = e['title'].toString().toLowerCase();
-        final l = e['location'].toString().toLowerCase();
-        final q = _searchQuery.toLowerCase();
-        return t.contains(q) || l.contains(q);
+        final t = (e['title'] ?? '').toString().toLowerCase();
+        final l = (e['location'] ?? '').toString().toLowerCase();
+        
+        return terms.every((term) => 
+          t.contains(term) || l.contains(term)
+        );
       }).toList();
     }
   }
@@ -477,9 +481,26 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
                                     hintText: "Search events...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterEvents();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),

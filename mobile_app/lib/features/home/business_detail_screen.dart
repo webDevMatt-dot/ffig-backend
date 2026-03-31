@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared_widgets/user_avatar.dart';
 import 'models/business_profile.dart';
 import '../../core/utils/url_utils.dart';
+import '../chat/chat_screen.dart';
+import '../../core/services/membership_service.dart';
 
 class BusinessDetailScreen extends StatelessWidget {
   final BusinessProfile profile;
@@ -137,16 +139,46 @@ class BusinessDetailScreen extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            "Visionary behind ${profile.name}",
-                            style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                          Row(
+                            children: [
+                              const Icon(Icons.chat_bubble_outline, size: 12, color: Color(0xFFD4AF37)),
+                              const SizedBox(width: 4),
+                              Text(
+                                "Chat to the founder",
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFFD4AF37),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ],
+                      
+                      // Chat with Owner Button
+                      if (profile.ownerId != null)
+                        IconButton(
+                          onPressed: () {
+                             if (MembershipService.isPremium) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => ChatScreen(
+                                    recipientId: profile.ownerId!,
+                                    recipientName: profile.ownerName ?? profile.name,
+                                  ))
+                                );
+                             } else {
+                                MembershipService.showUpgradeDialog(context, "Chat with Business Owner");
+                             }
+                          },
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          color: const Color(0xFFD4AF37),
+                          tooltip: 'Chat with Owner',
+                        ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ],
         ),

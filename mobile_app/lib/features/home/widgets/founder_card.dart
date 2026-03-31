@@ -65,129 +65,138 @@ class _FounderCardState extends State<FounderCard> {
     final shadowColor = isDark ? Colors.transparent : Colors.black.withOpacity(0.05);
     final badgeBg = isDark ? Colors.black.withOpacity(0.25) : Colors.white.withOpacity(0.35);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
-      child: InkWell(
-        onTap: () {
-          // Navigation placeholder
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: FfigTheme.primaryBrown, width: 2),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: InkWell(
+          onTap: () {
+            // Navigation placeholder
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: FfigTheme.primaryBrown, width: 2),
+                      ),
+                      child: UserAvatar(
+                        radius: 28,
+                        imageUrl: widget.profile.photoUrl,
+                        firstName: widget.profile.name.split(' ').first,
+                        lastName: widget.profile.name.split(' ').length > 1 ? widget.profile.name.split(' ').last : '',
+                      ),
                     ),
-                    child: UserAvatar(
-                      radius: 28,
-                      imageUrl: widget.profile.photoUrl,
-                      firstName: widget.profile.name.split(' ').first,
-                      lastName: widget.profile.name.split(' ').length > 1 ? widget.profile.name.split(' ').last : '',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                widget.profile.name,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  widget.profile.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (widget.profile.isPremium) ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: Colors.amber, size: 16),
-                            ] else ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
+                              if (widget.profile.isPremium) ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: Colors.amber, size: 16),
+                              ] else ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
+                              ],
                             ],
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.profile.businessName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: FfigTheme.primaryBrown,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on_outlined, size: 14, color: theme.hintColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              widget.profile.country,
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.profile.businessName,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: FfigTheme.primaryBrown,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.star_rounded, color: _badgeTextColor, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'FOUNDER OF THE WEEK',
-                      style: TextStyle(
-                        color: _badgeTextColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, size: 14, color: theme.hintColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                widget.profile.country,
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                widget.profile.bio,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  height: 1.5,
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, color: _badgeTextColor, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'FOUNDER OF THE WEEK',
+                        style: TextStyle(
+                          color: _badgeTextColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Text(
+                      widget.profile.bio,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

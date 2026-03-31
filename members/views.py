@@ -44,19 +44,34 @@ class MemberListView(generics.ListAPIView):
         # 1. SORTING: Premium users (-is_premium) come first
         queryset = queryset.order_by('-is_premium', 'user__username')
 
-        # 2. SEARCH: Filter by industry or name
+        # 2. FILTERS
         search_query = self.request.query_params.get('search', None)
-        industry_query = self.request.query_params.get('industry', None)
+        industries = self.request.query_params.getlist('industry')
+        tiers = self.request.query_params.getlist('tier')
+        locations = self.request.query_params.getlist('location')
 
+        # Search: Filter by username, location, or business name
         if search_query:
             queryset = queryset.filter(
                 Q(user__username__icontains=search_query) | 
+                Q(user__first_name__icontains=search_query) |
+                Q(user__last_name__icontains=search_query) |
+                Q(user__email__icontains=search_query) |
                 Q(location__icontains=search_query) |
                 Q(business_name__icontains=search_query)
             )
         
-        if industry_query:
-            queryset = queryset.filter(industry=industry_query)
+        # Industry: Multi-select support
+        if industries:
+            queryset = queryset.filter(industry__in=industries)
+            
+        # Tier: Multi-select support
+        if tiers:
+            queryset = queryset.filter(tier__in=tiers)
+            
+        # Location/Country: Multi-select support (exact match on derived country strings)
+        if locations:
+            queryset = queryset.filter(location__in=locations)
         
         # 3. STATUS FILTER: Suspended or Blocked
         status_filter = self.request.query_params.get('status', None)
@@ -66,6 +81,16 @@ class MemberListView(generics.ListAPIView):
              queryset = queryset.filter(is_blocked=True)
 
         return queryset
+
+class UniqueLocationsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Derive unique locations/countries from existing users
+        # We assume users enter their location in a fairly consistent way, 
+        # but even if not, we show the unique strings found in the DB.
+        locations = Profile.objects.exclude(location='').values_list('location', flat=True).distinct()
+        return Response(list(locations))
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -288,46 +313,94 @@ class AdminAnalyticsView(APIView):
         from django.contrib.auth.models import User
         from members.models import Profile
         from events.models import Ticket
-        from django.db.models import Sum
+        from django.db.models import Sum, Count
+        from django.db.models.functions import TruncDay
 
         total_users = User.objects.count()
         active_users = User.objects.filter(is_active=True).count()
         
-        # Calculate Tiers
-        standard = Profile.objects.filter(tier='STANDARD').count()
-        premium = Profile.objects.filter(tier='PREMIUM').count()
+        # User Tiers (Pie Chart)
+        free = Profile.objects.filter(tier='FREE').count()
+        standard_c = Profile.objects.filter(tier='STANDARD').count()
+        premium_c = Profile.objects.filter(tier='PREMIUM').count()
         
+        # User Growth (Line Chart) - Past 30 Days
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        growth_data = User.objects.filter(date_joined__gte=thirty_days_ago) \
+            .annotate(day=TruncDay('date_joined')) \
+            .values('day') \
+            .annotate(count=Count('id')) \
+            .order_by('day')
+            
+        growth_list = [
+            {"day": item['day'].strftime('%Y-%m-%d'), "count": item['count']}
+            for item in growth_data
+        ]
+
         # Calculate Revenue (Ticket Sales)
-        from django.db.models import Sum
         ticket_revenue = Ticket.objects.aggregate(total=Sum('tier__price'))['total'] or 0
         
+        # Calculate Revenue (Ticket Sales) grouped by currency
+        revenue_by_currency_data = Ticket.objects.values('tier__currency').annotate(
+            total_revenue=Sum('tier__price')
+        )
+        
+        revenue_by_currency = [
+            {"currency": item['tier__currency'].upper(), "total": float(item['total_revenue'] or 0)} 
+            for item in revenue_by_currency_data
+        ]
+        
         # Calculate revenue per event directly from DB
-        revenue_per_event_data = Ticket.objects.values('event__title').annotate(
+        revenue_per_event_data = Ticket.objects.values('event__title', 'tier__currency').annotate(
             total_revenue=Sum('tier__price')
         ).order_by('-total_revenue')
 
         revenue_per_event = [
-            {"event": item['event__title'], "revenue": float(item['total_revenue'] or 0)} 
+            {
+                "event": item['event__title'], 
+                "revenue": float(item['total_revenue'] or 0), 
+                "currency": item['tier__currency'].upper()
+            } 
             for item in revenue_per_event_data
         ]
         
         # Calculate Rates
-        conv_standard = f"{(standard / total_users * 100):.1f}%" if total_users > 0 else "0%"
-        conv_premium = f"{(premium / total_users * 100):.1f}%" if total_users > 0 else "0%"
+        conv_standard = f"{(standard_c / total_users * 100):.1f}%" if total_users > 0 else "0%"
+        conv_premium = f"{(premium_c / total_users * 100):.1f}%" if total_users > 0 else "0%"
+
+        # Use the first currency as primary for the summary count, or USD if present
+        primary_revenue = 0
+        primary_currency = 'USD'
+        for item in revenue_by_currency:
+            if item['currency'] == 'USD':
+                primary_revenue = item['total']
+                break
+        else:
+            if revenue_by_currency:
+                primary_revenue = revenue_by_currency[0]['total']
+                primary_currency = revenue_by_currency[0]['currency']
 
         return Response({
             "active_users": {
-                "daily": active_users, # Using active count as proxy for now
+                "daily": active_users,
                 "monthly": total_users,
             },
+            "user_tiers": {
+                "free": free,
+                "standard": standard_c,
+                "premium": premium_c,
+            },
+            "user_growth": growth_list,
             "conversion_rates": {
                 "free_to_standard": conv_standard,
                 "standard_to_premium": conv_premium,
             },
             "revenue": {
-                "ads": 0, # Placeholder until Ads module tracks revenue
-                "events": float(ticket_revenue),
-                "total": float(ticket_revenue),
+                "ads": 0,
+                "by_currency": revenue_by_currency,
+                "events": primary_revenue,
+                "total": primary_revenue,
+                "currency": primary_currency,
                 "per_event": revenue_per_event
             }
         })

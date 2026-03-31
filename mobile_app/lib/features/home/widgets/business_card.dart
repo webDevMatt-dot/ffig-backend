@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui'; // For ImageFilter
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -15,8 +17,15 @@ import '../models/business_profile.dart';
 /// - Glassmorphic badge and navigation to Detail Screen.
 class BusinessCard extends StatefulWidget {
   final BusinessProfile profile;
+  final Uint8List? localImageBytes;
+  final bool isPreview;
 
-  const BusinessCard({super.key, required this.profile});
+  const BusinessCard({
+    super.key,
+    required this.profile,
+    this.localImageBytes,
+    this.isPreview = false,
+  });
 
   @override
   State<BusinessCard> createState() => _BusinessCardState();
@@ -34,13 +43,22 @@ class _BusinessCardState extends State<BusinessCard> {
   @override
   void didUpdateWidget(covariant BusinessCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.profile.imageUrl != widget.profile.imageUrl) {
+    if (oldWidget.profile.imageUrl != widget.profile.imageUrl || 
+        oldWidget.localImageBytes != widget.localImageBytes) {
       _updateBadgeTextColor();
     }
   }
 
   Future<void> _updateBadgeTextColor() async {
     final imageUrl = widget.profile.imageUrl;
+    final localBytes = widget.localImageBytes;
+
+    if (localBytes != null) {
+      final isLight = await _isLightImage(MemoryImage(localBytes));
+      if (mounted) setState(() => _badgeTextColor = isLight ? Colors.black : Colors.white);
+      return;
+    }
+
     if (imageUrl.isEmpty) {
       if (mounted) {
         setState(() => _badgeTextColor = Colors.black);
@@ -63,17 +81,27 @@ class _BusinessCardState extends State<BusinessCard> {
     final theme = Theme.of(context);
 
     return RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: AspectRatio(
-          aspectRatio: 1.6, // Featured look
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (widget.profile.imageUrl.isNotEmpty)
+      child: Container(
+        height: 340,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+              if (widget.localImageBytes != null)
+                Image.memory(
+                  widget.localImageBytes!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                )
+              else if (widget.profile.imageUrl.isNotEmpty)
                 CachedNetworkImage(
                   imageUrl: widget.profile.imageUrl,
                   fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
                   placeholder: (context, url) => Container(color: theme.cardColor),
                   errorWidget: (context, url, error) => Container(
                     color: theme.cardColor,
@@ -128,7 +156,7 @@ class _BusinessCardState extends State<BusinessCard> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () {
+                  onTap: widget.isPreview ? null : () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -156,9 +184,15 @@ class _BusinessCardState extends State<BusinessCard> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (widget.profile.isPremium) ...[
+                             if (widget.profile.tier == 'PREMIUM' || widget.profile.tier == 'STANDARD') ...[
                               const SizedBox(width: 8),
-                              const Icon(Icons.verified, color: Colors.amber, size: 20),
+                              Icon(
+                                Icons.verified, 
+                                color: widget.profile.tier == 'PREMIUM' 
+                                    ? const Color(0xFFD4AF37) 
+                                    : const Color(0xFF007AFF), 
+                                size: 20
+                              ),
                             ],
                           ],
                         ),
@@ -189,6 +223,31 @@ class _BusinessCardState extends State<BusinessCard> {
                               size: 14,
                               color: Colors.white.withOpacity(0.8),
                             ),
+                            if (widget.profile.ownerId != null) ...[
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFD4AF37), width: 0.5),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.chat_bubble_outline, size: 10, color: Color(0xFFD4AF37)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "CHAT TO THE FOUNDER",
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFFD4AF37),
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -196,8 +255,7 @@ class _BusinessCardState extends State<BusinessCard> {
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

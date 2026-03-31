@@ -7,6 +7,9 @@ import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
 import '../../core/utils/url_utils.dart';
+import '../../core/services/admin_api_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 /// Screen to manage VIP Resources (Magazines, Masterclasses, etc).
 ///
@@ -38,6 +41,8 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   final _urlController = TextEditingController();
   final _thumbController = TextEditingController();
   String _selectedCategory = 'MAG'; // Default
+  File? _selectedPdf;
+  String? _pdfName;
 
   @override
   void initState() {
@@ -104,6 +109,8 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         _thumbController.clear();
         _selectedCategory = 'MAG';
     }
+    _selectedPdf = null;
+    _pdfName = item?['file'] != null ? item!['file'].toString().split('/').last : null;
 
     showModalBottomSheet(
       context: context,
@@ -141,6 +148,65 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                     const SizedBox(height: 16),
                     _buildField(_thumbController, "Thumbnail URL", Icons.image, required: false),
                     const SizedBox(height: 16),
+                    
+                    // PDF Picker
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8)
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.picture_as_pdf, color: Colors.red),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _selectedPdf != null ? _selectedPdf!.path.split('/').last : (_pdfName ?? "No PDF Selected"),
+                              style: TextStyle(color: (_selectedPdf == null && _pdfName == null) ? Colors.grey : null),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: ['pdf'],
+                              );
+                              if (result != null) {
+                                setModalState(() => _selectedPdf = File(result.files.single.path!));
+                              }
+                            }, 
+                            child: const Text("PICK PDF")
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    if (_editingId != null) ...[
+                        const Divider(),
+                        const Text("Image Gallery", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        if (item?['images'] != null)
+                           ...(item!['images'] as List).map((img) => ListTile(
+                             leading: Image.network(img['image'], width: 40, height: 40, fit: BoxFit.cover),
+                             title: Text(img['description'] ?? 'No description', maxLines: 1, overflow: TextOverflow.ellipsis),
+                             trailing: IconButton(
+                               icon: const Icon(Icons.delete_outline, color: Colors.red),
+                               onPressed: () async {
+                                 await AdminApiService().deleteResourceGalleryImage(img['id']);
+                                 _fetchResources();
+                                 Navigator.pop(ctx);
+                               },
+                             ),
+                           )),
+                        TextButton.icon(
+                          onPressed: () => _showAddGalleryImageDialog(int.parse(_editingId!)), 
+                          icon: const Icon(Icons.add_a_photo), 
+                          label: const Text("ADD GALLERY IMAGE")
+                        ),
+                        const Divider(),
+                    ],
                     
                     DropdownButtonFormField<String>(
                          initialValue: _selectedCategory,
@@ -218,35 +284,68 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final token = await _storage.read(key: 'access_token');
-      
-      final body = jsonEncode({
+      final data = {
         'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
         'url': normalizeUrl(_urlController.text),
         'thumbnail_url': _thumbController.text.trim().isEmpty ? null : normalizeUrl(_thumbController.text),
         'category': _selectedCategory,
-      });
+      };
 
-      final uri = _editingId != null 
-          ? Uri.parse('${baseUrl}admin/resources/$_editingId/')
-          : Uri.parse('${baseUrl}admin/resources/');
-
-      final response = _editingId != null
-          ? await http.put(uri, headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: body)
-          : await http.post(uri, headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: body);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editingId != null ? 'Resource Updated' : 'Resource Created')));
-        _fetchResources();
+      if (_editingId != null) {
+        await AdminApiService().updateAdminResource(int.parse(_editingId!), data, pdfFile: _selectedPdf);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource Updated')));
       } else {
-        if (mounted) DialogUtils.showError(context, "Action Failed", response.body);
+        await AdminApiService().createAdminResource(data, pdfFile: _selectedPdf);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource Created')));
       }
+      _fetchResources();
     } catch (e) {
       if (mounted) DialogUtils.showError(context, "Error", e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showAddGalleryImageDialog(int resourceId) {
+     final desc = TextEditingController();
+     File? img;
+     showDialog(
+       context: context,
+       builder: (ctx) => StatefulBuilder(
+         builder: (context, setDialogState) {
+           return AlertDialog(
+             title: const Text("Add Gallery Image"),
+             content: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 if (img != null) Image.file(img!, height: 100),
+                 ElevatedButton(
+                   onPressed: () async {
+                      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+                      if (result != null) setDialogState(() => img = File(result.files.single.path!));
+                   }, 
+                   child: const Text("PICK IMAGE")
+                 ),
+                 TextField(controller: desc, decoration: const InputDecoration(labelText: "Description")),
+               ],
+             ),
+             actions: [
+               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
+               ElevatedButton(
+                 onPressed: () async {
+                   if (img == null) return;
+                   await AdminApiService().addResourceGalleryImage(resourceId, img!, description: desc.text);
+                   Navigator.pop(ctx);
+                   _fetchResources();
+                 }, 
+                 child: const Text("ADD")
+               ),
+             ],
+           );
+         }
+       )
+     );
   }
 
   Future<void> _toggleResourceActive(Map<String, dynamic> item) async {

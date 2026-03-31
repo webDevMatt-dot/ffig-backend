@@ -69,8 +69,6 @@ class _TicketSelectionScreenState extends State<TicketSelectionScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(tier['name'], style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Text("${tier['available']} remaining", style: const TextStyle(color: Colors.grey)),
                               ],
                             ),
                           ),

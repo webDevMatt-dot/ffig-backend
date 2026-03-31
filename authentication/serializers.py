@@ -126,15 +126,25 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     is_premium = serializers.BooleanField(source='profile.is_premium', required=False)
     tier = serializers.CharField(source='profile.tier', required=False)
+    photo_url = serializers.SerializerMethodField()
 
     profile = serializers.DictField(write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'is_premium', 'tier', 'photo_url', 'profile']
         extra_kwargs = {
             'username': {'validators': []},  # Remove default UniqueValidator to handle updates manually
         }
+
+    def get_photo_url(self, obj):
+        try:
+            profile = obj.profile
+            if profile.photo:
+                return profile.photo.url
+            return profile.photo_url
+        except:
+            return None
 
     def _get_target_user_pk(self):
         if self.instance:

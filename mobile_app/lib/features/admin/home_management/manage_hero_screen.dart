@@ -8,6 +8,8 @@ import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/utils/url_utils.dart';
+import '../../home/models/hero_item.dart';
+import '../../home/widgets/hero_banner.dart';
 
 class ManageHeroScreen extends StatefulWidget {
   const ManageHeroScreen({super.key});
@@ -48,13 +50,23 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   }
   
   void _filterItems() {
-    if (_searchQuery.isEmpty) {
-      _filteredHeroItems = _heroItems;
-    } else {
-      _filteredHeroItems = _heroItems.where((i) => 
-        (i['title'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
-    }
+     final query = _searchQuery.trim().toLowerCase();
+     if (query.isEmpty) {
+       _filteredHeroItems = List.from(_heroItems);
+     } else {
+       final terms = query.split(' ').where((t) => t.isNotEmpty).toList();
+       _filteredHeroItems = _heroItems.where((i) {
+          final title = (i['title'] ?? '').toString().toLowerCase();
+          final type = (i['type'] ?? '').toString().toLowerCase();
+          final url = (i['action_url'] ?? '').toString().toLowerCase();
+          
+          return terms.every((term) => 
+            title.contains(term) || 
+            type.contains(term) || 
+            url.contains(term)
+          );
+       }).toList();
+     }
   }
 
   Future<void> _fetchItems() async {
@@ -167,6 +179,25 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                     ),
                     const SizedBox(height: 20),
                     
+                    // LIVE PREVIEW
+                    const Text("LIVE PREVIEW", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
+                    HeroBanner(
+                      isPreview: true,
+                      localImageBytes: _selectedImageBytes is Uint8List ? _selectedImageBytes as Uint8List : null,
+                      item: HeroItem(
+                        id: _editingId ?? 'new',
+                        title: _titleController.text,
+                        type: _selectedType,
+                        imageUrl: _selectedImageBytes is String ? _selectedImageBytes as String : (item?['image'] ?? ''),
+                        actionUrl: _urlController.text,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 16),
+                    
                     // Image Picker
                     GestureDetector(
                         onTap: () => _pickImage(setModalState),
@@ -223,11 +254,12 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                       controller: _titleController,
                       decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
+                      onChanged: (v) => setModalState(() {}),
                     ),
                     const SizedBox(height: 16),
                     
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedType,
+                      value: _selectedType,
                       decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
                       items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                       onChanged: (v) => setModalState(() => _selectedType = v!),
@@ -237,6 +269,7 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                     TextFormField(
                       controller: _urlController,
                       decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
+                      onChanged: (v) => setModalState(() {}),
                     ),
                     const SizedBox(height: 24),
                     
@@ -402,9 +435,26 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                     children: [
                         Expanded(
                             child: TextField(
+                                controller: TextEditingController.fromValue(
+                                  TextEditingValue(
+                                    text: _searchQuery,
+                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
+                                  ),
+                                ),
                                 decoration: InputDecoration(
-                                    hintText: "Search items...",
+                                    hintText: "Search banners...",
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchQuery.isNotEmpty 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _searchQuery = "";
+                                                _filterItems();
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
                                 ),
