@@ -742,37 +742,23 @@ class AdminApiService {
     final token = await _getToken();
     final url = id != null ? '$_baseUrl/$endpoint/$id/' : '$_baseUrl/$endpoint/';
     
-    // Check if imageFile is actually a URL string
-    if (imageFile is String && imageFile.startsWith('http')) {
-        // Just send as JSON field
-        final Map<String, dynamic> jsonFields = Map.from(fields);
-        jsonFields[fileField] = imageFile;
-        // Adjust headers for JSON
-        final response = method == 'POST' 
-            ? await http.post(Uri.parse(url), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: jsonEncode(jsonFields))
-            : await http.patch(Uri.parse(url), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}, body: jsonEncode(jsonFields));
-            
-        if (response.statusCode != 200 && response.statusCode != 201) {
-            throw Exception('Failed to upload/update with URL: ${response.body}');
-        }
-        return;
-    }
-
     // Normal Multipart
     var request = http.MultipartRequest(method, Uri.parse(url));
     request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
 
     if (imageFile != null) {
-      if (kIsWeb) {
-         if (imageFile is List<int>) {
-             request.files.add(http.MultipartFile.fromBytes(
-              fileField,
-              imageFile,
-              filename: 'upload.jpg', 
-              contentType: MediaType('image', 'jpeg'),
-            ));
-         }
+      if (imageFile is String && imageFile.startsWith('http')) {
+        // This is an existing URL. DO NOT add it to MultipartRequest.files (it's not a file)
+        // AND DO NOT add it to fields (it will trigger "not a file" on an ImageField).
+        // Skip it so the backend keeps the existing value.
+      } else if (kIsWeb && imageFile is List<int>) {
+        request.files.add(http.MultipartFile.fromBytes(
+          fileField,
+          imageFile,
+          filename: 'upload.jpg', 
+          contentType: MediaType('image', 'jpeg'),
+        ));
       } else if (imageFile is File) {
         request.files.add(await http.MultipartFile.fromPath(
           fileField,

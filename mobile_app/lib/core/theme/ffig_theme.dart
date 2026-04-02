@@ -12,6 +12,10 @@ class FfigTheme {
   static const Color textGrey = Color(0xFF666666);
   static const Color textLight = Color(0xFF999999);
 
+  // --- DARK THEME TOKENS ---
+  static const Color scaffoldDark = Color(0xFF0D1117);
+  static const Color surfaceDark = Color(0xFF161B22);
+
   // --- TEXT STYLES (Modern / React.js Vibe) ---
   // Using 'Inter' for that clean, technical, high-end web feel.
   static TextTheme get textTheme {

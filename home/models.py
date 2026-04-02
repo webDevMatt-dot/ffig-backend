@@ -68,15 +68,28 @@ class FounderProfile(models.Model):
     ]
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='FREE')
     is_premium = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    expires_at = models.DateTimeField(null=True, blank=True, help_text="Defaults to 7 days from now")
+    is_active = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="Set automatically to 7 days from activation")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # 1. Auto-set Expiry if new or not set
-        if not self.expires_at:
+        # 1. Handle Activation Logic (Transition from False to True)
+        if self.pk:
+            try:
+                old_instance = FounderProfile.objects.get(pk=self.pk)
+                if not old_instance.is_active and self.is_active:
+                    # Just Activated! Start the 7-day clock
+                    self.expires_at = timezone.now() + timedelta(days=7)
+                    # Deactivate others (Only one Founder of the Week)
+                    FounderProfile.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+            except FounderProfile.DoesNotExist:
+                pass
+        elif self.is_active:
+            # Created as Active (e.g. via Admin) - Still set expiry
             self.expires_at = timezone.now() + timedelta(days=7)
-        
+            # Deactivate others
+            FounderProfile.objects.filter(is_active=True).update(is_active=False)
+
         # 2. Auto-populate from User Profile if user is selected
         if self.user:
             try:

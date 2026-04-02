@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
@@ -296,6 +297,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Container(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
@@ -315,7 +317,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: isDark ? Colors.white.withOpacity(0.5) : Colors.grey[400]!,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -625,7 +627,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
         'bio': _bioController.text,
         'is_premium': _isPremium.toString(),
         'tier': _tier,
-        'is_active': 'true',
+        'is_active': _editingId != null ? 'true' : 'false', // NEW: Default to Draft for new creations
       };
       
       if (_linkedUserId != null) {
@@ -633,10 +635,24 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       }
 
       dynamic imageToUpload;
-      if (_selectedImageBytes is String) {
-        imageToUpload = _selectedImageBytes;
+      if (_selectedImageBytes is String && _selectedImageBytes.toString().startsWith('http')) {
+        // IF CREATING NEW: We MUST download the URL to bytes because POST requires a file.
+        // IF EDITING: We can keep it as a string, and AdminApiService will skip it (preserving existing).
+        if (_editingId == null) {
+          try {
+            final response = await http.get(Uri.parse(_selectedImageBytes));
+            if (response.statusCode == 200) {
+              imageToUpload = response.bodyBytes;
+            }
+          } catch (e) {
+            print("Failed to auto-download profile photo: $e");
+            // Fallback to null, API might fail with "photo required" but better than "not a file"
+          }
+        } else {
+          imageToUpload = _selectedImageBytes;
+        }
       } else if (_selectedImageBytes != null) {
-        imageToUpload = kIsWeb ? _selectedImageBytes : _selectedImageFile;
+        imageToUpload = kIsWeb ? _selectedImageBytes : (_selectedImageFile ?? _selectedImageBytes);
       }
 
       if (_editingId != null) {
@@ -792,20 +808,42 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                         : ListView.builder(
                               itemCount: _filteredProfiles.length,
                               itemBuilder: (context, index) {
-                                final item = _filteredProfiles[index];
-                                final isActive = item['is_active'] ?? true;
-                                
-                                return AdminDarkListItem(
-                                  title: item['name'] ?? 'No Name',
-                                  subtitle: "${item['business_name'] ?? ''} • ${item['country'] ?? ''}",
-                                  imageUrl: item['photo'],
-                                  fallbackIcon: Icons.person_outline,
-                                  onTap: () => _showEditor(item),
-                                  statusChip: item['id'] == liveId
-                                      ? _statusChip("LIVE", Colors.green)
-                                      : (!isActive ? _statusChip("INACTIVE", Colors.red) : null),
-                                );
-                              },
+                                  final item = _filteredProfiles[index];
+                                  final isActive = item['is_active'] ?? false;
+                                  final expiresAtStr = item['expires_at'];
+                                  final expiresAt = expiresAtStr != null ? DateTime.tryParse(expiresAtStr) : null;
+                                  final isExpired = expiresAt != null && expiresAt.isBefore(DateTime.now());
+                                  
+                                  String statusText = "DRAFT";
+                                  Color statusColor = Colors.grey;
+                                  
+                                  if (isActive) {
+                                    if (isExpired) {
+                                      statusText = "EXPIRED";
+                                      statusColor = Colors.red;
+                                    } else {
+                                      statusText = "LIVE";
+                                      statusColor = Colors.green;
+                                    }
+                                  }
+
+                                  return AdminDarkListItem(
+                                    title: item['name'] ?? 'No Name',
+                                    subtitle: "${item['business_name'] ?? ''} • ${item['country'] ?? ''}",
+                                    imageUrl: item['photo'],
+                                    fallbackIcon: Icons.person_outline,
+                                    onTap: () => _showEditor(item),
+                                    statusChip: _statusChip(statusText, statusColor),
+                                    trailing: !isActive ? TextButton(
+                                      onPressed: () => _toggleActive(item),
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: Colors.green.withOpacity(0.1),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      ),
+                                      child: Text("GO LIVE", style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 11)),
+                                    ) : null,
+                                  );
+                                },
                         ),
                 ),
             ],

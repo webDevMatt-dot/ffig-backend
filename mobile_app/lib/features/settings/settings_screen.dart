@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
@@ -219,39 +222,186 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showPasswordChangeDialog() {
-      final oldPassCtrl = TextEditingController();
-      final newPassCtrl = TextEditingController();
-      final confirmPassCtrl = TextEditingController();
-      
-      showDialog(
-        context: context, 
-        builder: (context) => AlertDialog(
-          title: const Text("Change Password"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-               TextField(controller: oldPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "Current Password")),
-               const SizedBox(height: 8),
-               TextField(controller: newPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "New Password")),
-               const SizedBox(height: 8),
-               TextField(controller: confirmPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "Confirm New Password")),
-            ],
+    final oldPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            ElevatedButton(
-              onPressed: () {
-                 if (newPassCtrl.text != confirmPassCtrl.text) {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("New passwords do not match")));
-                     return;
-                 }
-                 _changePassword(oldPassCtrl.text, newPassCtrl.text);
-              }, 
-              child: const Text("Update")
-            )
-          ],
-        )
-      );
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: FfigTheme.primaryBrown.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.shield_outlined, color: FfigTheme.primaryBrown, size: 24),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "SECURE IDENTITY",
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                                color: isDark ? Colors.white : FfigTheme.textDark,
+                              ),
+                            ),
+                            Text(
+                              "Change your access key",
+                              style: GoogleFonts.inter(
+                                fontSize: 12, 
+                                color: isDark ? Colors.grey[500] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Inputs
+                    _buildPremiumDialogField(
+                      controller: oldPassCtrl,
+                      label: "Current Password",
+                      icon: Icons.key_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPremiumDialogField(
+                      controller: newPassCtrl,
+                      label: "New Password",
+                      icon: Icons.lock_open_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPremiumDialogField(
+                      controller: confirmPassCtrl,
+                      label: "Confirm New Password",
+                      icon: Icons.verified_user_outlined,
+                      validator: (v) {
+                        if (v != newPassCtrl.text) return "Passwords do not match";
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Actions
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.heavyImpact();
+                          if (formKey.currentState!.validate()) {
+                            _changePassword(oldPassCtrl.text, newPassCtrl.text);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: FfigTheme.primaryBrown, 
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          "SAVE CHANGES",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        "DISMISS",
+                        style: GoogleFonts.inter(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumDialogField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return TextFormField(
+      controller: controller,
+      obscureText: true,
+      validator: validator ?? (v) => (v == null || v.isEmpty) ? "Required" : null,
+      style: GoogleFonts.inter(
+        fontSize: 15, 
+        fontWeight: FontWeight.w600,
+        color: isDark ? Colors.white : FfigTheme.textDark,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.inter(color: Colors.grey[500], fontSize: 13),
+        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown, size: 20),
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.amber : FfigTheme.primaryBrown, width: 1)),
+      ),
+    );
   }
 
   @override
