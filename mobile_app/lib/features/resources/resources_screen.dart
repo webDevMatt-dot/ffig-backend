@@ -252,7 +252,17 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
          ]
        ),
        child: InkWell(
-        onTap: () {
+        onTap: () async {
+           // Mark as viewed on backend (Fire and forget style for speed)
+           final storage = const FlutterSecureStorage();
+           final token = await storage.read(key: 'access_token');
+           if (token != null) {
+              http.post(
+                Uri.parse('${baseUrl}resources/${res['id']}/view/'),
+                headers: {'Authorization': 'Bearer $token'}
+              ).catchError((_) => http.Response('error', 500));
+           }
+
            if (res['file'] != null && res['file'].toString().isNotEmpty) {
                Navigator.push(context, MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfUrl: res['file'], title: res['title'])));
            } else {

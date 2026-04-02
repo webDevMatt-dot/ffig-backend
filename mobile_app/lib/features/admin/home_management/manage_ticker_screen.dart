@@ -4,6 +4,7 @@ import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/utils/url_utils.dart';
+import '../widgets/admin_dark_list_item.dart';
 
 class ManageTickerScreen extends StatefulWidget {
   const ManageTickerScreen({super.key});
@@ -251,7 +252,16 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage News Ticker")),
+      appBar: AppBar(
+        title: const Text("Manage News Ticker"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add News Item",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -292,18 +302,6 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -321,26 +319,24 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
                                 final item = _filteredTickerItems[index];
                                 final isActive = item['is_active'] ?? true;
                                 
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: CircleAvatar(
-                                            backgroundColor: isActive ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                                            child: Icon(Icons.newspaper, color: isActive ? Colors.green : Colors.grey),
-                                        ),
-                                        title: Text(
-                                            item['text'] ?? '', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
-                                        ),
-                                        subtitle: item['url'] != null && item['url'].toString().isNotEmpty
-                                            ? Text(item['url'], maxLines: 1, overflow: TextOverflow.ellipsis)
-                                            : null,
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: item['text'] ?? '',
+                                  subtitle: item['url'],
+                                  fallbackIcon: Icons.newspaper_outlined,
+                                  onTap: () => _showEditor(item),
+                                  statusChip: !isActive
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            "INACTIVE",
+                                            style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        )
+                                      : null,
                                 );
                               },
                         ),

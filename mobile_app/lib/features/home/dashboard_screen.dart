@@ -101,6 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Timer? _notificationTimer; // Periodically checks for new messages/alerts
   int _lastUnreadCount = 0;
   int _communityUnreadCount = 0; // NEW
+  int _unseenResourcesCount = 0; // NEW
   int _lastNotificationId = 0;
   final _storage = const FlutterSecureStorage();
 
@@ -168,8 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }
 
-    // 2. Check Community Messages (NEW)
-    _fetchCommunityUnread(token);
+    // 3. Check Resources (NEW)
+    _fetchUnseenResources(token);
 
     // 3. Check Notifications - Disabled for Firebase transition
     // _checkNotifications(token);
@@ -807,6 +808,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  Future<void> _fetchUnseenResources(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}resources/unseen-count/'),
+        headers: {'Authorization': 'Bearer $token'}
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _unseenResourcesCount = data['unseen_count'] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   /// Refreshes all homepage data.
   Future<void> _onRefresh() async {
     final token = await _storage.read(key: 'access_token');
@@ -815,6 +835,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _loadHomepageContent(),
       _checkPremiumStatus(),
       if (token != null) _fetchCommunityUnread(token),
+      if (token != null) _fetchUnseenResources(token),
     ].whereType<Future>());
   }
 
@@ -912,11 +933,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                       // Membership Status Tile
                       Expanded(
                         child: BentoTile(
-                          title: _isPremium
+                          title: MembershipService.isPremium
                               ? "Premium"
                               : (MembershipService.isStandard
-                                  ? "Standard"
-                                  : "Free"),
+                                  ? "Upgrade to Premium"
+                                  : "Upgrade Membership"),
                           subtitle: "Membership",
                           height: 160,
                           color: _isPremium
@@ -929,7 +950,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             size: 24,
                           ),
                           onTap: () {
-                            // TODO: Navigate to Membership details
+                            if (MembershipService.isPremium) return;
+                            Navigator.push(context, MaterialPageRoute(builder: (c) => const PremiumScreen()));
                           },
                         ),
                       ),
@@ -1075,16 +1097,25 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: BentoTile(
-                          title: "Resources",
-                          subtitle: "Library",
-                          height: 140,
-                          isGlass: true, // Glass effect for hover/light mode
-                          icon: const Icon(Icons.book, color: Colors.grey),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (c) => const ResourcesScreen(),
+                        child: Badge(
+                          backgroundColor: Colors.red,
+                          isLabelVisible: _unseenResourcesCount > 0,
+                          label: Text('$_unseenResourcesCount'),
+                          offset: const Offset(-20, 20),
+                          child: BentoTile(
+                            title: "Resources",
+                            subtitle: _unseenResourcesCount > 0 ? "New Content" : "Library",
+                            height: 140,
+                            isGlass: true, // Glass effect for hover/light mode
+                            icon: Icon(
+                               Icons.book, 
+                               color: _unseenResourcesCount > 0 ? FfigTheme.primaryBrown : Colors.grey
+                            ),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (c) => const ResourcesScreen(),
+                              ),
                             ),
                           ),
                         ),

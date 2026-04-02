@@ -1,7 +1,9 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .models import Resource, ResourceImage
+from .models import Resource, ResourceImage, ResourceView
 from .serializers import ResourceSerializer, ResourceImageSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 class ResourceListView(generics.ListAPIView):
     serializer_class = ResourceSerializer
@@ -80,3 +82,41 @@ class ResourceImageDeleteView(generics.DestroyAPIView):
     queryset = ResourceImage.objects.all()
     serializer_class = ResourceImageSerializer
     permission_classes = [IsAdminUser]
+
+class MarkResourceViewed(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            resource = Resource.objects.get(pk=pk, is_active=True)
+            ResourceView.objects.get_or_create(user=request.user, resource=resource)
+            return Response({"status": "success"})
+        except Resource.DoesNotExist:
+            return Response({"error": "Resource not found"}, status=404)
+
+class ResourceUnseenCount(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Base Query: Only Active Resources
+        queryset = Resource.objects.filter(is_active=True)
+        
+        # 2. Replicate the Filtering Logic from ResourceListView to be consistent
+        # Check Premium Status
+        is_premium = False
+        if hasattr(user, 'profile'):
+             is_premium = user.profile.tier == 'PREMIUM' or user.profile.is_premium
+        if user.is_staff:
+             is_premium = True
+
+        vip_categories = ['MAG', 'CLASS', 'NEWS', 'POD']
+        if not is_premium:
+             queryset = queryset.exclude(category__in=vip_categories)
+
+        # 3. Exclude resources already viewed by this user
+        viewed_ids = ResourceView.objects.filter(user=user).values_list('resource_id', flat=True)
+        unseen_count = queryset.exclude(id__in=viewed_ids).count()
+        
+        return Response({"unseen_count": unseen_count})

@@ -15,6 +15,7 @@ import '../../../shared_widgets/user_avatar.dart';
 import '../../home/models/founder_profile.dart';
 import '../../home/widgets/founder_spotlight_card.dart';
 import '../widgets/user_picker_dialog.dart';
+import '../widgets/admin_dark_list_item.dart';
 
 class ManageFounderScreen extends StatefulWidget {
   const ManageFounderScreen({super.key});
@@ -727,7 +728,16 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     } catch (_) {}
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Founder Spotlight")),
+      appBar: AppBar(
+        title: const Text("Manage Founder Spotlight"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Founder Spotlight",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -768,18 +778,6 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -797,69 +795,35 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                 final item = _filteredProfiles[index];
                                 final isActive = item['is_active'] ?? true;
                                 
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: CircleAvatar(
-                                            backgroundImage: item['photo'] != null ? NetworkImage(item['photo']) : null,
-                                            child: item['photo'] == null ? const Icon(Icons.person) : null,
-                                        ),
-                                        title: Row(
-                                          children: [
-                                            Text(
-                                                item['name'] ?? 'No Name', 
-                                                style: const TextStyle(fontWeight: FontWeight.bold)
-                                            ),
-                                            if (item['tier'] == 'PREMIUM' || item['tier'] == 'STANDARD')
-                                              Padding(
-                                                padding: const EdgeInsets.only(left: 6),
-                                                child: Icon(
-                                                  Icons.verified,
-                                                  size: 14,
-                                                  color: item['tier'] == 'PREMIUM' 
-                                                      ? const Color(0xFFD4AF37) 
-                                                      : const Color(0xFF007AFF),
-                                                ),
-                                              ),
-                                            const Spacer(),
-                                            if (item['id'] == liveId)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green.withOpacity(0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(color: Colors.green, width: 0.5),
-                                                ),
-                                                child: const Text("LIVE", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
-                                              )
-                                            else if (!isActive)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red.withOpacity(0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(color: Colors.red, width: 0.5),
-                                                ),
-                                                child: const Text("INACTIVE", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-                                              )
-                                          ],
-                                        ),
-                                        subtitle: Text(
-                                          "${item['business_name'] ?? ''} • ${item['country'] ?? ''}",
-                                          maxLines: 1, overflow: TextOverflow.ellipsis
-                                        ),
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: item['name'] ?? 'No Name',
+                                  subtitle: "${item['business_name'] ?? ''} • ${item['country'] ?? ''}",
+                                  imageUrl: item['photo'],
+                                  fallbackIcon: Icons.person_outline,
+                                  onTap: () => _showEditor(item),
+                                  statusChip: item['id'] == liveId
+                                      ? _statusChip("LIVE", Colors.green)
+                                      : (!isActive ? _statusChip("INACTIVE", Colors.red) : null),
                                 );
                               },
                         ),
                 ),
             ],
         ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

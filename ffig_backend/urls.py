@@ -51,6 +51,7 @@ from members.views import (
 )
 from resources.views import (
     ResourceListView, AdminResourceListCreateView, AdminResourceDetailView,
+    ResourceUnseenCount, MarkResourceViewed,
     ResourceImageCreateView, ResourceImageDeleteView
 )
 from chat.views import (
@@ -81,7 +82,8 @@ urlpatterns = [
     path('api/members/unique-locations/', UniqueLocationsView.as_view(), name='unique-locations'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
-    path('api/resources/', ResourceListView.as_view(), name='resource-list'),
+    path('api/resources/unseen-count/', ResourceUnseenCount.as_view(), name='resource-unseen-count'),
+    path('api/resources/<int:pk>/view/', MarkResourceViewed.as_view(), name='resource-mark-viewed'),
     
     # Authentication (Login, Register, Password Reset)
     path('api/', include('authentication.urls')),
@@ -170,4 +172,7 @@ urlpatterns = [
 
     # Wix Webhooks
     path('api/webhooks/wix/', wix_webhook, name='wix-webhook'),
+
+    # Community Features (Polls & Quizzes)
+    path('api/community/', include('community.urls')),
 ]

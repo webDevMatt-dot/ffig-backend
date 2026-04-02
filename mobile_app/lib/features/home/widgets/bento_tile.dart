@@ -44,9 +44,16 @@ class BentoTile extends StatelessWidget {
         color: color ?? theme.cardTheme.color,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
-          width: 1,
+          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.08),
+          width: 0.8,
         ),
+        boxShadow: isGlass && !isDark ? [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ] : null,
         gradient: isGlass ? LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -54,8 +61,8 @@ class BentoTile extends StatelessWidget {
             const Color(0xFF2C2C2C).withOpacity(0.4),
             const Color(0xFF0D1117).withOpacity(0.6),
           ] : [
-            Colors.white.withOpacity(0.6),
-            Colors.white.withOpacity(0.4),
+            Colors.white.withOpacity(0.8),
+            Colors.white.withOpacity(0.5),
           ],
         ) : null,
       ),

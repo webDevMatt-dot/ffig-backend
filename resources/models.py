@@ -35,3 +35,14 @@ class ResourceImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.resource.title}"
+
+class ResourceView(models.Model):
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    resource = models.ForeignKey(Resource, related_name='views', on_delete=models.CASCADE)
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'resource')
+
+    def __str__(self):
+        return f"{self.user.username} viewed {self.resource.title}"

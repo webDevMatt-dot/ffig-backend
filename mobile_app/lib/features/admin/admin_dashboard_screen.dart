@@ -15,6 +15,7 @@ import 'analytics/admin_analytics_screen.dart';
 import 'moderation/admin_reports_screen.dart';
 import 'ticket_scanner_screen.dart';
 import 'tickets/admin_tickets_screen.dart';
+import 'community_management/manage_community_screen.dart'; // NEW
 
 /// The main dashboard for Administrators.
 ///
@@ -140,6 +141,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           title: "Manage Resources",
           subtitle: "Magazines, Masterclasses, Newsletters",
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourceManagementScreen())),
+        ),
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, "Community Content"),
+        _buildAdminTile(
+          context,
+          icon: Icons.poll_outlined,
+          title: "Manage Polls & Quizzes",
+          subtitle: "Create and manage interactive content",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCommunityScreen())),
         ),
         
         const SizedBox(height: 24),
@@ -302,9 +312,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Icons.qr_code_scanner, 
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TicketScannerScreen()))
                 ),
-              ],
-            ),
-          ),
+                 _buildWideTile(
+                  context, 
+                  "Polls & Quizzes", 
+                  Icons.poll_outlined, 
+                  () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCommunityScreen()))
+                ),
+               ],
+             ),
+           ),
         ],
       ),
     );

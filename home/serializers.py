@@ -61,9 +61,18 @@ class FounderProfileSerializer(serializers.ModelSerializer):
             except:
                 return None
             
-        # 2. Fallback to User Profile photo_url if Linked
+        # 2. Fallback to User Profile photo if Linked
         if obj.user and hasattr(obj.user, 'profile'):
-            return obj.user.profile.photo_url
+            p = obj.user.profile
+            if p.photo:
+                try:
+                    url = p.photo.url
+                    request = self.context.get('request')
+                    if request and url.startswith('/'):
+                        return request.build_absolute_uri(url)
+                    return url
+                except: pass
+            return p.photo_url
             
         return None
 

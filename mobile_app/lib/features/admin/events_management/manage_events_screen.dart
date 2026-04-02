@@ -5,6 +5,7 @@ import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import 'edit_event_screen.dart';
+import '../widgets/admin_dark_list_item.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 
@@ -480,7 +481,16 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Events")),
+      appBar: AppBar(
+        title: const Text("Manage Events"),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const EditEventScreen(event: null))),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Event",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -521,18 +531,6 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const EditEventScreen(event: null))),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -555,43 +553,24 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                                   dt = DateTime.tryParse(dateStr);
                                 }
 
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: e['image_url'] != null && e['image_url'].toString().isNotEmpty
-                                            ? Image.network(e['image_url'], width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (c,err,s) => const Icon(Icons.event, size: 40))
-                                            : Container(
-                                                color: Theme.of(context).brightness == Brightness.dark 
-                                                    ? Colors.grey[800] 
-                                                    : Colors.grey[200],
-                                                width: 60, height: 60, 
-                                                child: const Icon(Icons.event)
-                                              ),
-                                        ),
-                                        title: Text(
-                                            e['title'] ?? 'No Title', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
-                                        ),
-                                         subtitle: Text(() {
-                                            final loc = e['location'] ?? '';
-                                            final start = dt != null ? "${dt.day}/${dt.month}/${dt.year}" : '';
-                                            final endStr = e['end_date'];
-                                            if (endStr != null && endStr.isNotEmpty) {
-                                                final endDt = DateTime.tryParse(endStr);
-                                                if (endDt != null) {
-                                                    return "$start to ${endDt.day}/${endDt.month}/${endDt.year} • $loc";
-                                                }
-                                            }
-                                            return "$start • $loc";
-                                          }()),
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(e),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: e['title'] ?? 'No Title',
+                                  imageUrl: e['image_url'],
+                                  fallbackIcon: Icons.event_outlined,
+                                  subtitle: () {
+                                    final loc = e['location'] ?? '';
+                                    final start = dt != null ? "${dt.day}/${dt.month}/${dt.year}" : '';
+                                    final endStr = e['end_date'];
+                                    if (endStr != null && endStr.isNotEmpty) {
+                                      final endDt = DateTime.tryParse(endStr);
+                                      if (endDt != null) {
+                                        return "$start to ${endDt.day}/${endDt.month}/${endDt.year} • $loc";
+                                      }
+                                    }
+                                    return "$start • $loc";
+                                  }(),
+                                  onTap: () => _showEditor(e),
+                                  statusChip: !isActive ? _statusChip("INACTIVE", Colors.red) : null,
                                 );
                               },
                         ),
@@ -607,6 +586,20 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
       controller: controller,
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: const OutlineInputBorder()),
       validator: required ? (v) => v!.isEmpty ? "Required" : null : null,
+    );
+  }
+
+  Widget _statusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

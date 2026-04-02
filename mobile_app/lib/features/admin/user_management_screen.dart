@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import 'dart:async';
 import 'edit_user_screen.dart';
-import '../../shared_widgets/user_avatar.dart';
+import 'widgets/admin_dark_list_item.dart';
 
 /// Screen for managing application users.
 ///
@@ -180,6 +180,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
     return Scaffold(
       appBar: AppBar(
           title: const Text("User Management"),
+          actions: [
+            IconButton(
+              onPressed: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => const EditUserScreen()));
+                _fetchAllCategories();
+              },
+              icon: const Icon(Icons.add, size: 34),
+              tooltip: "Add User",
+            ),
+          ],
           bottom: TabBar(
               controller: _tabController,
               tabs: const [
@@ -188,13 +198,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                   Tab(text: "Blocked"),
               ],
           ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-           await Navigator.push(context, MaterialPageRoute(builder: (_) => const EditUserScreen()));
-           _fetchAllCategories();
-        }, 
-        child: const Icon(Icons.add)
       ),
       body: Column(
         children: [
@@ -245,51 +248,52 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
               isSuspended = DateTime.parse(suspendedUntil).isAfter(DateTime.now());
           }
 
-          return ListTile(
-            leading: UserAvatar(
-                radius: 24,
-                imageUrl: () {
-                  var url = user['photo'] ?? user['photo_url'];
-                  if (url != null && url.toString().startsWith('/')) {
-                    return '${baseUrl.replaceAll('/api/', '')}$url';
-                  }
-                  return url;
-                }(),
-                username: user['username'],
-                firstName: user['first_name'],
-                lastName: user['last_name'],
-                backgroundColor: isBlocked ? Colors.red : (isSuspended ? Colors.orange : null),
-                textColor: (isBlocked || isSuspended) ? Colors.white : null,
-            ),
-            title: Text(user['username']),
-            subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    Text(user['email']),
-                    if (isBlocked) 
-                        const Text("BLOCKED", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10)),
-                    if (isSuspended && !isBlocked)
-                        const Text("SUSPENDED", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10)),
-                ],
-            ),
+          return AdminDarkListItem(
+            title: user['username'],
+            subtitle: user['email'],
+            imageUrl: () {
+              var url = user['photo'] ?? user['photo_url'];
+              if (url != null && url.toString().startsWith('/')) {
+                return '${baseUrl.replaceAll('/api/', '')}$url';
+              }
+              return url?.toString();
+            }(),
+            fallbackIcon: Icons.person_outline,
+            statusChip: isBlocked
+                ? _statusChip("BLOCKED", Colors.red)
+                : (isSuspended ? _statusChip("SUSPENDED", Colors.orange) : null),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                 IconButton(
-                   icon: const Icon(Icons.edit, color: Colors.blue), 
-                   onPressed: () async {
-                     await Navigator.push(context, MaterialPageRoute(builder: (_) => EditUserScreen(user: user)));
-                     _fetchAllCategories(silent: true);
-                   }
-                 ),
-                 IconButton(
-                   icon: const Icon(Icons.delete, color: Colors.red),
-                   onPressed: () => _confirmDeleteUser(user),
-                 ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white70),
+                  onPressed: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => EditUserScreen(user: user)));
+                    _fetchAllCategories(silent: true);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  onPressed: () => _confirmDeleteUser(user),
+                ),
               ],
             ),
           );
         },
       );
+  }
+
+  Widget _statusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 }

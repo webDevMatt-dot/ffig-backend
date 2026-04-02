@@ -3,6 +3,22 @@ from .models import Event, EventSpeaker, AgendaItem, EventFAQ, TicketTier, Ticke
 from decimal import Decimal
 
 class EventSpeakerSerializer(serializers.ModelSerializer):
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # 1. Resolve photo from linked user if possible
+        if instance.user and hasattr(instance.user, 'profile'):
+            p = instance.user.profile
+            if p.photo:
+                request = self.context.get('request')
+                url = p.photo.url
+                if request:
+                    data['photo_url'] = request.build_absolute_uri(url)
+                else:
+                    data['photo_url'] = url
+            elif p.photo_url:
+                data['photo_url'] = p.photo_url
+        return data
+
     class Meta:
         model = EventSpeaker
         fields = '__all__'

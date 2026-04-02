@@ -63,6 +63,7 @@ def ensure_rsvp_tier(sender, instance, **kwargs):
 
 class EventSpeaker(models.Model):
     event = models.ForeignKey(Event, related_name='speakers', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='speaker_profiles')
     name = models.CharField(max_length=100)
     role = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)

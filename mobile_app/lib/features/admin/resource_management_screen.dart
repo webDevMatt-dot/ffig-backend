@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
 import '../../core/utils/dialog_utils.dart';
+import 'widgets/admin_dark_list_item.dart';
 import '../../core/utils/url_utils.dart';
 import '../../core/services/admin_api_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -44,6 +45,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   File? _selectedPdf;
   String? _pdfName;
   File? _selectedThumbnail;
+  String? _existingImageUrl; // New field for display fallback
 
   @override
   void initState() {
@@ -102,6 +104,9 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         _urlController.text = item['url'] ?? '';
         _thumbController.text = item['thumbnail_url'] ?? '';
         _selectedCategory = item['category'] ?? 'MAG';
+        
+        // Prioritize actual file upload URL for preview
+        _existingImageUrl = item['thumbnail'] ?? item['thumbnail_url'];
     } else {
         _editingId = null;
         _titleController.clear();
@@ -109,6 +114,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         _urlController.clear();
         _thumbController.clear();
         _selectedCategory = 'MAG';
+        _existingImageUrl = null;
     }
     _selectedPdf = null;
     _selectedThumbnail = null;
@@ -120,47 +126,48 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
-              top: 20, left: 20, right: 20
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: SingleChildScrollView(
+          return FractionallySizedBox(
+            heightFactor: 0.82,
+            child: Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                top: 12, left: 20, right: 20,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                        children: [
-                          IconButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            icon: const Icon(Icons.close),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: "Close",
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _editingId != null ? "Edit Resource" : "Add Resource", 
-                              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _editingId != null ? "Edit Resource" : "Add Resource",
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 24),
                     
                     // --- PREMIUM HEADER IMAGE PREVIEW ---
                     Builder(
                       builder: (context) {
-                        final hasImage = _selectedThumbnail != null || _thumbController.text.isNotEmpty;
+                        final hasImage = _selectedThumbnail != null || 
+                                       _thumbController.text.isNotEmpty || 
+                                       (_existingImageUrl != null && _existingImageUrl!.isNotEmpty);
                         return GestureDetector(
                           onTap: () async {
                              FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
@@ -181,7 +188,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                                 ? DecorationImage(
                                     image: _selectedThumbnail != null 
                                       ? FileImage(_selectedThumbnail!) as ImageProvider
-                                      : NetworkImage(_thumbController.text), 
+                                      : NetworkImage(_thumbController.text.isNotEmpty ? _thumbController.text : _existingImageUrl!), 
                                     fit: BoxFit.cover
                                   )
                                 : null,
@@ -231,7 +238,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                     const SizedBox(height: 16),
                     _buildField(_descController, "Description", Icons.description, maxLines: 3),
                     const SizedBox(height: 16),
-                    _buildField(_urlController, "Content URL", Icons.link),
+                    _buildField(_urlController, "Content URL", Icons.link, required: false),
                     const SizedBox(height: 16),
                     _buildField(_thumbController, "Thumbnail URL (Override)", Icons.link_rounded, required: false),
                     const SizedBox(height: 16),
@@ -393,11 +400,12 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                 ),
               ),
             ),
-          );
-        }
-      )
-    );
-  }
+          ),
+        );
+      }
+    )
+  );
+}
 
   /// Submits the add/edit form.
   /// - Validates input.
@@ -720,7 +728,16 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Resources")),
+      appBar: AppBar(
+        title: const Text("Manage Resources"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Resource",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -744,18 +761,6 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -772,26 +777,13 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                               itemBuilder: (context, index) {
                                 final item = _filteredResources[index];
                                 final isActive = item['is_active'] ?? true;
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: item['thumbnail_url'] != null 
-                                            ? Image.network(item['thumbnail_url'], width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.broken_image))
-                                            : Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.article)),
-                                        ),
-                                        title: Text(
-                                            item['title'] ?? 'No Title', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
-                                        ),
-                                        subtitle: Text(item['category'] ?? ''),
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: item['title'] ?? 'No Title',
+                                  subtitle: item['category'] ?? '',
+                                  imageUrl: item['thumbnail'] ?? item['thumbnail_url'],
+                                  fallbackIcon: Icons.article_outlined,
+                                  onTap: () => _showEditor(item),
+                                  statusChip: !isActive ? _statusChip("INACTIVE", Colors.red) : null,
                                 );
                               },
                         ),
@@ -812,6 +804,20 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         border: const OutlineInputBorder(),
       ),
       validator: required ? (v) => v!.isEmpty ? "Required" : null : null,
+    );
+  }
+
+  Widget _statusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

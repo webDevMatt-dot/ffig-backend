@@ -4,6 +4,7 @@ import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../widgets/admin_dark_list_item.dart';
 
 class ManageAlertsScreen extends StatefulWidget {
   const ManageAlertsScreen({super.key});
@@ -367,7 +368,16 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Flash Alerts")),
+      appBar: AppBar(
+        title: const Text("Manage Flash Alerts"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Alert",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -408,18 +418,6 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -439,35 +437,14 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                                 final isExpired = expiry.isBefore(DateTime.now());
                                 final isActive = item['is_active'] ?? true;
                                 
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    color: (isExpired || !isActive) ? Theme.of(context).cardColor.withOpacity(0.6) : null,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: CircleAvatar(
-                                            backgroundColor: isActive && !isExpired ? Colors.amber.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                                            child: Icon(Icons.notifications_active, color: isActive && !isExpired ? Colors.amber : Colors.grey),
-                                        ),
-                                        title: Text(
-                                            item['title'] ?? 'No Title', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
-                                        ),
-                                        subtitle: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                                Text(item['message'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                Text(
-                                                    "Expires: ${DateFormat('dd MMM HH:mm').format(expiry.toLocal())}", 
-                                                    style: TextStyle(fontSize: 12, color: isExpired ? Colors.red : Colors.grey)
-                                                ),
-                                            ],
-                                        ),
-                                        isThreeLine: true,
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return Opacity(
+                                  opacity: (isExpired || !isActive) ? 0.65 : 1,
+                                  child: AdminDarkListItem(
+                                    title: item['title'] ?? 'No Title',
+                                    subtitle: "${item['message'] ?? ''}\nExpires: ${DateFormat('dd MMM HH:mm').format(expiry.toLocal())}",
+                                    fallbackIcon: Icons.notifications_active_outlined,
+                                    onTap: () => _showEditor(item),
+                                  ),
                                 );
                               },
                         ),

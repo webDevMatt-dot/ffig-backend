@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     'storages',
     'core',
     'payments',
+    'community',
 ]
 
 MIDDLEWARE = [

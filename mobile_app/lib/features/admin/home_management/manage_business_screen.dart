@@ -13,6 +13,7 @@ import '../../../../core/utils/url_utils.dart';
 import '../../home/models/business_profile.dart';
 import '../../home/widgets/business_card.dart';
 import '../widgets/user_picker_dialog.dart';
+import '../widgets/admin_dark_list_item.dart';
 
 class ManageBusinessScreen extends StatefulWidget {
   const ManageBusinessScreen({super.key});
@@ -218,59 +219,63 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
-              top: 20, left: 20, right: 20
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: SingleChildScrollView(
+          return FractionallySizedBox(
+            heightFactor: 0.82,
+            child: Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                top: 12, left: 20, right: 20,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
                     Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                            Flexible(
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    icon: const Icon(Icons.close),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    tooltip: "Close",
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _editingId != null ? "Edit Business" : "Add Business", 
-                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: "Close",
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _editingId != null ? "Edit Business" : "Add Business",
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextButton.icon(
-                                    onPressed: () => _showUserPicker(setModalState),
-                                    icon: const Icon(Icons.search, size: 18),
-                                    label: const Text("User", style: TextStyle(fontSize: 12)),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    ),
-                                )
-                              ],
-                            )
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () => _showUserPicker(setModalState),
+                            icon: const Icon(Icons.search, size: 16),
+                            label: const Text("Link User"),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: FfigTheme.accentBrown,
+                              side: BorderSide(color: FfigTheme.accentBrown.withOpacity(0.45)),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ],
                     ),
                     const SizedBox(height: 20),
@@ -294,11 +299,6 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
-                    const SizedBox(height: 32),
-                    const SizedBox(height: 32),
-                    
-                    const SizedBox(height: 32),
                     
                     Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                     const SizedBox(height: 16),
@@ -343,11 +343,11 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Business Name', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Business Name'),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                       onChanged: (v) => setModalState(() {}),
                     ),
@@ -355,7 +355,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                     
                     TextFormField(
                       controller: _websiteController,
-                      decoration: const InputDecoration(labelText: 'Website', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Website'),
                       // validator: (v) => v!.isEmpty ? 'Required' : null, // Optional
                     ),
                     const SizedBox(height: 16),
@@ -377,7 +377,6 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                           controller: _locationController,
                           decoration: const InputDecoration(
                             labelText: 'Location/Country',
-                            border: OutlineInputBorder(),
                             suffixIcon: Icon(Icons.arrow_drop_down),
                           ),
                           validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -389,7 +388,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Description'),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                       onChanged: (v) => setModalState(() {}),
                     ),
@@ -491,11 +490,12 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                 ),
               ),
             ),
-          );
-        }
-      )
-    );
-  }
+          ),
+        );
+      }
+    )
+  );
+}
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
@@ -621,7 +621,16 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
     } catch (_) {}
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Business of Month")),
+      appBar: AppBar(
+        title: const Text("Manage Business of Month"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Business",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -662,18 +671,6 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -691,69 +688,35 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                                 final item = _filteredItems[index];
                                 final isActive = item['is_active'] ?? true;
                                 
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: CircleAvatar(
-                                            backgroundImage: item['image_url'] != null ? NetworkImage(item['image_url']) : null,
-                                            child: item['image_url'] == null ? const Icon(Icons.business) : null,
-                                        ),
-                                        title: Row(
-                                          children: [
-                                            Text(
-                                                item['name'] ?? 'No Name', 
-                                                style: const TextStyle(fontWeight: FontWeight.bold)
-                                            ),
-                                            if (item['tier'] == 'PREMIUM' || item['tier'] == 'STANDARD')
-                                              Padding(
-                                                padding: const EdgeInsets.only(left: 6),
-                                                child: Icon(
-                                                  Icons.verified,
-                                                  size: 14,
-                                                  color: item['tier'] == 'PREMIUM' 
-                                                      ? const Color(0xFFD4AF37) 
-                                                      : const Color(0xFF007AFF),
-                                                ),
-                                              ),
-                                            const Spacer(),
-                                            if (item['id'] == liveId)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green.withOpacity(0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(color: Colors.green, width: 0.5),
-                                                ),
-                                                child: const Text("LIVE", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
-                                              )
-                                            else if (!isActive)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red.withOpacity(0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(color: Colors.red, width: 0.5),
-                                                ),
-                                                child: const Text("INACTIVE", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-                                              )
-                                          ],
-                                        ),
-                                        subtitle: Text(
-                                          "${item['website'] ?? ''} • ${item['location'] ?? ''}",
-                                          maxLines: 1, overflow: TextOverflow.ellipsis
-                                        ),
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: item['name'] ?? 'No Name',
+                                  subtitle: "${item['website'] ?? ''} • ${item['location'] ?? ''}",
+                                  imageUrl: item['image_url'],
+                                  fallbackIcon: Icons.business_outlined,
+                                  onTap: () => _showEditor(item),
+                                  statusChip: item['id'] == liveId
+                                      ? _statusChip("LIVE", Colors.green)
+                                      : (!isActive ? _statusChip("INACTIVE", Colors.red) : null),
                                 );
                               },
                         ),
                 ),
             ],
         ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

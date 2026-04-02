@@ -11,6 +11,7 @@ import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/utils/url_utils.dart';
 import '../../home/models/hero_item.dart';
 import '../../home/widgets/hero_banner.dart';
+import '../widgets/admin_dark_list_item.dart';
 
 class ManageHeroScreen extends StatefulWidget {
   const ManageHeroScreen({super.key});
@@ -445,7 +446,16 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Hero Carousel")),
+      appBar: AppBar(
+        title: const Text("Manage Hero Carousel"),
+        actions: [
+          IconButton(
+            onPressed: () => _showEditor(null),
+            icon: const Icon(Icons.add, size: 34),
+            tooltip: "Add Hero Item",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -486,18 +496,6 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                                 },
                             ),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                            onPressed: () => _showEditor(null),
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add New"),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: FfigTheme.primaryBrown,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                            ),
-                        )
                     ],
                 ),
                 
@@ -514,26 +512,25 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                               itemBuilder: (context, index) {
                                 final item = _filteredHeroItems[index];
                                 final isActive = item['is_active'] ?? true;
-                                return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    child: ListTile(
-                                        contentPadding: const EdgeInsets.all(12),
-                                        leading: ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: item['image'] != null
-                                                ? Image.network(item['image'], width: 60, height: 60, fit: BoxFit.cover)
-                                                : Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.image)),
-                                        ),
-                                        title: Text(
-                                            item['title'] ?? 'No Title', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold)
-                                        ),
-                                        subtitle: Text(item['type'] ?? ''),
-                                        trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                        onTap: () => _showEditor(item),
-                                    ),
+                                return AdminDarkListItem(
+                                  title: item['title'] ?? 'No Title',
+                                  subtitle: item['type'] ?? '',
+                                  imageUrl: item['image'],
+                                  fallbackIcon: Icons.image,
+                                  onTap: () => _showEditor(item),
+                                  statusChip: !isActive
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            "INACTIVE",
+                                            style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        )
+                                      : null,
                                 );
                               },
                         ),

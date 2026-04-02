@@ -357,6 +357,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final role = TextEditingController(text: item?['role']?.toString() ?? '');
     final photo = TextEditingController(text: item?['photo_url']?.toString() ?? '');
+    int? selectedUserId = item?['user'];
 
     void _showUserSearch() {
         final searchController = TextEditingController();
@@ -457,6 +458,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                                                   name.text = "${u['first_name'] ?? ''} ${u['last_name'] ?? ''}".trim();
                                                                   role.text = u['tier'] ?? 'Member';
                                                                   photo.text = photoUrl ?? '';
+                                                                  selectedUserId = u['id']; // Store the user ID
                                                               });
                                                               Navigator.pop(context);
                                                           },
@@ -508,6 +510,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
          'name': name.text,
          'role': role.text,
          'photo_url': normalizeUrl(photo.text),
+         'user': selectedUserId,
        };
        if (widget.event == null) {
           setState(() => item == null ? _speakers.add(data) : _speakers[indexOrId!] = data);

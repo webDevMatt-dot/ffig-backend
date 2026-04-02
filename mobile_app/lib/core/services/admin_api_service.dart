@@ -17,6 +17,7 @@ import '../api/constants.dart';
 class AdminApiService {
   static final String _baseUrl = '${baseUrl}home';
   static final String _membersBaseUrl = '${baseUrl}members';
+  static final String _communityBaseUrl = '${baseUrl}community'; // Added for Polls/Quizzes
   final _storage = const FlutterSecureStorage();
 
   Future<String?> _getToken() async {
@@ -786,5 +787,97 @@ class AdminApiService {
       final respStr = await response.stream.bytesToString();
       throw Exception('Failed to upload/update: $respStr');
     }
+  }
+
+  // --- COMMUNITY MANAGEMENT (POLLS & QUIZZES) ---
+
+  Future<List<dynamic>> fetchPollsAdmin() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_communityBaseUrl/polls/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to fetch polls: ${response.statusCode}');
+  }
+
+  Future<void> createPoll(Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_communityBaseUrl/polls/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode != 201) throw Exception('Failed to create poll: ${response.body}');
+  }
+
+  Future<void> updatePoll(int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$_communityBaseUrl/polls/$id/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to update poll: ${response.body}');
+  }
+
+  Future<void> deletePoll(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_communityBaseUrl/polls/$id/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) throw Exception('Failed to delete poll');
+  }
+
+  Future<List<dynamic>> fetchQuizzesAdmin() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_communityBaseUrl/quizzes/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to fetch quizzes: ${response.statusCode}');
+  }
+
+  Future<void> createQuiz(Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_communityBaseUrl/quizzes/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode != 201) throw Exception('Failed to create quiz: ${response.body}');
+  }
+
+  Future<void> updateQuiz(int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$_communityBaseUrl/quizzes/$id/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to update quiz: ${response.body}');
+  }
+
+  Future<void> deleteQuiz(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_communityBaseUrl/quizzes/$id/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) throw Exception('Failed to delete quiz');
   }
 }
