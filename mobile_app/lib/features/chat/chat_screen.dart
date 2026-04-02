@@ -202,6 +202,18 @@ class _ChatScreenState extends State<ChatScreen> {
     return (user?['username'] ?? user?['email'] ?? fallback).toString();
   }
 
+  Map<String, dynamic>? _getDmRecipientFromMessages() {
+    if (widget.isCommunity || widget.recipientId == null) return null;
+    for (final raw in _messages.reversed) {
+      final msg = raw as Map<String, dynamic>;
+      final sender = msg['sender'] as Map<String, dynamic>?;
+      final senderIdRaw = sender?['id'] ?? sender?['user_id'];
+      final senderId = senderIdRaw is int ? senderIdRaw : int.tryParse(senderIdRaw?.toString() ?? '');
+      if (senderId == widget.recipientId) return sender;
+    }
+    return null;
+  }
+
   Future<void> _sendMessage() async {
     if (_controller.text.isEmpty) return;
     final text = _controller.text;
@@ -363,6 +375,21 @@ class _ChatScreenState extends State<ChatScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(userId: senderId is int ? senderId : int.tryParse(senderId.toString()), username: sender?['username']?.toString(), initialData: sender)));
   }
 
+  void _openDmRecipientProfile() {
+    if (widget.isCommunity || widget.recipientId == null) return;
+    final recipientFromMessages = _getDmRecipientFromMessages();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicProfileScreen(
+          userId: widget.recipientId,
+          username: recipientFromMessages?['username']?.toString() ?? widget.recipientName,
+          initialData: recipientFromMessages,
+        ),
+      ),
+    );
+  }
+
   void _showMessageOptions(Map<String, dynamic> msg) {
     final isMe = msg['is_me'];
     final text = msg['text'];
@@ -422,7 +449,46 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               )
-            : Text(widget.recipientName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            : (() {
+                final dmRecipient = _getDmRecipientFromMessages();
+                final dmRecipientPhoto = _normalizeImageUrl(
+                  dmRecipient?['photo'] ?? dmRecipient?['photo_url'] ?? dmRecipient?['profile_picture'],
+                );
+                final dmRecipientUsername = _displayNameFromUser(
+                  dmRecipient,
+                  fallback: widget.recipientName,
+                );
+
+                if (!widget.isCommunity) {
+                  return InkWell(
+                    onTap: _openDmRecipientProfile,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        UserAvatar(
+                          radius: 16,
+                          username: dmRecipientUsername,
+                          imageUrl: dmRecipientPhoto,
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            widget.recipientName.toUpperCase(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Text(
+                  widget.recipientName.toUpperCase(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                );
+              })(),
         actions: _isSearching 
         ? [
             IconButton(icon: const Icon(Icons.keyboard_arrow_up), onPressed: _nextSearchResult),
@@ -536,7 +602,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end, // WhatsApp aligns avatar to bottom
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (!isMe)
+                                if (widget.isCommunity && !isMe)
                                   Container(
                                     width: 42,
                                     alignment: Alignment.bottomCenter,
@@ -545,7 +611,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ? UserAvatar(key: ValueKey(senderPhoto), radius: 15, username: username, imageUrl: senderPhoto)
                                       : const SizedBox(width: 42),
                                   ),
-                                if (!isMe) const SizedBox(width: 6),
+                                if (widget.isCommunity && !isMe) const SizedBox(width: 6),
                                 Flexible(
                                   child: Column(
                                     crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
