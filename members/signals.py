@@ -73,3 +73,47 @@ def log_user_login(sender, request, user, **kwargs):
         user_agent=user_agent
     )
     logger.info(f"📝 Logged login for {user.username} from {ip}")
+
+@receiver(post_save, sender='members.BusinessProfile')
+def notify_admin_new_business(sender, instance, created, **kwargs):
+    """Notify admins when a new business profile is submitted."""
+    if created:
+        from core.services.fcm_service import send_push_notification
+        from django.contrib.auth.models import User
+        admins = User.objects.filter(is_staff=True)
+        for admin in admins:
+            send_push_notification(
+                admin,
+                title="New Business Pending Approval",
+                body=f"{instance.company_name} has submitted their profile.",
+                data={"type": "admin_business_alert", "business_id": str(instance.id)}
+            )
+
+@receiver(post_save, sender='members.Story')
+def notify_global_new_story(sender, instance, created, **kwargs):
+    """Notify all users (global topic) about a new story."""
+    if created:
+        from core.services.fcm_service import send_topic_notification
+        send_topic_notification(
+            topic="global",
+            title="New Story",
+            body=f"{instance.user.username} posted a new story.",
+            data={"type": "new_story", "story_id": str(instance.id)}
+        )
+
+@receiver(post_save, sender='members.MarketingRequest')
+def notify_global_new_post(sender, instance, created, **kwargs):
+    """Notify all users (global topic) about a new featured post (approved ad/promotion)."""
+    # If it's just created or status changed to APPROVED
+    # Usually we notify when it's actually live
+    if (created and instance.status == 'APPROVED') or (not created and instance.status == 'APPROVED'):
+         # Simple check to avoid double-paging if we had a 'paged' field
+         # For now, we only notify on creation if it's already approved, or when updated to approved.
+         # This is a bit simplistic but works for basic flow.
+         from core.services.fcm_service import send_topic_notification
+         send_topic_notification(
+            topic="global",
+            title="New Featured Post",
+            body=f"{instance.title}: Check out our latest update!",
+            data={"type": "new_post", "post_id": str(instance.id)}
+         )

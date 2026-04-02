@@ -9,7 +9,7 @@ class Event(models.Model):
     location = models.CharField(max_length=100)
     date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
-    image_url = models.URLField(default="https://images.unsplash.com/photo-1542744173-8e7e53415bb0") 
+    image_url = models.URLField(max_length=500, default="https://images.unsplash.com/photo-1542744173-8e7e53415bb0") 
     image = models.ImageField(upload_to='events/', null=True, blank=True)
     is_featured = models.BooleanField(default=False)
     description = models.TextField(blank=True, default="Join us for an incredible networking experience.")
@@ -18,10 +18,10 @@ class Event(models.Model):
     organizer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='organized_events', help_text="The user who organizes this event and receives payment.")
     end_time = models.DateTimeField(null=True, blank=True)
     is_virtual = models.BooleanField(default=False)
-    virtual_link = models.URLField(blank=True, null=True, help_text="Zoom/Meet link for virtual events")
+    virtual_link = models.URLField(max_length=500, blank=True, null=True, help_text="Zoom/Meet link for virtual events")
     
     # Ticketing Simple
-    ticket_url = models.URLField(blank=True, help_text="Link to Eventbrite or external payment page (optional)")
+    ticket_url = models.URLField(max_length=500, blank=True, help_text="Link to Eventbrite or external payment page (optional)")
     price_label = models.CharField(max_length=50, default="Free", help_text="e.g. '$50' or 'Starting at $99'")
     is_sold_out = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True) # Soft Delete / Deactivation
@@ -66,7 +66,7 @@ class EventSpeaker(models.Model):
     name = models.CharField(max_length=100)
     role = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
-    photo_url = models.URLField(blank=True, null=True)
+    photo_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name

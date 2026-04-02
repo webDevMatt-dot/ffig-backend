@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -7,6 +8,7 @@ import '../../core/api/constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:intl/intl.dart';
+import '../../core/theme/ffig_theme.dart';
 
 /// Displays a list of All Events (Upcoming and Past).
 ///
@@ -25,6 +27,16 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> {
   List<dynamic> _events = [];
   bool _isLoading = true;
+  String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -39,7 +51,7 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<void> _fetchEvents() async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
-    final String endpoint = '${baseUrl}events/';
+    final String endpoint = '${baseUrl}events/?search=$_searchQuery';
 
     final headers = <String, String>{};
     if (token != null) headers['Authorization'] = 'Bearer $token';
@@ -58,13 +70,57 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _fetchEvents();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("EVENTS")),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildEventsList(),
+      appBar: AppBar(
+        title: Text("EVENTS", style: Theme.of(context).textTheme.displaySmall?.copyWith(letterSpacing: 3.0)),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: Column(
+        children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "SEARCH EVENTS...",
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged("");
+                      },
+                    )
+                  : null,
+              ),
+              onChanged: _onSearchChanged,
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _fetchEvents,
+                    color: FfigTheme.primaryBrown,
+                    child: _buildEventsList(),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -50,16 +50,20 @@ class MemberListView(generics.ListAPIView):
         tiers = self.request.query_params.getlist('tier')
         locations = self.request.query_params.getlist('location')
 
-        # Search: Filter by username, location, or business name
+        # Search: Multi-field, Multi-term matching
         if search_query:
-            queryset = queryset.filter(
-                Q(user__username__icontains=search_query) | 
-                Q(user__first_name__icontains=search_query) |
-                Q(user__last_name__icontains=search_query) |
-                Q(user__email__icontains=search_query) |
-                Q(location__icontains=search_query) |
-                Q(business_name__icontains=search_query)
-            )
+            terms = search_query.split()
+            for term in terms:
+                queryset = queryset.filter(
+                    Q(user__username__icontains=term) | 
+                    Q(user__first_name__icontains=term) |
+                    Q(user__last_name__icontains=term) |
+                    Q(user__email__icontains=term) |
+                    Q(location__icontains=term) |
+                    Q(business_name__icontains=term) |
+                    Q(industry__icontains=term) |
+                    Q(bio__icontains=term)
+                )
         
         # Industry: Multi-select support
         if industries:

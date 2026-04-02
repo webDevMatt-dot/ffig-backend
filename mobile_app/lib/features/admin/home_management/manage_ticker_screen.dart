@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
@@ -96,21 +97,21 @@ class _ManageTickerScreenState extends State<ManageTickerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _editingId != null ? "Edit News Item" : "Add News Item", 
-                  style: Theme.of(context).textTheme.titleLarge
+                  _editingId != null ? "Edit Ticker Hub" : "Add News Item", 
+                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 
                 TextFormField(
                   controller: _textController,
-                  decoration: const InputDecoration(labelText: 'News Text', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'News Text', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
                 
                 TextFormField(
                   controller: _urlController,
-                  decoration: const InputDecoration(labelText: 'Link URL (Optional)', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'Link URL (Optional)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                 ),
                 const SizedBox(height: 24),
                 

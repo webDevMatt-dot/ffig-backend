@@ -8,6 +8,7 @@ String get baseUrl {
   if (defaultTargetPlatform == TargetPlatform.android) {
     return 'http://10.0.2.2:8000/api/';
   }
-  // iOS device, simulator, and local web debugging use the machine's local IP
-  return 'http://192.168.0.5:8000/api/';
+  // Updated to 'localhost' for Simulator reliability. 
+  // For physical devices, use the machine's IP (e.g. 192.168.0.6)
+  return 'http://localhost:8000/api/'; 
 }

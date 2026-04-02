@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:io'; 
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -173,69 +174,111 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _editingId != null ? "Edit Hero Item" : "Add New Hero Item", 
-                      style: Theme.of(context).textTheme.titleLarge
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // LIVE PREVIEW
-                    const Text("LIVE PREVIEW", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                    const SizedBox(height: 12),
-                    HeroBanner(
-                      isPreview: true,
-                      localImageBytes: _selectedImageBytes is Uint8List ? _selectedImageBytes as Uint8List : null,
-                      item: HeroItem(
-                        id: _editingId ?? 'new',
-                        title: _titleController.text,
-                        type: _selectedType,
-                        imageUrl: _selectedImageBytes is String ? _selectedImageBytes as String : (item?['image'] ?? ''),
-                        actionUrl: _urlController.text,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    
-                    Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                    const SizedBox(height: 16),
-                    
-                    // Image Picker
-                    GestureDetector(
-                        onTap: () => _pickImage(setModalState),
-                        child: Container(
-                          height: 180,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                            borderRadius: BorderRadius.circular(12),
+                    Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: "Close",
                           ),
-                          child: _selectedImageBytes != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: _selectedImageBytes is Uint8List
-                                      ? Image.memory(_selectedImageBytes as Uint8List, fit: BoxFit.cover)
-                                      : Image.network(_selectedImageBytes as String, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, size: 50)),
-                                )
-                              : (item != null && item['image'] != null 
-                                  ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(item['image'], fit: BoxFit.cover))
-                                  : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                                        const SizedBox(height: 8),
-                                        Text(_editingId != null ? "Tap to replace image" : "Tap to upload image"),
-                                      ],
-                                    )),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _editingId != null ? "Edit Hero Item" : "Add Hero Item", 
+                              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    const Text("PREVIEW & IMAGE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _pickImage(setModalState),
+                      child: Stack(
+                        children: [
+                          AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: HeroBanner(
+                              isPreview: true,
+                              localImageBytes: _selectedImageBytes is Uint8List ? _selectedImageBytes as Uint8List : null,
+                              item: HeroItem(
+                                id: _editingId ?? 'preview',
+                                title: _titleController.text,
+                                type: _selectedType,
+                                imageUrl: _selectedImageBytes is String ? _selectedImageBytes as String : (item?['image'] ?? ''),
+                                actionUrl: _urlController.text,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: FfigTheme.accentBrown,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
+                                ],
+                              ),
+                              child: const Icon(Icons.edit, size: 20, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    Text("CONTENT DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                     const SizedBox(height: 16),
                     
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: InputDecoration(
+                        labelText: 'Hero Title', 
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: const Icon(Icons.title),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                      onChanged: (v) => setModalState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: InputDecoration(
+                        labelText: 'Category / Type', 
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: const Icon(Icons.category),
+                      ),
+                      items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (v) => setModalState(() => _selectedType = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    TextFormField(
+                      controller: _urlController,
+                      decoration: InputDecoration(
+                        labelText: 'Action Link (Optional)', 
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: const Icon(Icons.link),
+                      ),
+                      onChanged: (v) => setModalState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+
                     TextField(
-                        decoration: const InputDecoration(
-                            labelText: "Or Image URL",
+                        decoration: InputDecoration(
+                            labelText: "Or External Image URL",
                             isDense: true,
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.link),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(Icons.image_search, size: 20),
                         ),
                         onChanged: (val) {
                             setModalState(() {
@@ -247,29 +290,6 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
                                 }
                             });
                         },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                      onChanged: (v) => setModalState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    DropdownButtonFormField<String>(
-                      value: _selectedType,
-                      decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                      items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                      onChanged: (v) => setModalState(() => _selectedType = v!),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _urlController,
-                      decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
-                      onChanged: (v) => setModalState(() {}),
                     ),
                     const SizedBox(height: 24),
                     

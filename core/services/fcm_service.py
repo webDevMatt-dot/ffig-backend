@@ -11,7 +11,6 @@ def initialize_firebase():
     if not firebase_admin._apps:
         try:
             # 1. Try Environment Variables
-            # Check both possible names for consistency
             firebase_creds = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON') or os.environ.get('FIREBASE_CREDENTIALS')
             
             if firebase_creds:
@@ -22,22 +21,25 @@ def initialize_firebase():
                 return True
             
             # 2. Try Local File (For Development)
-            # Use absolute path to avoid CWD issues
+            from pathlib import Path
             base_dir = Path(__file__).resolve().parent.parent.parent
             key_path = base_dir / 'serviceAccountKey.json'
             
             if key_path.exists():
-                cred = credentials.Certificate(str(key_path))
-                firebase_admin.initialize_app(cred)
-                print(f"🚀 Firebase Admin initialized via Local File: {key_path}")
-                return True
+                try:
+                    cred = credentials.Certificate(str(key_path))
+                    firebase_admin.initialize_app(cred)
+                    print(f"🚀 Firebase Admin initialized via Local File: {key_path}")
+                    return True
+                except Exception as ex:
+                    print(f"⚠️ Error loading Firebase Key File: {ex}")
+                    # Don't raise, just log and continue
             else:
                 print(f"⚠️ Firebase Admin NOT initialized: Key file not found at {key_path}")
-                return False
                 
         except Exception as e:
-            print(f"❌ Firebase Init Error: {e}")
-            traceback.print_exc()
+            print(f"❌ Firebase Generic Initialization Error: {e}")
+            # Do NOT raise here - crashing here stops signals/views from working
             return False
     return True
 
@@ -94,9 +96,7 @@ def send_push_notification(user, title, body, data=None, tag=None):
         # print(f"Successfully sent message to {user.username}: {response}")
         return True
     except Exception as e:
-        print(f"Error sending message to {user.username}: {e}")
-        traceback.print_exc()
-        # Optional: Invalidate token if error indicates it's invalid
+        print(f"⚠️ FCM Notification Failed for {user.username}: {e}")
         return False
 def send_topic_notification(topic, title, body, data=None):
     """

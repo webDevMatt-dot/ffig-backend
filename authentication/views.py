@@ -15,7 +15,7 @@ import string
 import datetime
 
 from .serializers import RegisterSerializer, CustomTokenObtainPairSerializer, UserSerializer
-from .models import PasswordResetOTP
+from .models import PasswordResetOTP, SignupOTP
 
 def welcome(request):
     return JsonResponse({"message": "Welcome to the FFIG API!"})
@@ -170,6 +170,187 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        
+        # Generate 6-digit OTP
+        otp = ''.join(random.choices(string.digits, k=6))
+        otp_hash = make_password(otp)
+        
+        # Store in DB
+        expires_at = timezone.now() + datetime.timedelta(minutes=15)
+        SignupOTP.objects.create(
+            user=user,
+            email=user.email,
+            otp_hash=otp_hash,
+            expires_at=expires_at
+        )
+        
+        # Send Email
+        subject = 'Verify Your Email - Female Founders Initiative Global'
+        
+        html_message = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+                </div>
+                <h2 style="color: #8B4513; margin-top: 0; text-align: center;">Verify Your Email</h2>
+                <p>Hi {user.first_name or user.username},</p>
+                <p>Thank you for joining the Female Founders Initiative Global! To complete your registration, please use the following one-time password (OTP) to verify your email address:</p>
+                
+                <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #8B4513;">
+                    <span style="font-size: 32px; font-weight: bold; color: #8B4513; letter-spacing: 5px;">{otp}</span>
+                </div>
+                
+                <p>This code will expire in <strong>15 minutes</strong>.</p>
+                <p>Once verified, you'll have full access to our global network of female founders.</p>
+                
+                <p>Best regards,<br>The Female Founders Initiative Global Team</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        plain_message = f'Your verification code for FFIG is: {otp}\n\nIt will expire in 15 minutes.'
+        
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                'admin@femalefoundersinitiative.com',
+                [user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Failed to send verification email: {e}")
+
+class VerifySignupOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        otp = request.data.get('otp', '').strip()
+
+        if not email or not otp:
+            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            otp_record = SignupOTP.objects.filter(
+                email=email,
+                is_used=False,
+                expires_at__gt=timezone.now()
+            ).latest('created_at')
+        except SignupOTP.DoesNotExist:
+            return Response({"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(otp, otp_record.otp_hash):
+            otp_record.attempts += 1
+            otp_record.save()
+            return Response({"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Valid OTP: Activate user
+        user = otp_record.user
+        user.is_active = True
+        user.save()
+
+        # Invalidate OTP
+        otp_record.is_used = True
+        otp_record.save()
+
+        # Note: Activation signals (welcome email, admin push) will be handled here
+        # since we moved them from the post_save signal in members/models.py
+        from members.models import Profile
+        try:
+             # Manually trigger the welcome sequence that we moved
+             from core.services.fcm_service import send_push_notification
+             from core.services.email_service import send_welcome_email
+             
+             # 1. Admin Push
+             admins = User.objects.filter(is_staff=True)
+             for admin in admins:
+                send_push_notification(
+                    admin,
+                    title="New User Verified",
+                    body=f"{user.username} has joined FFIG.",
+                    data={"type": "admin_alert", "user_id": str(user.id)}
+                )
+             
+             # 2. Welcome Email
+             send_welcome_email(user)
+        except Exception as e:
+            print(f"Error in post-verification sequence: {e}")
+
+        return Response({"message": "Email successfully verified. You can now log in."}, status=status.HTTP_200_OK)
+
+class ResendSignupOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email, is_active=False)
+            
+            # Rate limiting check (e.g., 1 min between resends)
+            last_otp = SignupOTP.objects.filter(user=user).order_by('-created_at').first()
+            if last_otp and (timezone.now() - last_otp.created_at).total_seconds() < 60:
+                return Response({"error": "Please wait a minute before requesting another code."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+            # Generate new OTP
+            otp = ''.join(random.choices(string.digits, k=6))
+            otp_hash = make_password(otp)
+            
+            expires_at = timezone.now() + datetime.timedelta(minutes=15)
+            SignupOTP.objects.create(
+                user=user,
+                email=email,
+                otp_hash=otp_hash,
+                expires_at=expires_at
+            )
+            
+            # Send Email
+            subject = 'Your New Verification Code - FFIG'
+            html_message = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+                    </div>
+                    <h2 style="color: #8B4513; margin-top: 0; text-align: center;">New Verification Code</h2>
+                    <p>Hi {user.first_name or user.username},</p>
+                    <p>Here is your new verification code as requested:</p>
+                    
+                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #8B4513;">
+                        <span style="font-size: 32px; font-weight: bold; color: #8B4513; letter-spacing: 5px;">{otp}</span>
+                    </div>
+                    
+                    <p>This code will expire in <strong>15 minutes</strong>.</p>
+                    <p>Best regards,<br>The Female Founders Initiative Global Team</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            send_mail(
+                subject,
+                f'Your new verification code is: {otp}',
+                'admin@femalefoundersinitiative.com',
+                [email],
+                html_message=html_message,
+            )
+            
+            return Response({"message": "New OTP sent to your email."}, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "No unverified account found with this email."}, status=status.HTTP_404_NOT_FOUND)
 
 class UserPasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]

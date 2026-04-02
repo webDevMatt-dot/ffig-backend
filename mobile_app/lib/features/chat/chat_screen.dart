@@ -460,7 +460,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 : ScrollablePositionedList.builder(
                     itemScrollController: _itemScrollController,
                     itemPositionsListener: _itemPositionsListener,
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.only(
+                      top: kToolbarHeight + MediaQuery.of(context).padding.top + 16, // Ensure first message isn't cut by appbar
+                      bottom: 16, 
+                      left: 16, 
+                      right: 16
+                    ),
                     reverse: true,
                     itemCount: _groupedMessages.length,
                     itemBuilder: (context, index) {

@@ -329,6 +329,7 @@ class EventDetailScreen extends StatelessWidget {
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: true,
+                  collapseMode: CollapseMode.parallax,
                   title: innerBoxIsScrolled 
                     ? Text(
                         event['title'], 
@@ -336,11 +337,11 @@ class EventDetailScreen extends StatelessWidget {
                       )
                     : null,
                   background: Container(
-                    color: const Color(0xFF0F0F0F), // Deep black-charcoal
+                    color: const Color(0xFF0F0F0F),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 60),
+                        const SizedBox(height: 80),
                         // Flyer with Shadow & Rounded corners
                         Expanded(
                           child: Padding(
@@ -371,18 +372,21 @@ class EventDetailScreen extends StatelessWidget {
                         ),
                         // Premium Typographic Title Area
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 60), // Increased bottom padding from 40 to 60
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                                Text(
                                 event['title'].toString().toUpperCase(),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
+                                  fontSize: 20, // Slightly smaller for better fit
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1.2,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
                               Container(
@@ -396,6 +400,7 @@ class EventDetailScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),

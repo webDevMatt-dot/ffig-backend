@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -27,6 +28,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   List<dynamic> _resources = [];
   bool _isLoading = true;
   String _selectedFilter = "ALL"; 
+  String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
 
   final Map<String, String> _categoryLabels = {
     'GEN': 'Resource',
@@ -35,6 +39,13 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     'CLASS': 'Masterclass',
     'POD': 'Podcast',
   };
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -52,7 +63,11 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     String url = '${baseUrl}resources/'; // Use constant baseUrl
     
     if (_selectedFilter != "ALL") {
-      url += "?category=$_selectedFilter";
+      url += (url.contains('?') ? '&' : '?') + "category=$_selectedFilter";
+    }
+    
+    if (_searchQuery.isNotEmpty) {
+      url += (url.contains('?') ? '&' : '?') + "search=$_searchQuery";
     }
 
     try {
@@ -69,6 +84,14 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _fetchResources();
+    });
   }
 
   Future<void> _launchURL(String urlString) async {
@@ -104,6 +127,27 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
       ),
       body: Column(
         children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "SEARCH RESOURCES...",
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged("");
+                      },
+                    )
+                  : null,
+              ),
+              onChanged: _onSearchChanged,
+            ),
+          ),
           // Filter Bar
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -224,24 +268,30 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                child: Stack(
                  children: [
-                   res['thumbnail_url'] != null && res['thumbnail_url'].isNotEmpty
-                     ? Image.network(
-                         res['thumbnail_url'],
+                   Builder(
+                     builder: (context) {
+                       final thumb = res['thumbnail'] ?? res['thumbnail_url'];
+                       if (thumb != null && thumb.toString().isNotEmpty) {
+                         return Image.network(
+                           thumb,
+                           height: 180,
+                           width: double.infinity,
+                           fit: BoxFit.cover,
+                           errorBuilder: (context, error, stackTrace) => Container(
+                             height: 180, 
+                             color: theme.colorScheme.surfaceContainerHighest,
+                             child: Center(child: Icon(Icons.image_not_supported, color: theme.disabledColor)),
+                           ),
+                         );
+                       }
+                       return Container(
                          height: 180,
                          width: double.infinity,
-                         fit: BoxFit.cover,
-                         errorBuilder: (context, error, stackTrace) => Container(
-                           height: 180, 
-                           color: theme.colorScheme.surfaceContainerHighest,
-                           child: Center(child: Icon(Icons.image_not_supported, color: theme.disabledColor)),
-                         ),
-                       )
-                     : Container(
-                       height: 180,
-                       width: double.infinity,
-                       color: FfigTheme.primaryBrown.withOpacity(0.1),
-                       child: Icon(Icons.article_outlined, size: 64, color: FfigTheme.primaryBrown.withOpacity(0.5)),
-                     ),
+                         color: FfigTheme.primaryBrown.withOpacity(0.1),
+                         child: Icon(Icons.article_outlined, size: 64, color: FfigTheme.primaryBrown.withOpacity(0.5)),
+                       );
+                     },
+                   ),
                    
                    // Category Badge
                    Positioned(

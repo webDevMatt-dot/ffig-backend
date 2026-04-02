@@ -43,6 +43,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   String _selectedCategory = 'MAG'; // Default
   File? _selectedPdf;
   String? _pdfName;
+  File? _selectedThumbnail;
 
   @override
   void initState() {
@@ -110,6 +111,7 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
         _selectedCategory = 'MAG';
     }
     _selectedPdf = null;
+    _selectedThumbnail = null;
     _pdfName = item?['file'] != null ? item!['file'].toString().split('/').last : null;
 
     showModalBottomSheet(
@@ -134,11 +136,96 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _editingId != null ? "Edit Resource" : "Add Resource", 
-                      style: Theme.of(context).textTheme.titleLarge
+                    Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: "Close",
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _editingId != null ? "Edit Resource" : "Add Resource", 
+                              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
+                    
+                    // --- PREMIUM HEADER IMAGE PREVIEW ---
+                    Builder(
+                      builder: (context) {
+                        final hasImage = _selectedThumbnail != null || _thumbController.text.isNotEmpty;
+                        return GestureDetector(
+                          onTap: () async {
+                             FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+                             if (result != null) setModalState(() => _selectedThumbnail = File(result.files.single.path!));
+                          },
+                          child: Container(
+                            height: 180,
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 24),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: _selectedThumbnail != null ? FfigTheme.accentBrown : Colors.white.withOpacity(0.1),
+                                width: _selectedThumbnail != null ? 2 : 1,
+                              ),
+                              image: hasImage 
+                                ? DecorationImage(
+                                    image: _selectedThumbnail != null 
+                                      ? FileImage(_selectedThumbnail!) as ImageProvider
+                                      : NetworkImage(_thumbController.text), 
+                                    fit: BoxFit.cover
+                                  )
+                                : null,
+                            ),
+                            child: !hasImage 
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_a_photo_outlined, size: 48, color: Colors.grey[600]),
+                                      const SizedBox(height: 12),
+                                      Text("Tap to Upload Thumbnail", style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                                      Text("(Recommended: 1200x800)", style: GoogleFonts.inter(color: Colors.grey[500], fontSize: 11)),
+                                    ],
+                                  ),
+                                )
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(24),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.all(20),
+                                  alignment: Alignment.bottomLeft,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle, color: FfigTheme.accentBrown, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _selectedThumbnail != null ? "New Image Selected" : "Current Thumbnail",
+                                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                                      ),
+                                      const Spacer(),
+                                      const Icon(Icons.edit, color: Colors.white70, size: 18),
+                                    ],
+                                  ),
+                                ),
+                          ),
+                        );
+                      }
+                    ),
                     
                     _buildField(_titleController, "Title", Icons.title),
                     const SizedBox(height: 16),
@@ -146,24 +233,55 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                     const SizedBox(height: 16),
                     _buildField(_urlController, "Content URL", Icons.link),
                     const SizedBox(height: 16),
-                    _buildField(_thumbController, "Thumbnail URL", Icons.image, required: false),
+                    _buildField(_thumbController, "Thumbnail URL (Override)", Icons.link_rounded, required: false),
                     const SizedBox(height: 16),
+                    
+                    const Text("CONTENT", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
                     
                     // PDF Picker
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8)
+                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _selectedPdf != null ? FfigTheme.accentBrown : Colors.white.withOpacity(0.1),
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.picture_as_pdf, color: Colors.red),
-                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                          ),
+                          const SizedBox(width: 16),
                           Expanded(
-                            child: Text(
-                              _selectedPdf != null ? _selectedPdf!.path.split('/').last : (_pdfName ?? "No PDF Selected"),
-                              style: TextStyle(color: (_selectedPdf == null && _pdfName == null) ? Colors.grey : null),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _selectedPdf != null 
+                                    ? _selectedPdf!.path.split('/').last 
+                                    : (_pdfName ?? "No PDF Selected"),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontWeight: (_selectedPdf != null || _pdfName != null) ? FontWeight.bold : FontWeight.normal,
+                                    color: (_selectedPdf == null && _pdfName == null) ? Colors.grey : null,
+                                  ),
+                                ),
+                                if (_selectedPdf != null || _pdfName != null)
+                                  Text(
+                                    _selectedPdf != null ? "New file ready to upload" : "Stored on server",
+                                    style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                                  ),
+                              ],
                             ),
                           ),
                           TextButton(
@@ -176,12 +294,19 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
                                 setModalState(() => _selectedPdf = File(result.files.single.path!));
                               }
                             }, 
-                            child: const Text("PICK PDF")
+                            style: TextButton.styleFrom(
+                              foregroundColor: FfigTheme.accentBrown,
+                              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            child: Text(_selectedPdf != null || _pdfName != null ? "CHANGE" : "PICK PDF")
                           )
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    
+                    const Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
                     
                     if (_editingId != null) ...[
                         const Divider(),
@@ -293,10 +418,10 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
       };
 
       if (_editingId != null) {
-        await AdminApiService().updateAdminResource(int.parse(_editingId!), data, pdfFile: _selectedPdf);
+        await AdminApiService().updateAdminResource(int.parse(_editingId!), data, pdfFile: _selectedPdf, imageFile: _selectedThumbnail);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource Updated')));
       } else {
-        await AdminApiService().createAdminResource(data, pdfFile: _selectedPdf);
+        await AdminApiService().createAdminResource(data, pdfFile: _selectedPdf, imageFile: _selectedThumbnail);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource Created')));
       }
       _fetchResources();
@@ -308,44 +433,230 @@ class _ResourceManagementScreenState extends State<ResourceManagementScreen> {
   }
 
   void _showAddGalleryImageDialog(int resourceId) {
-     final desc = TextEditingController();
-     File? img;
-     showDialog(
-       context: context,
-       builder: (ctx) => StatefulBuilder(
-         builder: (context, setDialogState) {
-           return AlertDialog(
-             title: const Text("Add Gallery Image"),
-             content: Column(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 if (img != null) Image.file(img!, height: 100),
-                 ElevatedButton(
-                   onPressed: () async {
-                      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
-                      if (result != null) setDialogState(() => img = File(result.files.single.path!));
-                   }, 
-                   child: const Text("PICK IMAGE")
-                 ),
-                 TextField(controller: desc, decoration: const InputDecoration(labelText: "Description")),
-               ],
-             ),
-             actions: [
-               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
-               ElevatedButton(
-                 onPressed: () async {
-                   if (img == null) return;
-                   await AdminApiService().addResourceGalleryImage(resourceId, img!, description: desc.text);
-                   Navigator.pop(ctx);
-                   _fetchResources();
-                 }, 
-                 child: const Text("ADD")
-               ),
-             ],
-           );
-         }
-       )
-     );
+    final desc = TextEditingController();
+    File? img;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF161B22) : Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Section
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: FfigTheme.primaryBrown.withOpacity(0.05),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.add_photo_alternate_outlined, color: FfigTheme.accentBrown, size: 32),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Add Gallery Image",
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                        child: Column(
+                          children: [
+                            // Aesthetic Image Picker Area
+                            GestureDetector(
+                              onTap: () async {
+                                FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+                                if (result != null) setDialogState(() => img = File(result.files.single.path!));
+                              },
+                              child: Container(
+                                height: 180,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0D1117) : Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: img != null ? FfigTheme.accentBrown : (isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!),
+                                    width: img != null ? 2 : 1.5,
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: img != null
+                                    ? Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          Image.file(img!, fit: BoxFit.cover),
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                                              ),
+                                            ),
+                                          ),
+                                          const Center(
+                                            child: CircleAvatar(
+                                              backgroundColor: Colors.white24,
+                                              child: Icon(Icons.auto_fix_high, color: Colors.white),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            bottom: 12,
+                                            left: 0,
+                                            right: 0,
+                                            child: Text(
+                                              "Tap to Change Image",
+                                              textAlign: TextAlign.center,
+                                              style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.cloud_upload_outlined, size: 48, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            "Tap to select image",
+                                            style: GoogleFonts.inter(
+                                              color: isDark ? Colors.grey[500] : Colors.grey[600],
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            "Supports JPG, PNG, WEBP",
+                                            style: GoogleFonts.inter(
+                                              color: Colors.grey[500],
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Description Field
+                            TextField(
+                              controller: desc,
+                              style: GoogleFonts.inter(fontSize: 15),
+                              maxLines: 2,
+                              decoration: InputDecoration(
+                                labelText: "Description",
+                                alignLabelWithHint: true,
+                                hintText: "Enter a brief caption...",
+                                prefixIcon: const Icon(Icons.short_text_rounded, size: 20),
+                                filled: true,
+                                fillColor: isDark ? const Color(0xFF0D1117) : Colors.white,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Actions
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    child: Text(
+                                      "CANCEL",
+                                      style: GoogleFonts.inter(
+                                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      if (img == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("Please select an image first")),
+                                        );
+                                        return;
+                                      }
+                                      await AdminApiService().addResourceGalleryImage(resourceId, img!, description: desc.text);
+                                      Navigator.pop(ctx);
+                                      _fetchResources();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: FfigTheme.primaryBrown,
+                                      foregroundColor: Colors.white,
+                                      elevation: 8,
+                                      shadowColor: FfigTheme.primaryBrown.withOpacity(0.5),
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    child: Text(
+                                      "ADD TO GALLERY",
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _toggleResourceActive(Map<String, dynamic> item) async {

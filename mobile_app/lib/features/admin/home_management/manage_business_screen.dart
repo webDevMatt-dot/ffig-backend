@@ -235,17 +235,43 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _editingId != null ? "Edit Business" : "Add Business", 
-                          style: Theme.of(context).textTheme.titleLarge
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                            Flexible(
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    icon: const Icon(Icons.close),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    tooltip: "Close",
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _editingId != null ? "Edit Business" : "Add Business", 
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton.icon(
+                                    onPressed: () => _showUserPicker(setModalState),
+                                    icon: const Icon(Icons.search, size: 18),
+                                    label: const Text("User", style: TextStyle(fontSize: 12)),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                )
+                              ],
+                            )
+                        ],
                     ),
                     const SizedBox(height: 20),
                     
@@ -269,17 +295,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                     ),
                     const SizedBox(height: 20),
                     
-                    Center(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showUserPicker(setModalState),
-                        icon: const Icon(Icons.person_add),
-                        label: Text(_ownerId != null ? "Change Linked User" : "Link to Existing User"),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 32),
                     const SizedBox(height: 32),
                     
                     const SizedBox(height: 32),
@@ -288,17 +304,18 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                     const SizedBox(height: 16),
                     
                     // Business Logo / Media
+                    // Business Logo / Media
                     Center(
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () => _pickImage(setModalState),
-                            child: Container(
-                              height: 120,
-                              width: 120,
+                      child: GestureDetector(
+                        onTap: () => _pickImage(setModalState),
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 100,
+                              width: 100,
                               decoration: BoxDecoration(
                                 color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(16),
+                                shape: BoxShape.circle,
                                 border: Border.all(color: Theme.of(context).dividerColor),
                               ),
                               clipBehavior: Clip.antiAlias,
@@ -308,23 +325,22 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                                         : Image.network(_selectedImageBytes as String, fit: BoxFit.cover))
                                   : (_existingImageUrl != null
                                         ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
-                                        : Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: const [
-                                              Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
-                                              SizedBox(height: 4),
-                                              Text("Business Logo", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                            ],
-                                          )),
+                                        : const Icon(Icons.add_business, size: 40, color: Colors.grey)),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () => _pickImage(setModalState),
-                            icon: const Icon(Icons.edit, size: 14),
-                            label: const Text("Change Business Logo", style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: FfigTheme.primaryBrown,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

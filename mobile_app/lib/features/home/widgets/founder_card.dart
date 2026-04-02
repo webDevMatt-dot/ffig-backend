@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/services/membership_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import 'founder_card.dart';
 import '../../../../shared_widgets/user_avatar.dart';
 import '../models/founder_profile.dart';
 
@@ -67,29 +70,26 @@ class _FounderCardState extends State<FounderCard> {
 
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
       ),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor, width: 1.5),
           boxShadow: [
             BoxShadow(
               color: shadowColor,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: InkWell(
-          onTap: () {
-            // Navigation placeholder
-          },
-          borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +103,7 @@ class _FounderCardState extends State<FounderCard> {
                         border: Border.all(color: FfigTheme.primaryBrown, width: 2),
                       ),
                       child: UserAvatar(
-                        radius: 28,
+                        radius: 32,
                         imageUrl: widget.profile.photoUrl,
                         firstName: widget.profile.name.split(' ').first,
                         lastName: widget.profile.name.split(' ').length > 1 ? widget.profile.name.split(' ').last : '',
@@ -119,30 +119,30 @@ class _FounderCardState extends State<FounderCard> {
                               Flexible(
                                 child: Text(
                                   widget.profile.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
+                                  style: theme.textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                                    fontSize: 22,
                                   ),
                                 ),
                               ),
-                              if (widget.profile.isPremium) ...[
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified, color: Colors.amber, size: 16),
-                              ] else ...[
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified, color: FfigTheme.primaryBrown, size: 16),
-                              ],
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.verified, 
+                                color: widget.profile.isPremium ? const Color(0xFFD4AF37) : FfigTheme.primaryBrown, 
+                                size: 20
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Text(
                             widget.profile.businessName,
-                            style: theme.textTheme.bodyMedium?.copyWith(
+                            style: GoogleFonts.inter(
                               color: FfigTheme.primaryBrown,
                               fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Row(
                             children: [
                               Icon(Icons.location_on_outlined, size: 14, color: theme.hintColor),
@@ -158,9 +158,10 @@ class _FounderCardState extends State<FounderCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: badgeBg,
                     borderRadius: BorderRadius.circular(20),
@@ -168,33 +169,30 @@ class _FounderCardState extends State<FounderCard> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star_rounded, color: _badgeTextColor, size: 16),
-                      const SizedBox(width: 6),
+                      Icon(Icons.star_rounded, color: _badgeTextColor, size: 18),
+                      const SizedBox(width: 8),
                       Text(
                         'FOUNDER OF THE WEEK',
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           color: _badgeTextColor,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Text(
-                      widget.profile.bio,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        height: 1.5,
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
-                      ),
-                    ),
+                const SizedBox(height: 20),
+                Text(
+                  widget.profile.bio,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    height: 1.6,
+                    fontSize: 15,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
                   ),
                 ),
+                const SizedBox(height: 10),
               ],
             ),
           ),

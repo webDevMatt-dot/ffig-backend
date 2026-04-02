@@ -18,6 +18,7 @@ class Resource(models.Model):
     
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='GEN')
     # Add a thumbnail for magazines/videos
+    thumbnail = models.ImageField(upload_to='resources/thumbnails/', blank=True, null=True)
     thumbnail_url = models.URLField(blank=True, null=True) 
     
     created_at = models.DateTimeField(auto_now_add=True)

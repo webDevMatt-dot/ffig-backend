@@ -11,4 +11,4 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Resource
-        fields = ['id', 'title', 'description', 'url', 'file', 'category', 'thumbnail_url', 'created_at', 'is_active', 'images']
+        fields = ['id', 'title', 'description', 'url', 'file', 'category', 'thumbnail', 'thumbnail_url', 'created_at', 'is_active', 'images']

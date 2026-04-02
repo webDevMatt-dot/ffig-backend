@@ -168,6 +168,19 @@ class AdminApiService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchEventDetails(int id) async {
+    final token = await _getToken();
+    final headers = <String, String>{};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
+    final response = await http.get(Uri.parse('$_eventsBaseUrl/$id/'), headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load event details: ${response.statusCode}');
+    }
+  }
+
   Future<Map<String, dynamic>> createEvent(Map<String, dynamic> data, {dynamic imageFile}) async {
     final token = await _getToken();
     var request = http.MultipartRequest('POST', Uri.parse('$_eventsBaseUrl/'));
@@ -655,7 +668,7 @@ class AdminApiService {
 
     if (imageFile != null) {
       if (imageFile is File) {
-        request.files.add(await http.MultipartFile.fromPath('thumbnail_url', imageFile.path, contentType: MediaType('image', 'jpeg')));
+        request.files.add(await http.MultipartFile.fromPath('thumbnail', imageFile.path, contentType: MediaType('image', 'jpeg')));
       }
     }
     if (pdfFile != null) {
@@ -680,7 +693,7 @@ class AdminApiService {
 
     if (imageFile != null) {
       if (imageFile is File) {
-        request.files.add(await http.MultipartFile.fromPath('thumbnail_url', imageFile.path, contentType: MediaType('image', 'jpeg')));
+        request.files.add(await http.MultipartFile.fromPath('thumbnail', imageFile.path, contentType: MediaType('image', 'jpeg')));
       } else if (imageFile is String) {
         request.fields['thumbnail_url'] = imageFile;
       }

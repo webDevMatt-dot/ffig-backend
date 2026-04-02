@@ -4,6 +4,7 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'email_verification_screen.dart';
 import '../../core/api/constants.dart';
 
 /// The User Registration Screen.
@@ -98,15 +99,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (response.statusCode == 201) {
-        // Success! Go back to Login so they can sign in.
+        // Success! Go to Email Verification Screen.
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Account created! Please log in."),
-              backgroundColor: Colors.green,
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EmailVerificationScreen(email: email),
             ),
           );
-          Navigator.pop(context); // Return to Login Screen
         }
       } else {
         _showError(_getRegistrationErrorMessage(response));

@@ -85,6 +85,13 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
 
+        if (data.containsKey('user_id')) {
+          await storage.write(
+            key: 'user_id',
+            value: data['user_id'].toString(),
+          );
+        }
+
         // Moderation Checks (Block/Suspend)
         if (data['is_blocked'] == true) {
           if (mounted) {

@@ -195,32 +195,55 @@ class _EditUserScreenState extends State<EditUserScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-               _buildSection("Profile Information", [
+               // Profile Spotlight
+               Center(
+                 child: Column(
+                   children: [
+                     Container(
+                       height: 100, width: 100,
+                       decoration: BoxDecoration(
+                         color: FfigTheme.primaryBrown.withOpacity(0.1),
+                         shape: BoxShape.circle,
+                         border: Border.all(color: FfigTheme.primaryBrown.withOpacity(0.2), width: 2),
+                       ),
+                       child: const Icon(Icons.person, size: 50, color: FfigTheme.primaryBrown),
+                     ),
+                     const SizedBox(height: 12),
+                     Text(
+                       _usernameController.text.toUpperCase(),
+                       style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5),
+                     ),
+                   ],
+                 ),
+               ),
+               const SizedBox(height: 32),
+
+               _buildSection("PROFILE INFORMATION", [
                   TextFormField(
                     controller: _usernameController, 
-                    decoration: const InputDecoration(labelText: "Username", prefixIcon: Icon(Icons.person)),
+                    decoration: InputDecoration(labelText: "Username", prefixIcon: const Icon(Icons.alternate_email, size: 20), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                     validator: (v) => v!.isEmpty ? "Required" : null,
                   ),
                   const SizedBox(height: 16),
                   Row(children: [
-                    Expanded(child: TextFormField(controller: _fNameController, decoration: const InputDecoration(labelText: "First Name"))),
+                    Expanded(child: TextFormField(controller: _fNameController, decoration: InputDecoration(labelText: "First Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))))),
                     const SizedBox(width: 12),
-                    Expanded(child: TextFormField(controller: _lNameController, decoration: const InputDecoration(labelText: "Last Name"))),
+                    Expanded(child: TextFormField(controller: _lNameController, decoration: InputDecoration(labelText: "Last Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))))),
                   ]),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController, 
-                    decoration: const InputDecoration(labelText: "Email", prefixIcon: Icon(Icons.email)),
+                    decoration: InputDecoration(labelText: "Email Address", prefixIcon: const Icon(Icons.email_outlined, size: 20), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                     validator: (v) => v!.isEmpty ? "Required" : null,
                   ),
                ]),
                const SizedBox(height: 24),
                
 
-               _buildSection("Membership & Access", [
+               _buildSection("MEMBERSHIP & ACCESS", [
                    DropdownButtonFormField<String>(
-                     decoration: const InputDecoration(labelText: "Membership Tier", border: OutlineInputBorder()),
-                     initialValue: _selectedTier,
+                     decoration: InputDecoration(labelText: "Membership Tier", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                     value: _selectedTier,
                      items: const [
                        DropdownMenuItem(value: 'FREE', child: Text("Free")),
                        DropdownMenuItem(value: 'STANDARD', child: Text("Standard")),
@@ -240,8 +263,9 @@ class _EditUserScreenState extends State<EditUserScreen> {
                    ),
                    const SizedBox(height: 16),
                    SwitchListTile(
-                     title: const Text("Admin Access"), 
-                     subtitle: const Text("Can access dashboard"),
+                     title: const Text("Dashboard Access"), 
+                     subtitle: const Text("Allow this user to access the admin panel"),
+                     activeColor: FfigTheme.primaryBrown,
                      value: _isStaff, 
                      onChanged: (v) async {
                         if (v) {
@@ -259,20 +283,23 @@ class _EditUserScreenState extends State<EditUserScreen> {
 
                const SizedBox(height: 24),
                
-               _buildSection("Security", [
+               _buildSection("SECURITY", [
                   if (widget.user == null) 
                     TextFormField(
                       controller: _passController, 
-                      decoration: const InputDecoration(labelText: "Password", prefixIcon: Icon(Icons.lock)),
+                      decoration: InputDecoration(labelText: "Password", prefixIcon: const Icon(Icons.lock_outline, size: 20), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                       obscureText: true,
                       validator: (v) => v!.isEmpty ? "Required" : null,
                     )
                   else
                     OutlinedButton.icon(
                       icon: const Icon(Icons.lock_reset),
-                      label: const Text("Reset Password"),
+                      label: const Text("RESET PASSWORD"),
                       onPressed: _resetPassword,
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     )
                ]),
                
@@ -296,8 +323,10 @@ class _EditUserScreenState extends State<EditUserScreen> {
                   padding: const EdgeInsets.all(16),
                   backgroundColor: FfigTheme.primaryBrown,
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0
               ),
-              child: Text(_isLoading ? "Saving..." : (widget.user == null ? "CREATE MEMBER" : "SAVE CHANGES")),
+              child: Text(_isLoading ? "SAVING..." : (widget.user == null ? "CREATE MEMBER" : "SAVE CHANGES"), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
             ),
           ),
         ),
@@ -307,15 +336,16 @@ class _EditUserScreenState extends State<EditUserScreen> {
 
   Widget _buildSection(String title, List<Widget> children) {
     return Card(
-      elevation: 2,
+      elevation: 0,
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.withOpacity(0.1))),
+       color: Theme.of(context).cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Divider(),
-            const SizedBox(height: 12),
+            Text(title, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            const SizedBox(height: 20),
             ...children
           ],
         ),

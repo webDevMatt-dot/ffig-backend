@@ -21,12 +21,26 @@ class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all().order_by('date')
     
     def get_queryset(self):
+        from django.db.models import Q
         user = self.request.user
         if user.is_authenticated and user.is_staff: 
-            return Event.objects.all().order_by('date')
+            queryset = Event.objects.all()
+        else:
+            # Filter for UPCOMING events only for regular users
+            queryset = Event.objects.filter(is_active=True, date__gte=timezone.now().date())
             
-        # Filter for UPCOMING events only
-        return Event.objects.filter(is_active=True, date__gte=timezone.now().date()).order_by('date')
+        # Search: Filter by title, location, or description
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            terms = search_query.split()
+            for term in terms:
+                queryset = queryset.filter(
+                    Q(title__icontains=term) |
+                    Q(location__icontains=term) |
+                    Q(description__icontains=term)
+                )
+        
+        return queryset.order_by('date')
 
 # 2. Get Single Event Details
 # 2. Get Single Event Details (Retrieve & Update)

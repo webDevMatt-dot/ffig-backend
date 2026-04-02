@@ -90,17 +90,20 @@ class FFIGApp extends StatelessWidget {
       animation: themeController,
       builder: (context, child) {
         return OverlaySupport.global(
-          child: MaterialApp(
-            navigatorKey: navigatorKey,
-            title: 'Female Founders Initiative Global Mobile',
-            debugShowCheckedModeBanner: false,
-            // Mode
-            themeMode: themeController.themeMode,
-            // Light
-            theme: FfigTheme.lightTheme,
-            // Dark (VVIP Night Mode)
-            darkTheme: FfigTheme.darkTheme,
-            home: const SplashScreen(),
+          child: GestureDetector(
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: MaterialApp(
+              navigatorKey: navigatorKey,
+              title: 'Female Founders Initiative Global Mobile',
+              debugShowCheckedModeBanner: false,
+              // Mode
+              themeMode: themeController.themeMode,
+              // Light
+              theme: FfigTheme.lightTheme,
+              // Dark (VVIP Night Mode)
+              darkTheme: FfigTheme.darkTheme,
+              home: const SplashScreen(),
+            ),
           ),
         );
       },

@@ -172,3 +172,81 @@ def send_membership_reminder_email(user, days_left):
     except Exception as e:
         print(f"❌ Error sending membership reminder to {user.email}: {e}")
         return False
+
+def send_welcome_email(user):
+    """
+    Sends a warm, professional 'Welcome to FFIG' email to new members.
+    """
+    subject = "Welcome to Female Founders Initiative Global! 🌍"
+    
+    # Recipient Info
+    recipient_name = user.first_name or user.username
+    recipient_email = user.email
+    
+    html_message = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="https://static.wixstatic.com/media/e4ebfd_1f182f540e204bdaa863f19484f2d043~mv2.png" alt="FFIG Logo" style="max-width: 150px; height: auto;">
+            </div>
+            
+            <h2 style="color: #8B4513; text-align: center; font-size: 24px;">Welcome to the Global Community!</h2>
+            
+            <p>Hi {recipient_name},</p>
+            
+            <p>We are absolutely thrilled to have you join <strong>Female Founders Initiative Global (FFIG)</strong>. You are now part of a powerful network of mission-driven businesswomen, founders, and leaders from around the world.</p>
+            
+            <div style="background-color: #fce4ec; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                <p style="margin-top: 0; font-weight: bold; color: #880e4f;">🚀 Ready to Get Started?</p>
+                <ul style="margin-bottom: 0; padding-left: 20px;">
+                    <li><strong>Complete your Profile:</strong> Head to the app to update your bio and industry so others can find you.</li>
+                    <li><strong>Explore Events:</strong> Check out our upcoming Masterclasses and Business Exchanges.</li>
+                    <li><strong>Join the Conversation:</strong> Dive into the Community Chat and introduce yourself!</li>
+                </ul>
+            </div>
+            
+            <p>Our goal is to support your growth, connection, and success on a global scale. If you ever have any questions or need support, our team is just an email away.</p>
+            
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+            
+            <p style="text-align: center; font-size: 14px; color: #777;">
+                Female Founders Initiative Global<br>
+                <em>We don't compete, We collaborate</em>
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    plain_message = f"""
+    Welcome to Female Founders Initiative Global (FFIG)!
+    
+    Hi {recipient_name},
+    
+    We are thrilled to have you join our global community of mission-driven businesswomen and leaders.
+    
+    Next Steps:
+    1. Complete your Profile in the app.
+    2. Check out our upcoming Events & Masterclasses.
+    3. Introduce yourself in the Community Chat!
+    
+    We're here to support your growth and success every step of the way.
+    
+    Best regards,
+    The Female Founders Initiative Global Team
+    """
+    
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"❌ Error sending welcome email to {recipient_email}: {e}")
+        return False

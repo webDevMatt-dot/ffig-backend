@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/api/constants.dart';
+import '../../../../core/utils/dialog_utils.dart';
 
 class AdminApprovalsScreen extends StatelessWidget {
   const AdminApprovalsScreen({super.key});
@@ -12,9 +15,16 @@ class AdminApprovalsScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Approvals Center"),
-          bottom: const TabBar(
-            tabs: [
+          title: Text(
+            "Approvals Center", 
+            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)
+          ),
+          bottom: TabBar(
+            labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+            unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+            indicatorColor: FfigTheme.accentBrown,
+            indicatorWeight: 3,
+            tabs: const [
               Tab(text: "Business Profiles"),
               Tab(text: "Marketing Requests"),
             ],
@@ -72,7 +82,6 @@ class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
     Widget build(BuildContext context) {
         if (_isLoading) return const Center(child: CircularProgressIndicator());
         
-        // Filter based on search query
         final filteredItems = _items.where((item) {
             if (_searchQuery.isEmpty) return true;
             final name = (item['company_name'] ?? '').toString().toLowerCase();
@@ -81,19 +90,22 @@ class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
             return name.contains(q) || desc.contains(q);
         }).toList();
 
-        if (_items.isEmpty) return const Center(child: Text("No pending business profiles."));
+        if (_items.isEmpty) return Center(child: Text("No pending business profiles.", style: GoogleFonts.inter(color: Colors.grey)));
         
         return Column(
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
+                style: GoogleFonts.inter(fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: "Search businesses...",
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  hintText: "Search pending businesses...",
+                  hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16)
                 ),
                 onChanged: (val) => setState(() => _searchQuery = val),
@@ -101,26 +113,82 @@ class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
             ),
             Expanded(
               child: filteredItems.isEmpty 
-                  ? const Center(child: Text("No matches found."))
+                  ? Center(child: Text("No matches found.", style: GoogleFonts.inter(color: Colors.grey)))
                   : ListView.builder(
                     itemCount: filteredItems.length,
                     padding: const EdgeInsets.only(bottom: 100),
                     itemBuilder: (context, index) {
                         final item = filteredItems[index];
-                        return Card(
+                        return Container(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
                             child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
                                 onTap: () => _showBusinessDetails(context, item),
-                                child: ListTile(
-                                    title: Text(item['company_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text(item['description'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-                                    trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                            IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _decide(item['id'], 'APPROVED')),
-                                            IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _decide(item['id'], 'REJECTED')),
+                                          Expanded(
+                                            child: Text(
+                                              item['company_name'] ?? 'Unknown', 
+                                              style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16),
+                                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                            child: Text("PENDING", style: GoogleFonts.inter(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w800)),
+                                          ),
                                         ],
-                                    ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        item['description'] ?? '', 
+                                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey, height: 1.4),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            icon: const Icon(Icons.close, size: 16),
+                                            label: Text("REJECT", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800)),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                              side: const BorderSide(color: Colors.red),
+                                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            onPressed: () => _decide(item['id'], 'REJECTED'),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          ElevatedButton.icon(
+                                            icon: const Icon(Icons.check, size: 16),
+                                            label: Text("APPROVE", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800)),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            onPressed: () => _decide(item['id'], 'APPROVED'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                             ),
                         );
@@ -135,57 +203,90 @@ class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
         showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-            builder: (c) => Padding(
+            backgroundColor: Colors.transparent,
+            builder: (c) => Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
                 padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
-                child: Container(
-                    constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
-                    child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        // HEADER
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
                             children: [
-                                Text("Business Details", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 16),
-                                Text(item['company_name'] ?? 'Unknown Business', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 16),
-                                const Text("Description", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                const SizedBox(height: 8),
-                                Text(item['description'] ?? 'No description provided.', style: const TextStyle(fontSize: 16, height: 1.5)),
-                                const SizedBox(height: 16),
-                                if (item['website'] != null && item['website'].toString().isNotEmpty) ...[
-                                    const Text("Website", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    Text(item['website']),
-                                    const SizedBox(height: 16),
-                                ],
-                                if (item['industry'] != null && item['industry'].toString().isNotEmpty) ...[
-                                    const Text("Industry", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    Text(item['industry']),
-                                    const SizedBox(height: 16),
-                                ],
-                                if (item['contact_email'] != null && item['contact_email'].toString().isNotEmpty) ...[
-                                    const Text("Contact Email", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    Text(item['contact_email']),
-                                    const SizedBox(height: 16),
-                                ],
-                                const SizedBox(height: 24),
-                                Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                        TextButton(onPressed: () => Navigator.pop(c), child: const Text("Close")),
-                                    ]
-                                )
-                            ]
-                        )
-                    )
+                              IconButton(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close), constraints: const BoxConstraints(), padding: EdgeInsets.zero),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item['company_name'] ?? 'Business Details', 
+                                  style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w800),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                        
+                        Flexible(
+                          child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      Text("ABOUT BUSINESS", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        item['description'] ?? 'No description provided.', 
+                                        style: GoogleFonts.inter(fontSize: 15, height: 1.6),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      
+                                      Text("CONTACT & INFO", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
+                                      const SizedBox(height: 16),
+                                      if (item['website'] != null && item['website'].toString().isNotEmpty) ...[
+                                          _detailRow(Icons.language, "Website", item['website']),
+                                      ],
+                                      if (item['industry'] != null && item['industry'].toString().isNotEmpty) ...[
+                                          _detailRow(Icons.category_outlined, "Industry", item['industry']),
+                                      ],
+                                      if (item['contact_email'] != null && item['contact_email'].toString().isNotEmpty) ...[
+                                          _detailRow(Icons.email_outlined, "Email", item['contact_email']),
+                                      ],
+                                      const SizedBox(height: 32),
+                                  ]
+                              )
+                          ),
+                        ),
+                    ]
                 )
             )
         );
     }
+}
+
+Widget _detailRow(IconData icon, String label, String val) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16.0),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: FfigTheme.accentBrown),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w700)),
+            Text(val, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _MarketingApprovalsList extends StatefulWidget {
@@ -248,16 +349,39 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
 
     Future<void> _delete(int id) async {
          // Confirm Dialog
-         final confirm = await showDialog<bool>(
+         final confirm = await showGeneralDialog<bool>(
              context: context,
-             builder: (c) => AlertDialog(
-                 title: const Text("Delete Post?"),
-                 content: const Text("This cannot be undone."),
-                 actions: [
-                     TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
-                     TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-                 ],
-             )
+             barrierDismissible: true,
+             barrierLabel: '',
+             barrierColor: Colors.black.withOpacity(0.7),
+             transitionDuration: const Duration(milliseconds: 300),
+             pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+             transitionBuilder: (ctx, anim1, anim2, child) {
+               return BackdropFilter(
+                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                 child: ScaleTransition(
+                   scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+                   child: FadeTransition(
+                     opacity: anim1,
+                     child: AlertDialog(
+                         backgroundColor: Theme.of(ctx).cardColor.withOpacity(0.9),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                         title: Text("Delete Post?".toUpperCase(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.red, letterSpacing: 1.0)),
+                         content: Text("This cannot be undone. Are you sure?", style: GoogleFonts.inter(fontSize: 14)),
+                         actions: [
+                             TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("CANCEL", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w700))),
+                             const SizedBox(width: 8),
+                             ElevatedButton(
+                               onPressed: () => Navigator.pop(ctx, true), 
+                               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                               child: Text("DELETE", style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.white))
+                             ),
+                         ],
+                     ),
+                   ),
+                 ),
+               );
+             }
          );
          
          if (confirm != true) return;
@@ -279,7 +403,6 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
     Widget build(BuildContext context) {
         if (_isLoading) return const Center(child: CircularProgressIndicator());
         
-        // Filter
         final filteredItems = _items.where((item) {
             if (_searchQuery.isEmpty) return true;
             final title = (item['title'] ?? '').toString().toLowerCase();
@@ -288,19 +411,22 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
             return title.contains(q) || link.contains(q);
         }).toList();
 
-        if (_items.isEmpty) return const Center(child: Text("No pending marketing requests."));
+        if (_items.isEmpty) return Center(child: Text("No pending marketing requests.", style: GoogleFonts.inter(color: Colors.grey)));
         
         return Column(
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
+                style: GoogleFonts.inter(fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: "Search marketing...",
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  hintText: "Search marketing requests...",
+                  hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16)
                 ),
                 onChanged: (val) => setState(() => _searchQuery = val),
@@ -308,22 +434,42 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
             ),
             Expanded(
               child: filteredItems.isEmpty 
-                  ? const Center(child: Text("No matches found."))
+                  ? Center(child: Text("No matches found.", style: GoogleFonts.inter(color: Colors.grey)))
                   : ListView.builder(
                     itemCount: filteredItems.length,
                     padding: const EdgeInsets.only(bottom: 100),
                     itemBuilder: (context, index) {
                         final item = filteredItems[index];
-                        return Card(
+                        return Container(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
                             child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
                                 onTap: () => _showMarketingDetails(context, item),
                                 child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                        ListTile(
-                                            leading: item['type'] == 'AD' ? const Icon(Icons.star, color: Colors.amber) : const Icon(Icons.campaign, color: Colors.blue),
-                                            title: Text(item['title'] ?? 'Untitled'),
-                                            subtitle: Text(item['link'] ?? 'No link', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        Padding(
+                                          padding: const EdgeInsets.all(16.0),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(item['title'] ?? 'Untitled', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                    Text(item['link'] ?? 'No link attached', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                  ],
+                                                ),
+                                              ),
+                                              _statusChip(item['status']),
+                                            ],
+                                          ),
                                         ),
                                         if (item['image'] != null)
                                             Builder(builder: (c) {
@@ -332,29 +478,55 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
                                                   final domain = baseUrl.replaceAll('/api/', '');
                                                   url = '$domain$url';
                                               }
-                                              return SizedBox(height: 100, child: Image.network(url, fit: BoxFit.cover));
+                                              return Container(
+                                                height: 180, width: double.infinity,
+                                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: Image.network(url, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.grey[800], child: const Icon(Icons.broken_image, color: Colors.white24))),
+                                                ),
+                                              );
                                             }),
-                                         if (item['video'] != null)
-                                            const Padding(padding: EdgeInsets.all(8.0), child: Text("VIDEO CONTENT ATTACHED", style: TextStyle(fontWeight: FontWeight.bold))),
+                                         if (item['video'] != null && item['image'] == null)
+                                            Container(
+                                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.videocam_outlined, color: Colors.blue),
+                                                  const SizedBox(width: 12),
+                                                  Text("VIDEO CONTENT ATTACHED", style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.blue)),
+                                                ],
+                                              ),
+                                            ),
                                         
-                                        
-                                        OverflowBar(
+                                        Padding(
+                                          padding: const EdgeInsets.all(16.0),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
                                             children: [
-                                                if (item['status'] == 'PENDING') ...[
-                                                   TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: const Text("Reject", style: TextStyle(color: Colors.red))),
-                                                   ElevatedButton(onPressed: () => _decide(item['id'], 'APPROVED'), child: const Text("Approve")),
-                                                ] else ...[
-                                                    // Already decided, show Delete
-                                                    IconButton(
-                                                        icon: const Icon(Icons.delete, color: Colors.red),
-                                                        onPressed: () => _delete(item['id']),
-                                                    ),
-                                                    Text(item['status'], style: TextStyle(
-                                                        color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
-                                                        fontWeight: FontWeight.bold
-                                                    )),
-                                                ]
+                                              if (item['status'] == 'PENDING') ...[
+                                                 TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: Text("REJECT", style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w800, fontSize: 12))),
+                                                 const SizedBox(width: 12),
+                                                 ElevatedButton(
+                                                   onPressed: () => _decide(item['id'], 'APPROVED'), 
+                                                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.accentBrown, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                                                   child: Text("APPROVE", style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12))
+                                                 ),
+                                              ] else ...[
+                                                  IconButton(
+                                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                                      onPressed: () => _delete(item['id']),
+                                                  ),
+                                                  const Spacer(),
+                                                  Text(item['status'].toUpperCase(), style: GoogleFonts.inter(
+                                                      color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
+                                                      fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.2
+                                                  )),
+                                              ]
                                             ],
+                                          ),
                                         )
                                     ],
                                 ),
@@ -367,67 +539,103 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
         );
     }
 
+    Widget _statusChip(String status) {
+      Color color = Colors.grey;
+      if (status == 'PENDING') color = Colors.orange;
+      if (status == 'APPROVED') color = Colors.green;
+      if (status == 'REJECTED') color = Colors.red;
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Text(status.toUpperCase(), style: GoogleFonts.inter(color: color, fontSize: 9, fontWeight: FontWeight.w800)),
+      );
+    }
+
     void _showMarketingDetails(BuildContext context, dynamic item) {
         showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-            builder: (c) => Padding(
+            backgroundColor: Colors.transparent,
+            builder: (c) => Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
                 padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
-                child: Container(
-                    constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
-                    child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        // HEADER
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
                             children: [
-                                Text("Marketing Request Details", style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 16),
-                                Text(item['title'] ?? 'Untitled Request', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 16),
-                                const Text("Type", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                const SizedBox(height: 8),
-                                Text(item['type'] ?? 'Unknown', style: const TextStyle(fontSize: 16)),
-                                const SizedBox(height: 16),
-                                if (item['link'] != null && item['link'].toString().isNotEmpty) ...[
-                                    const Text("Link", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    Text(item['link']),
-                                    const SizedBox(height: 16),
-                                ],
-                                if (item['image'] != null) ...[
-                                    const Text("Attached Image", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    Builder(builder: (c) {
-                                        var url = item['image'].toString();
-                                        if (url.startsWith('/')) {
-                                            final domain = baseUrl.replaceAll('/api/', '');
-                                            url = '$domain$url';
-                                        }
-                                        return ClipRRect(
-                                          borderRadius: BorderRadius.circular(8), 
-                                          child: Image.network(url, fit: BoxFit.cover)
-                                        );
-                                    }),
-                                    const SizedBox(height: 16),
-                                ],
-                                if (item['video'] != null) ...[
-                                    const Text("Attached Video", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                    const SizedBox(height: 8),
-                                    const Text("User uploaded a video for this request.", style: TextStyle(fontStyle: FontStyle.italic)),
-                                    const SizedBox(height: 16),
-                                ],
-                                const SizedBox(height: 24),
-                                Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                        TextButton(onPressed: () => Navigator.pop(c), child: const Text("Close")),
-                                    ]
-                                )
-                            ]
-                        )
-                    )
+                              IconButton(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close), constraints: const BoxConstraints(), padding: EdgeInsets.zero),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item['title'] ?? 'Marketing Request', 
+                                  style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w800),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                        
+                        Flexible(
+                          child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      Text("REQUEST DETAILS", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
+                                      const SizedBox(height: 16),
+                                      _detailRow(Icons.category_outlined, "Type", (item['type'] ?? 'Unknown').toString().toUpperCase()),
+                                      if (item['link'] != null && item['link'].toString().isNotEmpty) ...[
+                                          _detailRow(Icons.link_rounded, "External Link", item['link']),
+                                      ],
+                                      const SizedBox(height: 24),
+                                      
+                                      if (item['image'] != null) ...[
+                                          Text("ATTACHED MEDIA", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
+                                          const SizedBox(height: 16),
+                                          Builder(builder: (c) {
+                                              var url = item['image'].toString();
+                                              if (url.startsWith('/')) {
+                                                  final domain = baseUrl.replaceAll('/api/', '');
+                                                  url = '$domain$url';
+                                              }
+                                              return ClipRRect(
+                                                borderRadius: BorderRadius.circular(16), 
+                                                child: Image.network(url, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(height: 200, color: Colors.grey[900], child: const Icon(Icons.broken_image, color: Colors.white24)))
+                                              );
+                                          }),
+                                          const SizedBox(height: 16),
+                                      ],
+                                      if (item['video'] != null) ...[
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.videocam_outlined, color: Colors.blue),
+                                                const SizedBox(width: 12),
+                                                Text("USER PROVIDED VIDEO CONTENT", style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.blue)),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+                                      ],
+                                      const SizedBox(height: 32),
+                                  ]
+                              )
+                          ),
+                        ),
+                    ]
                 )
             )
         );
@@ -437,32 +645,61 @@ class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
 /// Helper method to prompt the admin for a reason when declining.
 Future<String?> _showDeclineReasonDialog(BuildContext context) async {
     final controller = TextEditingController();
-    return showDialog<String>(
+    return showGeneralDialog<String>(
         context: context,
-        builder: (c) => AlertDialog(
-            title: const Text("Decline Reason"),
-            content: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: "Why is this being declined?",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                  fillColor: Colors.grey[100],
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.black.withOpacity(0.7),
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+        transitionBuilder: (ctx, anim1, anim2, child) {
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: ScaleTransition(
+              scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+              child: FadeTransition(
+                opacity: anim1,
+                child: AlertDialog(
+                    backgroundColor: Theme.of(ctx).cardColor.withOpacity(0.9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    title: Text("Decline Reason".toUpperCase(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: FfigTheme.accentBrown, letterSpacing: 1.0)),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Please provide a reason for declining this request.", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
+                        const SizedBox(height: 20),
+                        TextField(
+                            controller: controller,
+                            style: GoogleFonts.inter(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: "Reason...",
+                              hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                              filled: true,
+                              fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
+                            ),
+                            maxLines: 4,
+                            autofocus: true,
+                        ),
+                      ],
+                    ),
+                    actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text("CANCEL", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w700))),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                            onPressed: () {
+                                if (controller.text.trim().isEmpty) return;
+                                Navigator.pop(ctx, controller.text.trim());
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            child: Text("REJECT", style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.white)),
+                        )
+                    ]
                 ),
-                maxLines: 3,
-                autofocus: true,
+              ),
             ),
-            actions: [
-                TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
-                ElevatedButton(
-                    onPressed: () {
-                        if (controller.text.trim().isEmpty) return;
-                        Navigator.pop(c, controller.text.trim());
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text("Confirm Decline"),
-                )
-            ]
-        )
+          );
+        }
     );
 }

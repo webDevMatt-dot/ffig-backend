@@ -34,6 +34,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
   
   // --- FILTER VARIABLES ---
   String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
   List<String> _selectedIndustries = [];
   List<String> _selectedCountries = [];
   List<String> _selectedTiers = [];
@@ -62,6 +63,13 @@ class _MemberListScreenState extends State<MemberListScreen> {
     'STANDARD': 'Standard',
     'PREMIUM': 'Premium',
   };
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -224,11 +232,9 @@ class _MemberListScreenState extends State<MemberListScreen> {
   // --- SEARCH DEBOUNCE ---
   // Waits 500ms after user stops typing before calling API
   void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() {
-        _searchQuery = query;
-      });
       _fetchMembers();
     });
   }
@@ -260,10 +266,20 @@ class _MemberListScreenState extends State<MemberListScreen> {
                   children: [
                     Expanded(
                       child: TextField(
+                        controller: _searchController,
                         style: Theme.of(context).textTheme.bodyMedium,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: "SEARCH MEMBERS...",
-                          prefixIcon: Icon(Icons.search),
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty 
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged("");
+                                },
+                              )
+                            : null,
                         ),
                         onChanged: _onSearchChanged,
                       ),

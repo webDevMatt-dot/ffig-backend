@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
@@ -203,22 +204,28 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _editingId != null ? "Edit Event" : "Create New Event", 
-                      style: Theme.of(context).textTheme.titleLarge
+                      _editingId != null ? "Quick Edit Event" : "Create New Event", 
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
-                    _buildField(_titleController, "Event Title", Icons.event),
+                    const Text("DETAILS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
+                    
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: InputDecoration(labelText: 'Event Title', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
                     const SizedBox(height: 16),
-                    _buildField(_locController, "Location", Icons.location_on),
-                    const SizedBox(height: 16),
+                    
                     TextFormField(
                         controller: _dateController,
                         readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: "Date",
-                          prefixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: "Start Date",
+                          prefixIcon: const Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onTap: () async {
                            DateTime? picked = await showDatePicker(
@@ -239,10 +246,10 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                     TextFormField(
                         controller: _endDateController,
                         readOnly: true,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: "End Date (Optional)",
-                          prefixIcon: Icon(Icons.calendar_month),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.calendar_month),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onTap: () async {
                            DateTime? picked = await showDatePicker(
@@ -259,26 +266,28 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         },
                     ),
                     const SizedBox(height: 24),
+                    const Text("COVER IMAGE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
                     Stack(
                       children: [
                         InkWell(
                             onTap: () => _pickImage(setModalState),
                             child: Container(
-                                height: 150,
+                                height: 180,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey[300]!)
+                                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Theme.of(context).dividerColor)
                                 ),
                                 child: _selectedImage != null
                                     ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(16),
                                         child: Image.file(_selectedImage!, fit: BoxFit.cover),
                                       )
                                     : (_imgController.text.isNotEmpty && _imgController.text.startsWith('http')
                                         ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(16),
                                             child: Image.network(_imgController.text, fit: BoxFit.cover),
                                           )
                                         : Column(

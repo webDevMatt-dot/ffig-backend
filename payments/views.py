@@ -256,6 +256,21 @@ def stripe_webhook(request):
                     profile.subscription_expiry = timezone.now() + timedelta(days=365)
                     profile.save()
                     logger.info(f"✅ Membership fulfilled for {user.email}: {target_tier}")
+
+                    # --- 📣 NOTIFY ADMINS ---
+                    try:
+                        from core.services.fcm_service import send_push_notification
+                        admins = User.objects.filter(is_staff=True)
+                        for admin in admins:
+                            send_push_notification(
+                                admin,
+                                title="New Membership Upgrade",
+                                body=f"{user.username} upgraded to {target_tier}!",
+                                data={"type": "admin_membership_alert", "user_id": str(user.id)}
+                            )
+                    except Exception as pe:
+                        logger.error(f"⚠️ Failed to send admin push for membership: {pe}")
+
             except Exception as e:
                 logger.error(f"❌ Error fulfilling membership: {e}")
             return Response(status=status.HTTP_200_OK)
@@ -289,6 +304,23 @@ def stripe_webhook(request):
                 elif tier.available > 0:
                     tier.available = 0
                     tier.save()
+
+                # --- 📣 NOTIFY ADMINS ---
+                try:
+                    from django.contrib.auth import get_user_model
+                    from core.services.fcm_service import send_push_notification
+                    User = get_user_model()
+                    user = User.objects.get(id=user_id)
+                    admins = User.objects.filter(is_staff=True)
+                    for admin in admins:
+                        send_push_notification(
+                            admin,
+                            title="New Ticket Purchase",
+                            body=f"{user.username} bought {quantity} {tier.name} ticket(s) for {tier.event.title}.",
+                            data={"type": "admin_purchase_alert", "event_id": str(tier.event.id)}
+                        )
+                except Exception as e:
+                    logger.error(f"⚠️ Failed to send admin push for ticket: {e}")
                     
             except Exception as e:
                  logger.error(f"❌ Error fulfilling order: {e}")

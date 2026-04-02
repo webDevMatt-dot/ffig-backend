@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/api/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -43,14 +45,25 @@ class _EditEventScreenState extends State<EditEventScreen> {
   void initState() {
     super.initState();
     if (widget.event != null) {
-        _tiers.addAll(widget.event!['tiers'] ?? []);
-        _speakers.addAll(widget.event!['speakers'] ?? []);
-        _agenda.addAll(widget.event!['agenda'] ?? []);
-        _faqs.addAll(widget.event!['faqs'] ?? []);
+        _mapEventToControllers(widget.event!);
+        _loadFullDetails();
+    }
+  }
 
-      _titleController.text = widget.event!['title'] ?? '';
+  void _mapEventToControllers(Map<String, dynamic> event) {
+      _tiers.clear();
+      _speakers.clear();
+      _agenda.clear();
+      _faqs.clear();
+
+      _tiers.addAll(event['ticket_tiers'] ?? []);
+      _speakers.addAll(event['speakers'] ?? []);
+      _agenda.addAll(event['agenda'] ?? []);
+      _faqs.addAll(event['faqs'] ?? []);
+
+      _titleController.text = event['title'] ?? '';
       
-      final rawDate = widget.event!['date'] ?? '';
+      final rawDate = event['date'] ?? '';
       try {
           final dt = DateTime.parse(rawDate);
           _dateController.text = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
@@ -58,7 +71,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
           _dateController.text = rawDate;
       }
       
-      final rawEndDate = widget.event!['end_date'] ?? '';
+      final rawEndDate = event['end_date'] ?? '';
       try {
           if (rawEndDate.isNotEmpty) {
               final dt = DateTime.parse(rawEndDate);
@@ -67,15 +80,28 @@ class _EditEventScreenState extends State<EditEventScreen> {
       } catch (_) {
           _endDateController.text = rawEndDate;
       }
-      _locationController.text = widget.event!['location'] ?? '';
-      _priceLabelController.text = widget.event!['price_label'] ?? '';
-      _descriptionController.text = widget.event!['description'] ?? '';
-      _imageUrlController.text = widget.event!['image_url'] ?? '';
-      _virtualLinkController.text = widget.event!['virtual_link'] ?? '';
-      _emailAutomationController.text = widget.event!['email_automation_text'] ?? '';
-      _isVirtual = widget.event!['is_virtual'] ?? false;
-      _isRsvpOnly = widget.event!['is_rsvp_only'] ?? false;
-    }
+      _locationController.text = event['location'] ?? '';
+      _priceLabelController.text = event['price_label'] ?? '';
+      _descriptionController.text = event['description'] ?? '';
+      _imageUrlController.text = event['image_url'] ?? '';
+      _virtualLinkController.text = event['virtual_link'] ?? '';
+      _emailAutomationController.text = event['email_automation_text'] ?? '';
+      _isVirtual = event['is_virtual'] ?? false;
+      _isRsvpOnly = event['is_rsvp_only'] ?? false;
+  }
+
+  Future<void> _loadFullDetails() async {
+      try {
+          final api = AdminApiService();
+          final fullEvent = await api.fetchEventDetails(widget.event!['id']);
+          if (mounted) {
+              setState(() {
+                  _mapEventToControllers(fullEvent);
+              });
+          }
+      } catch (e) {
+          debugPrint("Failed to load full event details: $e");
+      }
   }
 
   Future<void> _pickImage() async {
@@ -267,28 +293,42 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final List<String> currencies = ['USD', 'ZAR', 'EUR', 'GBP', 'KES', 'NGN', 'GHS'];
 
     _showFormDialog(item == null ? "Add Ticket Tier" : "Edit Ticket Tier", [
-      _buildStyledTextField(name, "Tier Name", icon: Icons.label, validator: (v) => v!.isEmpty ? "Tier name is required" : null),
-      const SizedBox(height: 12),
+      _buildStyledTextField(name, "Tier Name", icon: Icons.label_outline, validator: (v) => v!.isEmpty ? "Tier name is required" : null),
       StatefulBuilder(
         builder: (context, setDialogState) {
-          return DropdownButtonFormField<String>(
-            value: currencies.contains(selectedCurrency) ? selectedCurrency : 'USD',
-            decoration: const InputDecoration(
-                labelText: "Currency",
-                prefixIcon: Icon(Icons.currency_exchange, color: FfigTheme.primaryBrown),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
-            items: currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-            onChanged: (v) {
-              if (v != null) setDialogState(() => selectedCurrency = v);
-            },
+            child: DropdownButtonFormField<String>(
+              value: currencies.contains(selectedCurrency) ? selectedCurrency : 'USD',
+              dropdownColor: Theme.of(context).cardColor,
+              style: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).textTheme.bodyLarge?.color),
+              decoration: InputDecoration(
+                  labelText: "Currency",
+                  labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey),
+                  prefixIcon: const Icon(Icons.currency_exchange, color: FfigTheme.accentBrown, size: 20),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              items: currencies.map((c) => DropdownMenuItem(
+                value: c, 
+                child: Text(c, style: GoogleFonts.inter())
+              )).toList(),
+              onChanged: (v) {
+                if (v != null) setDialogState(() => selectedCurrency = v);
+              },
+            ),
           );
         }
       ),
-      const SizedBox(height: 12),
-      _buildStyledTextField(price, "Price", icon: Icons.payments, isNumber: true, validator: (v) => v!.isEmpty ? "Price is required" : null),
-      const SizedBox(height: 12),
-      _buildStyledTextField(cap, "Capacity", icon: Icons.people, isNumber: true, validator: (v) => v!.isEmpty ? "Capacity is required" : null),
-    ], () async {
+      _buildStyledTextField(price, "Price", icon: Icons.payments_outlined, isNumber: true, validator: (v) => v!.isEmpty ? "Price is required" : null),
+      _buildStyledTextField(cap, "User Capacity", icon: Icons.people_outline, isNumber: true, validator: (v) => v!.isEmpty ? "Capacity is required" : null),
+    ], 
+() async {
        final data = {
          'name': name.text,
          'price': double.tryParse(price.text) ?? 0,
@@ -341,70 +381,98 @@ class _EditEventScreenState extends State<EditEventScreen> {
                         });
                     }
 
-                    return AlertDialog(
-                        title: const Text("Select User as Speaker"),
-                        content: SizedBox(
-                            width: double.maxFinite,
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                    TextField(
-                                        controller: searchController,
-                                        decoration: InputDecoration(
-                                            hintText: "Search users...",
-                                            suffixIcon: IconButton(
-                                                icon: const Icon(Icons.search),
-                                                onPressed: () async {
-                                                    setDialogState(() => searchLoading = true);
-                                                    try {
-                                                        final results = await AdminApiService().searchUsers(searchController.text);
-                                                        setDialogState(() => users = results);
-                                                    } finally {
-                                                        setDialogState(() => searchLoading = false);
-                                                    }
-                                                },
-                                            ),
-                                        ),
-                                        onSubmitted: (_) async {
-                                            setDialogState(() => searchLoading = true);
-                                            try {
-                                                final results = await AdminApiService().searchUsers(searchController.text);
-                                                setDialogState(() => users = results);
-                                            } finally {
-                                                setDialogState(() => searchLoading = false);
-                                            }
-                                        },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (searchLoading) const Center(child: CircularProgressIndicator()),
-                                    SizedBox(
-                                        height: 300,
-                                        child: ListView.builder(
-                                            itemCount: users.length,
-                                            itemBuilder: (context, index) {
-                                                final u = users[index];
-                                                final profile = u['profile'] ?? {};
-                                                return ListTile(
-                                                    leading: CircleAvatar(
-                                                        backgroundImage: profile['photo'] != null ? NetworkImage(profile['photo']) : null,
-                                                        child: profile['photo'] == null ? const Icon(Icons.person) : null,
-                                                    ),
-                                                    title: Text("${u['first_name']} ${u['last_name']}"),
-                                                    subtitle: Text(profile['business_name'] ?? profile['tier'] ?? 'Member'),
-                                                    onTap: () {
-                                                        setState(() {
-                                                            name.text = "${u['first_name']} ${u['last_name']}";
-                                                            role.text = profile['business_name'] ?? profile['tier'] ?? '';
-                                                            photo.text = profile['photo'] ?? '';
-                                                        });
-                                                        Navigator.pop(ctx);
-                                                    },
-                                                );
-                                            },
-                                        ),
-                                    ),
-                                ],
+                    return BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: AlertDialog(
+                            backgroundColor: Theme.of(ctx).cardColor.withOpacity(0.95),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                            title: Text(
+                              "Select User as Speaker".toUpperCase(), 
+                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.0, color: FfigTheme.accentBrown)
                             ),
+                            content: SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.9,
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: TextField(
+                                              controller: searchController,
+                                              style: GoogleFonts.inter(fontSize: 14),
+                                              decoration: InputDecoration(
+                                                  hintText: "Search by name or email...",
+                                                  hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                                                  prefixIcon: const Icon(Icons.search, size: 20),
+                                                  border: InputBorder.none,
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                              ),
+                                              onSubmitted: (_) async {
+                                                  setDialogState(() => searchLoading = true);
+                                                  try {
+                                                      final results = await AdminApiService().searchUsers(searchController.text);
+                                                      setDialogState(() => users = results);
+                                                  } finally {
+                                                      setDialogState(() => searchLoading = false);
+                                                  }
+                                              },
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        if (searchLoading) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
+                                        if (!searchLoading && users.isEmpty) 
+                                          Padding(
+                                            padding: const EdgeInsets.all(32),
+                                            child: Text("No users found", style: GoogleFonts.inter(color: Colors.grey)),
+                                          ),
+                                        if (users.isNotEmpty)
+                                          SizedBox(
+                                              height: 350,
+                                              child: ListView.separated(
+                                                  itemCount: users.length,
+                                                  separatorBuilder: (c,i) => Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                                                  itemBuilder: (context, index) {
+                                                      final u = users[index];
+                                                      String? photoUrl = u['photo_url'];
+                                                      if (photoUrl != null && photoUrl.startsWith('/')) {
+                                                          final domain = baseUrl.replaceAll('/api/', '');
+                                                          photoUrl = '$domain$photoUrl';
+                                                      }
+
+                                                      return ListTile(
+                                                          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                                          leading: CircleAvatar(
+                                                              radius: 20,
+                                                              backgroundColor: FfigTheme.accentBrown.withOpacity(0.1),
+                                                              backgroundImage: (photoUrl != null && photoUrl.isNotEmpty) ? NetworkImage(photoUrl) : null,
+                                                              child: (photoUrl == null || photoUrl.isEmpty) ? const Icon(Icons.person, color: FfigTheme.accentBrown, size: 20) : null,
+                                                          ),
+                                                          title: Text("${u['first_name'] ?? ''} ${u['last_name'] ?? ''}".trim(), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                                                          subtitle: Text(u['tier'] ?? 'Member', style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
+                                                          onTap: () {
+                                                              setState(() {
+                                                                  name.text = "${u['first_name'] ?? ''} ${u['last_name'] ?? ''}".trim();
+                                                                  role.text = u['tier'] ?? 'Member';
+                                                                  photo.text = photoUrl ?? '';
+                                                              });
+                                                              Navigator.pop(context);
+                                                          },
+                                                      );
+                                                  },
+                                              ),
+                                          ),
+                                    ],
+                                ),
+                            ),
+                            actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(ctx), 
+                                    child: const Text("CLOSE", style: TextStyle(color: Colors.grey))
+                                )
+                            ],
                         ),
                     );
                 }
@@ -413,23 +481,28 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
 
     _showFormDialog(item == null ? "Add Speaker" : "Edit Speaker", [
-      ElevatedButton.icon(
-          onPressed: _showUserSearch, 
-          icon: const Icon(Icons.person_search), 
-          label: const Text("SEARCH EXISTING USERS"),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: FfigTheme.accentBrown.withOpacity(0.1),
-              foregroundColor: FfigTheme.primaryBrown,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 12)
-          ),
+      Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 20),
+        child: ElevatedButton.icon(
+            onPressed: _showUserSearch, 
+            icon: const Icon(Icons.person_search_rounded, size: 20), 
+            label: Text("SEARCH EXISTING USERS", style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: FfigTheme.accentBrown.withOpacity(0.08),
+                foregroundColor: FfigTheme.accentBrown,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: FfigTheme.accentBrown.withOpacity(0.2)),
+                ),
+            ),
+        ),
       ),
-      const SizedBox(height: 16),
-      _buildStyledTextField(name, "Full Name", icon: Icons.person, validator: (v) => v!.isEmpty ? "Name is required" : null),
-      const SizedBox(height: 12),
-      _buildStyledTextField(role, "Role / Title", icon: Icons.work, validator: (v) => v!.isEmpty ? "Role is required" : null),
-      const SizedBox(height: 12),
-      _buildStyledTextField(photo, "Photo URL", icon: Icons.image),
+      _buildStyledTextField(name, "Full Name", icon: Icons.person_outline, validator: (v) => v!.isEmpty ? "Name is required" : null),
+      _buildStyledTextField(role, "Role / Title", icon: Icons.work_outline, validator: (v) => v!.isEmpty ? "Role is required" : null),
+      _buildStyledTextField(photo, "Photo URL", icon: Icons.image_outlined),
     ], () async {
        final data = {
          'name': name.text,
@@ -459,15 +532,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final end = TextEditingController(text: item?['end_time']?.toString() ?? "10:00");
     final desc = TextEditingController(text: item?['description']?.toString() ?? '');
     _showFormDialog(item == null ? "Add Agenda Item" : "Edit Agenda Item", [
-      _buildStyledTextField(title, "Session Title", icon: Icons.event_note, validator: (v) => v!.isEmpty ? "Title is required" : null),
-      const SizedBox(height: 12),
+      _buildStyledTextField(title, "Session Title", icon: Icons.event_note_outlined, validator: (v) => v!.isEmpty ? "Title is required" : null),
       Row(children: [
-          Expanded(child: _buildStyledTextField(start, "Start", icon: Icons.schedule, validator: (v) => v!.isEmpty ? "Required" : null)),
-          const SizedBox(width: 8),
-          Expanded(child: _buildStyledTextField(end, "End", icon: Icons.schedule_send, validator: (v) => v!.isEmpty ? "Required" : null)),
+          Expanded(child: _buildStyledTextField(start, "Start Time", icon: Icons.schedule_outlined, validator: (v) => v!.isEmpty ? "Required" : null)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStyledTextField(end, "End Time", icon: Icons.more_time_outlined, validator: (v) => v!.isEmpty ? "Required" : null)),
       ]),
-      const SizedBox(height: 12),
-      _buildStyledTextField(desc, "Description", icon: Icons.description, maxLines: 2),
+      _buildStyledTextField(desc, "Description / Notes", icon: Icons.description_outlined, maxLines: 2),
     ], () async {
        final data = {
          'title': title.text,
@@ -491,9 +562,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final q = TextEditingController(text: item?['question']?.toString() ?? '');
     final a = TextEditingController(text: item?['answer']?.toString() ?? '');
     _showFormDialog(item == null ? "Add FAQ" : "Edit FAQ", [
-      _buildStyledTextField(q, "Question", icon: Icons.help_outline, validator: (v) => v!.isEmpty ? "Question is required" : null),
-      const SizedBox(height: 12),
-      _buildStyledTextField(a, "Answer", icon: Icons.info_outline, maxLines: 3, validator: (v) => v!.isEmpty ? "Answer is required" : null),
+      _buildStyledTextField(q, "Question", icon: Icons.help_outline_rounded, validator: (v) => v!.isEmpty ? "Question is required" : null),
+      _buildStyledTextField(a, "Answer", icon: Icons.info_outline_rounded, maxLines: 3, validator: (v) => v!.isEmpty ? "Answer is required" : null),
     ], () async {
        final data = {
          'question': q.text,
@@ -512,81 +582,128 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   Widget _buildStyledTextField(TextEditingController controller, String label, {bool isNumber = false, int maxLines = 1, IconData? icon, String? Function(String?)? validator, String? helperText}) {
-      return TextFormField(
-          controller: controller,
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-              labelText: label,
-              helperText: helperText,
-              prefixIcon: icon != null ? Icon(icon, color: FfigTheme.primaryBrown) : null,
-          ),
-          validator: validator,
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: TextFormField(
+            controller: controller,
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            maxLines: maxLines,
+            style: GoogleFonts.inter(fontSize: 15),
+            decoration: InputDecoration(
+                labelText: label,
+                labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey),
+                helperText: helperText,
+                prefixIcon: icon != null ? Icon(icon, color: FfigTheme.accentBrown, size: 20) : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            validator: validator,
+        ),
       );
   }
 
   void _showFormDialog(String title, List<Widget> fields, Future<void> Function() onSave, {bool isEdit = false}) {
     final subFormKey = GlobalKey<FormState>();
-    showDialog(
-      context: context, 
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Theme.of(ctx).cardColor,
-        child: Container(
-            padding: const EdgeInsets.all(24),
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: SingleChildScrollView(
-                child: Form(
-                    key: subFormKey,
-                    child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                            Text(title, style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
-                            const SizedBox(height: 8),
-                             Container(height: 2, width: 40, color: FfigTheme.accentBrown),
-                            const SizedBox(height: 24),
-                            ...fields,
-                            const SizedBox(height: 24),
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withOpacity(0.7),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: ScaleTransition(
+            scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+            child: FadeTransition(
+              opacity: anim1,
+              child: Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                backgroundColor: Colors.transparent,
+                child: Container(
+                    padding: const EdgeInsets.all(24),
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).cardColor.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                    ),
+                    child: SingleChildScrollView(
+                        child: Form(
+                            key: subFormKey,
+                            child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(ctx), 
-                                        child: const Text("CANCEL", style: TextStyle(color: Colors.grey))
+                                    Text(
+                                      title.toUpperCase(), 
+                                      style: GoogleFonts.playfairDisplay(
+                                        fontSize: 22, 
+                                        fontWeight: FontWeight.w900, 
+                                        color: FfigTheme.accentBrown,
+                                        letterSpacing: 1.2
+                                      )
                                     ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                            backgroundColor: FfigTheme.primaryBrown,
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
-                                        ),
-                                        onPressed: () async {
-                                          if (!subFormKey.currentState!.validate()) return;
-                                          try {
-                                            if (widget.event != null) {
-                                               await onSave(); 
-                                               Navigator.pop(ctx);
-                                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated! Re-open to refresh." : "Added! Re-open to refresh.")));
-                                            } else {
-                                               await onSave();
-                                               Navigator.pop(ctx);
-                                            }
-                                          } catch(e) {
-                                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-                                          }
-                                        }, 
-                                        child: Text(isEdit ? "SAVE CHANGES" : "ADD ITEM")
+                                    const SizedBox(height: 8),
+                                    Container(height: 1, width: 60, color: FfigTheme.accentBrown.withOpacity(0.3)),
+                                    const SizedBox(height: 24),
+                                    ...fields,
+                                    const SizedBox(height: 32),
+                                    Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                            TextButton(
+                                                onPressed: () => Navigator.pop(ctx), 
+                                                child: Text("CANCEL", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1))
+                                            ),
+                                            const SizedBox(width: 16),
+                                            ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                    backgroundColor: FfigTheme.accentBrown,
+                                                    foregroundColor: Colors.white,
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                                                    elevation: 8,
+                                                    shadowColor: FfigTheme.accentBrown.withOpacity(0.5),
+                                                ),
+                                                onPressed: () async {
+                                                  if (!subFormKey.currentState!.validate()) return;
+                                                  try {
+                                                    if (widget.event != null) {
+                                                       await onSave(); 
+                                                       Navigator.pop(ctx);
+                                                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Updated!" : "Added!")));
+                                                    } else {
+                                                       await onSave();
+                                                       Navigator.pop(ctx);
+                                                    }
+                                                  } catch(e) {
+                                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                                                  }
+                                                }, 
+                                                child: Text(
+                                                  (isEdit ? "SAVE CHANGES" : "ADD ITEM").toUpperCase(),
+                                                  style: GoogleFonts.inter(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                                )
+                                            )
+                                        ],
                                     )
                                 ],
-                            )
-                        ],
+                            ),
+                        ),
                     ),
                 ),
+              ),
             ),
-        ),
-      )
+          ),
+        );
+      },
     );
   }
 
@@ -601,14 +718,15 @@ class _EditEventScreenState extends State<EditEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSection("Details", [
-                 _buildStyledTextField(_titleController, "Event Title"),
-                 const SizedBox(height: 12),
+              _buildSection("EVENT DETAILS", [
+                 _buildStyledTextField(_titleController, "Event Title", icon: Icons.title),
+                 const SizedBox(height: 16),
                  TextFormField(
                    controller: _dateController,
-                   decoration: const InputDecoration(
-                     labelText: "Date",
-                     prefixIcon: Icon(Icons.calendar_today, color: FfigTheme.primaryBrown),
+                   decoration: InputDecoration(
+                     labelText: "Start Date",
+                     prefixIcon: const Icon(Icons.calendar_today, color: FfigTheme.accentBrown),
+                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -634,12 +752,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
                    },
                    validator: (v) => v!.isEmpty ? "Required" : null,
                  ),
-                 const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                  TextFormField(
                    controller: _endDateController,
-                   decoration: const InputDecoration(
+                   decoration: InputDecoration(
                      labelText: "End Date (Optional)",
-                     prefixIcon: Icon(Icons.calendar_month, color: FfigTheme.primaryBrown),
+                     prefixIcon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown),
+                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                    ),
                    readOnly: true,
                    onTap: () async {
@@ -664,10 +783,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
                      }
                    },
                  ),
-                 const SizedBox(height: 12),
-                 _buildStyledTextField(_locationController, "Location"),
-                 const SizedBox(height: 12),
-                 _buildStyledTextField(_priceLabelController, "Price Label (e.g. 'From \$20')"),
+                  const SizedBox(height: 16),
+                 _buildStyledTextField(_locationController, "Location", icon: Icons.location_on),
+                 const SizedBox(height: 16),
+                 _buildStyledTextField(_priceLabelController, "Price Label (e.g. 'From \$20')", icon: Icons.payments),
+                 const SizedBox(height: 24),
+                 
+                 const Text("COVER IMAGE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                  const SizedBox(height: 12),
                  Stack(
                    children: [
@@ -676,11 +798,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
                        child: Container(
                          height: 150,
                          width: double.infinity,
-                         decoration: BoxDecoration(
-                             color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
-                             borderRadius: BorderRadius.circular(12),
-                             border: Border.all(color: Theme.of(context).colorScheme.outline)
-                         ),
+                          decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Theme.of(context).dividerColor)
+                          ),
                          child: _selectedImage != null
                              ? ClipRRect(
                                  borderRadius: BorderRadius.circular(12),
@@ -701,21 +823,27 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                    )),
                        ),
                      ),
-                     if (_selectedImage != null)
+                     if (_selectedImage != null || (_imageUrlController.text.isNotEmpty && _imageUrlController.text.startsWith('http')))
                         Positioned(
-                          top: 8, right: 8,
-                          child: CircleAvatar(
-                            backgroundColor: Colors.black54,
+                          bottom: 12, right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: FfigTheme.accentBrown,
+                              shape: BoxShape.circle,
+                            ),
                             child: IconButton(
-                              icon: const Icon(Icons.crop, color: Colors.white),
+                              icon: const Icon(Icons.crop, color: Colors.white, size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                               onPressed: _cropExisting,
                             ),
                           ),
                         ),
                    ],
                  ),
-                 const SizedBox(height: 12),
-                 _buildStyledTextField(_descriptionController, "Description", maxLines: 3),
+                 const SizedBox(height: 24),
+                 _buildStyledTextField(_descriptionController, "Full Description", maxLines: 4, icon: Icons.description),
                  const SizedBox(height: 12),
                  SwitchListTile(
                      title: const Text("Is Virtual Event?"), 
@@ -732,13 +860,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
                       value: _isRsvpOnly, 
                       onChanged: (v) => setState(() => _isRsvpOnly = v)
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                  _buildStyledTextField(
                    _emailAutomationController, 
-                   "Email Automation Text", 
+                   "Email Automation Message", 
                    icon: Icons.auto_fix_high, 
-                   maxLines: 5,
-                   helperText: "Custom message sent to ticket purchasers immediately after purchase.",
+                   maxLines: 4,
+                   helperText: "Sent to ticket purchasers immediately after purchase.",
                  ),
               ]),
               
@@ -789,10 +917,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.bold, color: FfigTheme.primaryBrown)),
-            const SizedBox(height: 16),
+            Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            const SizedBox(height: 20),
             ...children
           ],
         ),

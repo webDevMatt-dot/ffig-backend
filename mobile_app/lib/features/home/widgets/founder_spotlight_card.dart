@@ -3,9 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/founder_profile.dart';
-import '../../../../core/theme/ffig_theme.dart';
 import '../../chat/chat_screen.dart';
-import '../../../../core/services/membership_service.dart';
+import 'founder_card.dart';
 
 class FounderSpotlightCard extends StatelessWidget {
   final FounderProfile profile;
@@ -30,22 +29,7 @@ class FounderSpotlightCard extends StatelessWidget {
           builder: (context) => Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.all(16),
-            child: Container(
-              // Placeholder for FounderCard detail
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(profile.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(profile.bio),
-                ],
-              ),
-            ),
+            child: FounderCard(profile: profile),
           ),
         );
       }),

@@ -51,46 +51,158 @@ class MiniProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark 
+                      ? [
+                          const Color(0xFF2C221D).withOpacity(0.9), // Deep Brown
+                          const Color(0xFF1A1A1A).withOpacity(0.95), // Charcoal
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.9),
+                          const Color(0xFFF5F5F7).withOpacity(0.85),
+                        ],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                    width: 0.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+                ),
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                      UserAvatar(
-                        radius: 40,
-                        imageUrl: photoUrl,
-                        firstName: firstName,
-                        lastName: lastName,
-                        username: displayName,
+                    // 1. Premium Avatar Ring
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            FfigTheme.primaryBrown,
+                            FfigTheme.primaryBrown.withOpacity(0.5),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(displayName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          if (tier == 'PREMIUM') ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: Colors.amber, size: 20),
-                          ]
-                      ]),
-                      if (bio != null && bio!.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(bio!, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.grey[600]))
-                      ],
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                          onPressed: onViewProfile,
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: FfigTheme.primaryBrown,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: UserAvatar(
+                          radius: 46,
+                          imageUrl: photoUrl,
+                          firstName: firstName,
+                          lastName: lastName,
+                          username: displayName,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    
+                    // 2. Name & Badge
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            displayName,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              letterSpacing: -0.5,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          child: const Text("View Full Profile")
-                      )
+                        ),
+                        if (tier == 'PREMIUM') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.amber,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check, color: Colors.black, size: 12),
+                          ),
+                        ]
+                      ],
+                    ),
+                    
+                    // 3. Bio
+                    if (bio != null && bio!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        bio!,
+                        textAlign: TextAlign.center,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                    
+                    const SizedBox(height: 28),
+                    
+                    // 4. Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: onViewProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: FfigTheme.primaryBrown,
+                          foregroundColor: Colors.white,
+                          elevation: 8,
+                          shadowColor: FfigTheme.primaryBrown.withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "View Full Profile",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
+                ),
               ),
+            ),
           ),
+        ),
       );
   }
 }

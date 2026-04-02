@@ -236,22 +236,29 @@ class SendMessageView(APIView):
                         tag=str(conversation.id) 
                     )
         
-        # Scenario C: Public Conversation (Community Chat)
         else:
             from core.services.fcm_service import send_topic_notification
-            title = f"Community Chat: {sender.username}"
-            body = text if text else "Sent an attachment"
+            display_title = f"Community Chat: {sender.username}"
             
+            # Dynamic body based on message type
+            if message_type == 'image':
+                display_body = "📷 Sent an image"
+            elif message_type == 'audio':
+                display_body = "🎙️ Sent a voice message"
+            else:
+                display_body = text if text else "New message"
+
             data_payload = {
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "type": "community_chat",
                 "conversation_id": str(conversation.id),
                 "sender_id": str(sender.id),
-                "sender_name": sender.username
+                "sender_name": sender.username,
+                "message_id": str(msg.id)
             }
             
             # Send to 'community_chat' topic
-            send_topic_notification("community_chat", title, body, data=data_payload)
+            send_topic_notification("community_chat", display_title, display_body, data=data_payload)
 
         return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
 

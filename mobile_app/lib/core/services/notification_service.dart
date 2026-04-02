@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_app/core/services/admin_api_service.dart';
 import '../../main.dart'; // Global Navigator Key
 import '../../features/chat/chat_screen.dart';
@@ -25,7 +26,9 @@ class NotificationService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final _storage = const FlutterSecureStorage();
 
+  String? _currentUserId;
   bool _isInitialized = false;
 
   Future<void> init() async {
@@ -42,6 +45,17 @@ class NotificationService {
       if (kDebugMode) print('User declined or has not accepted permission');
       return;
     }
+
+    // 1.1 Set Foreground Presentation Options (Crucial for avoiding double-notifications)
+    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    
+    // 1.2 Load Current User ID for Filtering
+    _currentUserId = await _storage.read(key: 'user_id');
+    if (kDebugMode) print("🔔 Initialized Notification Service for User: $_currentUserId");
 
     // 2. Setup Local Notifications (for Foreground display)
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -106,8 +120,23 @@ class NotificationService {
       final notification = message.notification;
       final data = message.data;
       
+      // A. EXCLUDE SELF-NOTIFICATIONS
+      final senderId = data['sender_id']?.toString();
+      if (senderId != null && _currentUserId != null && senderId == _currentUserId) {
+        if (kDebugMode) print("🔔 [FOREGROUND] Skipping self-notification from sender: $senderId");
+        return; 
+      }
+      
       String title = notification?.title ?? data['title'] ?? 'New Message';
       String body = notification?.body ?? data['body'] ?? data['text'] ?? '';
+
+      // B. AVOID DOUBLE-NOTIFY
+      // If there's a notification object, the OS (via setForegroundNotificationPresentationOptions) 
+      // already handles the alert. We only show a manual local notification if there is DATA ONLY.
+      if (notification != null) {
+        if (kDebugMode) print("🔔 [FOREGROUND] OS is handling the 'notification' block. Skipping manual show.");
+        return;
+      }
 
       if (kDebugMode) print("🔔 [FOREGROUND] Showing Local Notification: $title - $body");
 
@@ -175,9 +204,10 @@ class NotificationService {
     }
     try {
       await _firebaseMessaging.subscribeToTopic('community_chat');
-      if (kDebugMode) print("🔔 Successfully subscribed to 'community_chat' topic");
+      await _firebaseMessaging.subscribeToTopic('global');
+      if (kDebugMode) print("🔔 Successfully subscribed to 'community_chat' and 'global' topics");
     } catch (e) {
-      if (kDebugMode) print("❌ Error subscribing to community_chat topic: $e");
+      if (kDebugMode) print("❌ Error subscribing to topics: $e");
     }
     
     _isInitialized = true;

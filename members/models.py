@@ -103,9 +103,9 @@ class BusinessProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_profile')
     company_name = models.CharField(max_length=200)
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
-    website = models.URLField(blank=True)
+    website = models.URLField(max_length=500, blank=True)
     location = models.CharField(max_length=100, blank=True)
-    linkedin_url = models.URLField(blank=True, null=True)
+    linkedin_url = models.URLField(max_length=500, blank=True, null=True)
     description = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     feedback = models.TextField(blank=True, help_text="Admin feedback if rejected")
@@ -146,7 +146,7 @@ class MarketingRequest(models.Model):
     title = models.CharField(max_length=200)
     image = models.ImageField(upload_to='marketing_assets/', blank=True, null=True)
     video = models.FileField(upload_to='marketing_videos/', blank=True, null=True)
-    link = models.URLField(blank=True)
+    link = models.URLField(max_length=500, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     feedback = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -193,18 +193,25 @@ class Notification(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
+        from members.models import Profile
+        Profile.objects.get_or_create(user=instance)
         
-        # Notify Admins via Direct Push (No in-app record)
-        from core.services.fcm_service import send_push_notification
-        admins = User.objects.filter(is_staff=True)
-        for admin in admins:
-            send_push_notification(
-                admin,
-                title="New User Registration",
-                body=f"New user joined: {instance.username} ({instance.email})",
-                data={"type": "admin_alert"}
-            )
+        # Only notify/welcome if the user is active (e.g. created via admin or non-OTP flow)
+        if instance.is_active:
+            # 1. Notify Admins via Direct Push
+            from core.services.fcm_service import send_push_notification
+            admins = User.objects.filter(is_staff=True)
+            for admin in admins:
+                send_push_notification(
+                    admin,
+                    title="New User Registration",
+                    body=f"New user joined: {instance.username} ({instance.email})",
+                    data={"type": "admin_alert"}
+                )
+                
+            # 2. Send Welcome Email to the User
+            from core.services.email_service import send_welcome_email
+            send_welcome_email(instance)
 
 class MarketingLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

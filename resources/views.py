@@ -36,6 +36,17 @@ class ResourceListView(generics.ListAPIView):
         if category:
             queryset = queryset.filter(category=category)
             
+        # 6. Global Search: Filter by title or description
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            from django.db.models import Q
+            terms = search_query.split()
+            for term in terms:
+                queryset = queryset.filter(
+                    Q(title__icontains=term) |
+                    Q(description__icontains=term)
+                )
+            
         return queryset
 
 from rest_framework.permissions import IsAdminUser

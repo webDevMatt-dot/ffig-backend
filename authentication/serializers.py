@@ -39,13 +39,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         industry = validated_data.pop('industry', 'OTH')
         industry_other = validated_data.pop('industry_other', '')
 
-        # Create user and hash the password securely
+        # Create user as inactive until email is verified
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
+            last_name=validated_data['last_name'],
+            is_active=False  # Set inactive immediately to prevent premature welcome emails
         )
         
         # Update auto-created profile
@@ -91,6 +92,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         
         # 5. Add Custom Response Data
+        data['user_id'] = self.user.id
         data['username'] = self.user.username
         data['is_staff'] = self.user.is_staff
         data['is_superuser'] = self.user.is_superuser

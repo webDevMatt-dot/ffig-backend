@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
 import 'package:intl/intl.dart';
@@ -150,13 +151,13 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                   children: [
                     Text(
                       _editingId != null ? "Edit Alert" : "Create New Alert", 
-                      style: Theme.of(context).textTheme.titleLarge
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
                     DropdownButtonFormField<String>(
                       value: _selectedType,
-                      decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'Type', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                       items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                       onChanged: (v) => setModalState(() => _selectedType = v!),
                     ),
@@ -164,35 +165,63 @@ class _ManageAlertsScreenState extends State<ManageAlertsScreen> {
                     
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'Title', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     
                     TextFormField(
                       controller: _messageController,
-                      decoration: const InputDecoration(labelText: 'Message', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'Message', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     
-                    ListTile(
-                      title: const Text("Expiry Time"),
-                      subtitle: Text(DateFormat('dd-MM-yyyy HH:mm').format(
-                         DateTime(
-                            _selectedDate.year, _selectedDate.month, _selectedDate.day, 
-                            _selectedTime.hour, _selectedTime.minute
-                         )
-                      )),
-                      trailing: const Icon(Icons.calendar_today),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Colors.grey)),
-                      onTap: () => _selectDateTime(context, setModalState),
+                    const Text("EXPIRY", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
+                    
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Expiry Date & Time", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('dd MMM yyyy, HH:mm').format(
+                                    DateTime(
+                                      _selectedDate.year, _selectedDate.month, _selectedDate.day, 
+                                      _selectedTime.hour, _selectedTime.minute
+                                    )
+                                  ),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _selectDateTime(context, setModalState),
+                            icon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    
+                    const Text("RESOURCES", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 12),
                     
                     TextFormField(
                       controller: _urlController,
-                      decoration: const InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'Action URL (Optional)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                     ),
                     const SizedBox(height: 24),
                     
