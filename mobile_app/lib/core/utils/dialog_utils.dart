@@ -36,6 +36,23 @@ class DialogUtils {
       ),
     );
   }
+
+  static String getFriendlyMessage(dynamic e) {
+    final str = e.toString().toLowerCase();
+    if (str.contains('connection refused') || str.contains('socketexception') || str.contains('failed host lookup')) {
+      return "Unable to connect to the server. Please check your internet connection or ensure the backend is running.";
+    }
+    if (str.contains('401') || str.contains('unauthorized')) {
+      return "Your session has expired. Please log in again.";
+    }
+    if (str.contains('403') || str.contains('permission')) {
+      return "You do not have permission to perform this action.";
+    }
+    if (str.contains('500') || str.contains('internal server error')) {
+      return "Server error. Our team has been notified. Please try again later.";
+    }
+    return e.toString().replaceAll('ClientException with ', '').replaceAll('Exception: ', '');
+  }
 }
 
 class _PremiumDialog extends StatelessWidget {
@@ -83,13 +100,18 @@ class _PremiumDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.lato(
-                fontSize: 16,
-                color: Colors.black54,
-                height: 1.4,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: SingleChildScrollView(
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -158,13 +180,18 @@ class _PremiumConfirmationDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.lato(
-                fontSize: 16,
-                color: Colors.black54,
-                height: 1.4,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: SingleChildScrollView(
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

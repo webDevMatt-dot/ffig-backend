@@ -143,23 +143,12 @@ class _ManagePollsScreenState extends State<ManagePollsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? FfigTheme.scaffoldDark : Colors.grey[50], // Premium light bg
       appBar: AppBar(
-        title: Text(
-          "MANAGE POLLS", 
-          style: GoogleFonts.inter(
-            letterSpacing: 2, 
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-          )
-        ),
-        centerTitle: true,
+        title: Text("MANAGE POLLS", style: GoogleFonts.lato(letterSpacing: 2, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: Icon(Icons.add_circle_outline, color: FfigTheme.primaryBrown),
+            icon: const Icon(Icons.add),
             onPressed: () async {
               await Navigator.push(context, MaterialPageRoute(builder: (context) => const PollFormScreen()));
               _fetchPolls();
@@ -174,127 +163,47 @@ class _ManagePollsScreenState extends State<ManagePollsScreen> {
               child: _polls.isEmpty
                   ? const Center(child: Text("No polls created yet."))
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                      padding: const EdgeInsets.all(16),
                       itemCount: _polls.length,
                       itemBuilder: (context, index) {
-                        return _buildPollBentoTile(_polls[index]);
+                        final poll = _polls[index];
+                        final expiry = DateTime.parse(poll['expires_at']);
+                        final isExpired = expiry.isBefore(DateTime.now());
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            title: Text(poll['question'], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text("Expires: ${DateFormat('MMM d, h:mm a').format(expiry)}"),
+                                if (isExpired) 
+                                  const Text("EXPIRED", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10)),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () async {
+                                    await Navigator.push(context, MaterialPageRoute(builder: (context) => PollFormScreen(poll: poll)));
+                                    _fetchPolls();
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () => _deletePoll(poll['id']),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
                     ),
             ),
-    );
-  }
-
-  Widget _buildPollBentoTile(Map<String, dynamic> poll) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final expiry = DateTime.parse(poll['expires_at']);
-    final isExpired = expiry.isBefore(DateTime.now());
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B22) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-          width: 1,
-        ),
-        boxShadow: [
-          if (!isDark) BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  poll['question'],
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    height: 1.4,
-                    color: isDark ? Colors.white : FfigTheme.textDark,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (isExpired)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "EXPIRED",
-                    style: GoogleFonts.inter(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 9,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Icon(Icons.access_time_rounded, size: 14, color: Colors.grey[500]),
-              const SizedBox(width: 6),
-              Text(
-                "Expires: ${DateFormat('MMM d, h:mm a').format(expiry)}",
-                style: GoogleFonts.inter(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  _buildPollAction(
-                    icon: Icons.edit_outlined,
-                    onTap: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (context) => PollFormScreen(poll: poll)));
-                      _fetchPolls();
-                    },
-                    color: isDark ? Colors.white.withOpacity(0.5) : Colors.grey[400]!,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildPollAction(
-                    icon: Icons.delete_outline_rounded,
-                    onTap: () => _deletePoll(poll['id']),
-                    color: Colors.red[400]!,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPollAction({required IconData icon, required VoidCallback onTap, required Color color}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: color, size: 18),
-      ),
     );
   }
 }

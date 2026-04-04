@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/services/admin_api_service.dart';
 import '../../../../core/theme/ffig_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/utils/url_utils.dart';
 import '../../home/models/business_profile.dart';
@@ -83,7 +84,7 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
         _filterItems();
       });
     } catch (e) {
-      if (mounted) DialogUtils.showError(context, "Load Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Load Failed", DialogUtils.getFriendlyMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -558,11 +559,11 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
       _fetchItems();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(newState ? "Business Activated" : "Business Deactivated")),
+        SnackBar(content: Text(newState ? "Business Spotlight Activated" : "Business Spotlight Deactivated")),
       );
       }
     } catch (e) {
-      if (mounted) DialogUtils.showError(context, "Update Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Update Failed", DialogUtils.getFriendlyMessage(e));
       setState(() => _isLoading = false);
     }
   }
@@ -600,83 +601,82 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     _filteredItems.sort((a, b) {
       final aDate = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0);
       final bDate = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0);
       return bDate.compareTo(aDate);
     });
 
-    int? liveId;
-    try {
-      final liveItem = _items.where((p) {
-        final active = p['is_active'] ?? true;
-        // Business uses 'tier' or 'is_premium' but selection is just first active
-        return active;
-      }).toList();
-      
-      if (liveItem.isNotEmpty) {
-        liveId = liveItem.first['id'];
-      }
-    } catch (_) {}
+    // --- SUMMARY COUNTS ---
+    int liveCount = 0;
+    int draftCount = 0;
+
+    for (var item in _items) {
+      if (item['is_active'] ?? true) liveCount++; else draftCount++;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Manage Business of Month"),
+        title: const Text("Manage Business Spotlight"),
         actions: [
           IconButton(
             onPressed: () => _showEditor(null),
             icon: const Icon(Icons.add, size: 34),
-            tooltip: "Add Business",
+            tooltip: "Add Business Spotlight",
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                // 1. Search + Add
+                // --- HEADER SUMMARY ---
                 Row(
-                    children: [
-                        Expanded(
-                            child: TextField(
-                                controller: TextEditingController.fromValue(
-                                  TextEditingValue(
-                                    text: _searchQuery,
-                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
-                                  ),
-                                ),
-                                decoration: InputDecoration(
-                                    hintText: "Search businesses...",
-                                    prefixIcon: const Icon(Icons.search),
-                                    suffixIcon: _searchQuery.isNotEmpty 
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear, size: 20),
-                                            onPressed: () {
-                                              setState(() {
-                                                _searchQuery = "";
-                                                _filterItems();
-                                              });
-                                            },
-                                          )
-                                        : null,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
-                                ),
-                                onChanged: (val) {
+                  children: [
+                    _buildSummaryStat("LIVE", liveCount.toString(), Colors.green),
+                    const SizedBox(width: 12),
+                    _buildSummaryStat("DRAFT", draftCount.toString(), Colors.grey),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // --- SEARCH ---
+                TextField(
+                    controller: TextEditingController.fromValue(
+                      TextEditingValue(
+                        text: _searchQuery,
+                        selection: TextSelection.collapsed(offset: _searchQuery.length),
+                      ),
+                    ),
+                    decoration: InputDecoration(
+                        hintText: "Search businesses...",
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchQuery.isNotEmpty 
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
                                   setState(() {
-                                    _searchQuery = val;
+                                    _searchQuery = "";
                                     _filterItems();
                                   });
                                 },
-                            ),
-                        ),
-                    ],
+                              )
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                        _filterItems();
+                      });
+                    },
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 
-                // 2. List
+                // --- LIST ---
                 Expanded(
                   child: _isLoading 
                     ? const Center(child: CircularProgressIndicator()) 
@@ -685,23 +685,54 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
                         : ListView.builder(
                               itemCount: _filteredItems.length,
                               itemBuilder: (context, index) {
-                                final item = _filteredItems[index];
-                                final isActive = item['is_active'] ?? true;
-                                
-                                return AdminDarkListItem(
-                                  title: item['name'] ?? 'No Name',
-                                  subtitle: "${item['website'] ?? ''} • ${item['location'] ?? ''}",
-                                  imageUrl: item['image_url'],
-                                  fallbackIcon: Icons.business_outlined,
-                                  onTap: () => _showEditor(item),
-                                  statusChip: item['id'] == liveId
-                                      ? _statusChip("LIVE", Colors.green)
-                                      : (!isActive ? _statusChip("INACTIVE", Colors.red) : null),
-                                );
-                              },
+                                  final item = _filteredItems[index];
+                                  final isActive = item['is_active'] ?? true;
+                                  
+                                  String statusText = isActive ? "LIVE" : "DRAFT";
+                                  Color statusColor = isActive ? Colors.green : Colors.grey;
+
+                                  return AdminDarkListItem(
+                                    title: item['name'] ?? 'No Name',
+                                    subtitle: "${item['location'] ?? ''} • ${item['website'] ?? ''}",
+                                    imageUrl: item['image_url'] ?? item['image'],
+                                    fallbackIcon: Icons.business_outlined,
+                                    onTap: () => _showEditor(item),
+                                    statusChip: _statusChip(statusText, statusColor),
+                                    trailing: !isActive ? OutlinedButton(
+                                      onPressed: () => _toggleActive(item),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.green,
+                                        side: const BorderSide(color: Colors.green),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      ),
+                                      child: const Text("GO LIVE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                                    ) : null,
+                                  );
+                                },
                         ),
                 ),
             ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );
@@ -711,12 +742,13 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5),
       ),
     );
   }

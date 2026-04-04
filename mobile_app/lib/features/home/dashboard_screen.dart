@@ -415,11 +415,22 @@ class _DashboardScreenState extends State<DashboardScreen>
     // 3. Flash Alerts
     try {
       final alerts = await api.fetchItems('alerts');
-      if (mounted && alerts.isNotEmpty) {
+      if (mounted) {
         setState(() {
-          final Map<String, dynamic> data = Map<String, dynamic>.from(alerts.last);
-          data['id'] = data['id'].toString();
-          _flashAlert = FlashAlert.fromJson(data);
+          _flashAlert = null; // Default to null
+          if (alerts.isNotEmpty) {
+            // Alerts are sorted by -created_at by the backend.
+            // We search for the first (most recent) non-expired alert.
+            for (var a in alerts) {
+              final Map<String, dynamic> data = Map<String, dynamic>.from(a);
+              data['id'] = data['id'].toString();
+              final alert = FlashAlert.fromJson(data);
+              if (!alert.isExpired) {
+                _flashAlert = alert;
+                break; // Found the most recent valid one
+              }
+            }
+          }
         });
       }
     } catch (e) {
@@ -859,7 +870,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// Builds the 'Home' tab content (Index 0).
   /// - Includes Editorial Header, Hero Carousel, Bento Grid, and Trending Events.
   Widget _buildHomeTab() {
-    final shouldShowProfilePrompt = _shouldShowProfileCompletionPrompt();
+    final double safeTopPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 16;
 
     return RefreshIndicator(
       onRefresh: _onRefresh,
@@ -867,397 +878,298 @@ class _DashboardScreenState extends State<DashboardScreen>
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 0. Flash Alert
-            if (_flashAlert != null) FlashAlertBanner(alert: _flashAlert!),
-
-            // 0.1 Profile Completion Prompt
-            if (shouldShowProfilePrompt)
-              _buildProfileCompletionPrompt(),
-
-            // 1. Editorial Header
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                shouldShowProfilePrompt
-                    ? 24
-                    : MediaQuery.of(context).padding.top + kToolbarHeight + 16,
-                24,
-                24,
-              ),
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    DateFormat(
-                      'EEEE, MMM d',
-                    ).format(DateTime.now()).toUpperCase(),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge?.copyWith(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "${_getGreeting()},\nFounder.",
-                    style: Theme.of(context).textTheme.displayLarge,
-                  ),
-                ],
-              ),
-            ),
-
-            // 2. Hero Carousel (Replacing single static card)
-            if (_heroItems.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: HeroCarousel(items: _heroItems),
-              ),
-
-            // 3. News Ticker
-            if (_newsTickerItems.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 32),
-                child: NewsTicker(newsItems: _newsTickerItems),
-              ),
-
-            // 4. Founder of the Week
-
-            // 2. BENTO GRID LAYOUT
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  // ROW 1: STATUS & EVENTS
-                  Row(
-                    children: [
-                      // Membership Status Tile
-                      Expanded(
-                        child: BentoTile(
-                          title: MembershipService.isPremium
-                              ? "Premium"
-                              : (MembershipService.isStandard
-                                  ? "Upgrade to Premium"
-                                  : "Upgrade Membership"),
-                          subtitle: "Membership",
-                          height: 160,
-                          color: _isPremium
-                              ? FfigTheme.primaryBrown
-                              : const Color(0xFF161B22),
-                          isGlass: true, // Glass effect for consistency
-                          icon: Icon(
-                            Icons.verified_user,
-                            color: _isPremium ? Colors.white : Colors.grey,
-                            size: 24,
-                          ),
-                          onTap: () {
-                            if (MembershipService.isPremium) return;
-                            Navigator.push(context, MaterialPageRoute(builder: (c) => const PremiumScreen()));
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Events Quick Access
-                      Expanded(
-                        child: BentoTile(
-                          title: "Events",
-                          subtitle: "${_getUpcomingCount()} Upcoming",
-                          height: 160,
-                          isGlass: true, // Glass effect
-                          icon: const Icon(
-                            Icons.calendar_month,
-                            color: FfigTheme.accentBrown,
-                            size: 24,
-                          ),
-                          onTap: () {
-                            setState(() => _selectedIndex = 1);
-                            _pageController.jumpToPage(1); // Jump to Events Tab
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ROW 2: NETWORK & MY TICKETS
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BentoTile(
-                          title: "Network",
-                          subtitle: "Find a Founder",
-                          height: 160,
-                          isGlass: true,
-                          icon: const Icon(
-                            Icons.search,
-                            color: FfigTheme.accentBrown,
-                            size: 24,
-                          ),
-                          onTap: () {
-                            if (_userProfile == null) {
-                              _showLoginDialog();
-                              return;
-                            }
-                            if (MembershipService.canViewLimitedDirectory) {
-                              setState(() => _selectedIndex = 2);
-                              _pageController.jumpToPage(2); // Jump to Network Tab
-                            } else {
-                              MembershipService.showUpgradeDialog(
-                                context,
-                                "Member Directory",
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: BentoTile(
-                          title: "Tickets",
-                          subtitle: "View My Tickets",
-                          height: 160,
-                          isGlass: true,
-                          icon: const Icon(
-                            Icons.confirmation_num_outlined,
-                            color: FfigTheme.accentBrown,
-                            size: 24,
-                          ),
-                          onTap: () {
-                            if (_userProfile == null) {
-                              _showLoginDialog();
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MyTicketsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ROW 3: FOUNDER SPOTLIGHT (If available)
-                  if (_founderProfile != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: FounderSpotlightCard(profile: _founderProfile!),
-                    ),
-
-                  if (_founderProfile != null) const SizedBox(height: 16),
-
-                  // ROW 3.5: BUSINESS OF THE MONTH (NEW)
-                  if (_businessProfile != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: BusinessCard(profile: _businessProfile!),
-                    ),
-
-                  if (_businessProfile != null) const SizedBox(height: 16),
-
-                  // ROW 4: RESOURCES & INBOX
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Badge(
-                          backgroundColor: Colors.red,
-                          isLabelVisible: (_lastUnreadCount + _communityUnreadCount) > 0,
-                          label: Text('${_lastUnreadCount + _communityUnreadCount}'),
-                          offset: const Offset(-20, 20),
-                          child: BentoTile(
-                            title: "Inbox",
-                            subtitle: (_lastUnreadCount + _communityUnreadCount) > 0
-                                ? "${_lastUnreadCount + _communityUnreadCount} Unread"
-                                : "No messages",
-                            height: 140,
-                            isGlass: true, // Glass effect for hover/light mode
-                            icon: Icon(
-                              Icons.chat_bubble_outline,
-                              color: (_lastUnreadCount + _communityUnreadCount) > 0
-                                  ? FfigTheme.primaryBrown
-                                  : Colors.grey,
-                            ),
-                            onTap: () {
-                              if (_userProfile == null) {
-                                _showLoginDialog();
-                                return;
-                              }
-                              setState(() => _lastUnreadCount = 0);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (c) => const InboxScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Badge(
-                          backgroundColor: Colors.red,
-                          isLabelVisible: _unseenResourcesCount > 0,
-                          label: Text('$_unseenResourcesCount'),
-                          offset: const Offset(-20, 20),
-                          child: BentoTile(
-                            title: "Resources",
-                            subtitle: _unseenResourcesCount > 0 ? "New Content" : "Library",
-                            height: 140,
-                            isGlass: true, // Glass effect for hover/light mode
-                            icon: Icon(
-                               Icons.book, 
-                               color: _unseenResourcesCount > 0 ? FfigTheme.primaryBrown : Colors.grey
-                            ),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const ResourcesScreen(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 48),
-
-            // 4. "Trending" Horizontal List
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "TRENDING NOW",
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge?.copyWith(color: Colors.grey),
-                  ),
-                  const Text(
-                    "View All",
-                    style: TextStyle(
-                      color: FfigTheme.primaryBrown,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 320, // Increased
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(
-                  left: 24,
-                  right: 24,
-                  bottom: 20, // Reduced bottom padding as it's a fixed height container
-                ), 
-                itemCount: _getUpcomingEventsForTrending().length > 2 ? 2 : _getUpcomingEventsForTrending().length,
-                itemBuilder: (context, index) {
-                  final upcomingEvents = _getUpcomingEventsForTrending();
-                  if (index >= upcomingEvents.length) return const SizedBox.shrink();
-                  final event = upcomingEvents[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EventDetailScreen(event: event),
-                        ),
-                      ),
-                      child: Container(
-                        width: 200, // Reduced width
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardTheme.color,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(16),
-                                ),
-                                child: Image.network(
-                                  event['image_url'],
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      event['title'],
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelLarge
-                                          ?.copyWith(
-                                            fontSize: 12,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      () {
-                                          try {
-                                              final dt = DateTime.parse(event['date']);
-                                              return DateFormat('dd-MM-yyyy').format(dt);
-                                          } catch (_) {
-                                              return event['date'].toString();
-                                          }
-                                      }(),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 120),
-          ],
+          children: _buildHomeContent(safeTopPadding),
         ),
       ),
     );
   }
+
+  List<Widget> _buildHomeContent(double topOffset) {
+    List<Widget> content = [];
+    
+    // 0. Initial Top Offset (Transparent area behind blurred AppBar)
+    content.add(SizedBox(height: topOffset));
+    
+    bool offsetApplied = true; // Since we just added the topOffset
+    final shouldShowProfilePrompt = _shouldShowProfileCompletionPrompt();
+    
+    // 1. Flash Alert
+    if (_flashAlert != null && !_flashAlert!.isExpired) {
+        content.add(FlashAlertBanner(alert: _flashAlert!, topPadding: 0));
+    }
+    
+    // 2. Profile Completion Prompt
+    if (shouldShowProfilePrompt) {
+      content.add(_buildProfileCompletionPrompt(topPadding: 16));
+    }
+
+    // 1. Editorial Header
+    content.add(Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        offsetApplied ? 24 : topOffset,
+        24,
+        24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('EEEE, MMM d').format(DateTime.now()).toUpperCase(),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${_getGreeting()},\nFounder.",
+            style: Theme.of(context).textTheme.displayLarge,
+          ),
+        ],
+      ),
+    ));
+
+    // 2. Hero Carousel
+    if (_heroItems.isNotEmpty) {
+      content.add(Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: HeroCarousel(items: _heroItems),
+      ));
+    }
+
+    // 3. News Ticker
+    if (_newsTickerItems.isNotEmpty) {
+      content.add(Padding(
+        padding: const EdgeInsets.only(bottom: 32),
+        child: NewsTicker(newsItems: _newsTickerItems),
+      ));
+    }
+
+    // 4. BENTO GRID LAYOUT
+    content.add(Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // ROW 1: STATUS & EVENTS
+          Row(
+            children: [
+              Expanded(
+                child: BentoTile(
+                  title: MembershipService.isPremium ? "Premium" : (MembershipService.isStandard ? "Upgrade to Premium" : "Upgrade Membership"),
+                  subtitle: "Membership",
+                  height: 160,
+                  color: _isPremium ? FfigTheme.primaryBrown : const Color(0xFF161B22),
+                  isGlass: true,
+                  icon: Icon(Icons.verified_user, color: _isPremium ? Colors.white : Colors.grey, size: 24),
+                  onTap: () {
+                    if (MembershipService.isPremium) return;
+                    Navigator.push(context, MaterialPageRoute(builder: (c) => const LockedScreen()));
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: BentoTile(
+                  title: "Events",
+                  subtitle: "${_getUpcomingCount()} Upcoming",
+                  height: 160,
+                  isGlass: true,
+                  icon: const Icon(Icons.calendar_month, color: FfigTheme.accentBrown, size: 24),
+                  onTap: () {
+                    setState(() => _selectedIndex = 1);
+                    _pageController.jumpToPage(1);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ROW 2: NETWORK & TICKETS
+          Row(
+            children: [
+              Expanded(
+                child: BentoTile(
+                  title: "Network",
+                  subtitle: "Find a Founder",
+                  height: 160,
+                  isGlass: true,
+                  icon: const Icon(Icons.search, color: FfigTheme.accentBrown, size: 24),
+                  onTap: () {
+                    if (_userProfile == null) { _showLoginDialog(); return; }
+                    if (MembershipService.canViewLimitedDirectory) {
+                      setState(() => _selectedIndex = 2);
+                      _pageController.jumpToPage(2);
+                    } else {
+                      MembershipService.showUpgradeDialog(context, "Member Directory");
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: BentoTile(
+                  title: "Tickets",
+                  subtitle: "View My Tickets",
+                  height: 160,
+                  isGlass: true,
+                  icon: const Icon(Icons.confirmation_num_outlined, color: FfigTheme.accentBrown, size: 24),
+                  onTap: () {
+                    if (_userProfile == null) { _showLoginDialog(); return; }
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ROW 3: SPOTLIGHTS
+          if (_founderProfile != null) ...[
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: FounderSpotlightCard(profile: _founderProfile!)),
+            const SizedBox(height: 16),
+          ],
+          if (_businessProfile != null) ...[
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: BusinessCard(profile: _businessProfile!)),
+            const SizedBox(height: 16),
+          ],
+          // ROW 4: INBOX & RESOURCES
+          Row(
+            children: [
+              Expanded(
+                child: Badge(
+                  backgroundColor: Colors.red,
+                  isLabelVisible: (_lastUnreadCount + _communityUnreadCount) > 0,
+                  label: Text('${_lastUnreadCount + _communityUnreadCount}'),
+                  offset: const Offset(-20, 20),
+                  child: BentoTile(
+                    title: "Inbox",
+                    subtitle: (_lastUnreadCount + _communityUnreadCount) > 0 ? "${_lastUnreadCount + _communityUnreadCount} Unread" : "No messages",
+                    height: 140,
+                    isGlass: true,
+                    icon: Icon(Icons.chat_bubble_outline, color: (_lastUnreadCount + _communityUnreadCount) > 0 ? FfigTheme.primaryBrown : Colors.grey),
+                    onTap: () {
+                      if (_userProfile == null) { _showLoginDialog(); return; }
+                      setState(() => _lastUnreadCount = 0);
+                      Navigator.push(context, MaterialPageRoute(builder: (c) => const InboxScreen()));
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Badge(
+                  backgroundColor: Colors.red,
+                  isLabelVisible: _unseenResourcesCount > 0,
+                  label: Text('$_unseenResourcesCount'),
+                  offset: const Offset(-20, 20),
+                  child: BentoTile(
+                    title: "Resources",
+                    subtitle: _unseenResourcesCount > 0 ? "New Content" : "Library",
+                    height: 140,
+                    isGlass: true,
+                    icon: Icon(Icons.book, color: _unseenResourcesCount > 0 ? FfigTheme.primaryBrown : Colors.grey),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ResourcesScreen())),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ));
+
+    // 5. TRENDING NOW Section
+    content.add(Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "TRENDING NOW",
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey),
+          ),
+          const Text(
+            "View All",
+            style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+        ],
+      ),
+    ));
+    content.add(const SizedBox(height: 16));
+    content.add(SizedBox(
+      height: 320,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: _getUpcomingEventsForTrending().length > 2 ? 2 : _getUpcomingEventsForTrending().length,
+        itemBuilder: (context, index) {
+          final upcomingEvents = _getUpcomingEventsForTrending();
+          if (index >= upcomingEvents.length) return const SizedBox.shrink();
+          final event = upcomingEvents[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailScreen(event: event))),
+              child: Container(
+                width: 200,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Image.network(event['image_url'], fit: BoxFit.cover, width: double.infinity),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              event['title'],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              () {
+                                try {
+                                  final dt = DateTime.parse(event['date']);
+                                  return DateFormat('dd-MM-yyyy').format(dt);
+                                } catch (_) {
+                                  return event['date'].toString();
+                                }
+                              }(),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ));
+
+    content.add(const SizedBox(height: 120)); // Large bottom padding for bottom nav space
+    
+    return content;
+  }
+
 
   bool _shouldShowProfileCompletionPrompt() {
     if (_userProfile == null) return false;
@@ -1287,14 +1199,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     return false;
   }
 
-  Widget _buildProfileCompletionPrompt() {
+  Widget _buildProfileCompletionPrompt({double topPadding = 0}) {
     final missingCount = (_userProfile!['get_missing_fields'] as List? ?? []).length;
     final firstName = _userProfile!['first_name'] ?? 'Founder';
 
     return Container(
       margin: EdgeInsets.fromLTRB(
         24,
-        MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        topPadding > 0 ? topPadding : 16, // Use passed topPadding or default smaller margin
         24,
         0,
       ),

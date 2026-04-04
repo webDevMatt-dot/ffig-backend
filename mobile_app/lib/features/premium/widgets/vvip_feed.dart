@@ -67,7 +67,13 @@ class _VVIPFeedState extends State<VVIPFeed> {
     }
 
     if (_reels.isEmpty) {
-        return const Center(child: Text("No VVIP content yet.", style: TextStyle(color: Colors.white)));
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Center(
+          child: Text(
+            "No VVIP content yet.", 
+            style: TextStyle(color: isDark ? Colors.white : FfigTheme.textGrey)
+          )
+        );
     }
 
     return Stack(
@@ -149,6 +155,11 @@ class _CaughtUpPage extends StatelessWidget {
     
     @override
     Widget build(BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? Colors.black : Theme.of(context).scaffoldBackgroundColor;
+        final textColor = isDark ? Colors.white : FfigTheme.textDark;
+        final subTextColor = isDark ? Colors.grey : FfigTheme.textGrey;
+
         return GestureDetector(
             onVerticalDragEnd: (details) {
                 if (details.primaryVelocity! < 0) { // Swipe Up
@@ -156,24 +167,24 @@ class _CaughtUpPage extends StatelessWidget {
                 }
             },
             child: Container(
-                color: Colors.black,
-                child: const Center(
+                color: bgColor,
+                child: Center(
                     child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                            Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-                            SizedBox(height: 24),
+                            const Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                            const SizedBox(height: 24),
                             Text(
                                 "You're all caught up!",
-                                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
                                 "Swipe up to refresh",
-                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                                style: TextStyle(color: subTextColor, fontSize: 16),
                             ), 
-                             SizedBox(height: 48),
-                             Icon(Icons.keyboard_double_arrow_up, color: Colors.white54, size: 40)
+                             const SizedBox(height: 48),
+                             Icon(Icons.keyboard_double_arrow_up, color: textColor.withOpacity(0.54), size: 40)
                         ],
                     ),
                 ),
@@ -439,10 +450,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             Colors.black.withOpacity(0.3),
           ]
         : [
-            Colors.black.withOpacity(0.5),
-            Colors.black.withOpacity(0.22),
+            Colors.black.withOpacity(0.35),
+            Colors.black.withOpacity(0.12),
             Colors.transparent,
-            Colors.black.withOpacity(0.2),
+            Colors.white.withOpacity(0.1),
           ];
     const textColor = Colors.white;
     
@@ -467,7 +478,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
                           : (imageUrl != null
                               ? Container(
                                   key: ValueKey('image_${widget.item['id']}'),
-                                  color: Colors.black,
+                                  color: isDark ? Colors.black : Colors.white,
                                   child: Image.network(imageUrl, fit: BoxFit.cover),
                                 )
                               : Container(key: const ValueKey('broken_image'), color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white)))),

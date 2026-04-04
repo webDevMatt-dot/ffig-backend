@@ -86,7 +86,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
         _filterItems();
       });
     } catch (e) {
-      if (mounted) DialogUtils.showError(context, "Load Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Load Failed", DialogUtils.getFriendlyMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -685,7 +685,7 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       );
       }
     } catch (e) {
-      if (mounted) DialogUtils.showError(context, "Update Failed", e.toString());
+      if (mounted) DialogUtils.showError(context, "Update Failed", DialogUtils.getFriendlyMessage(e));
       setState(() => _isLoading = false);
     }
   }
@@ -730,18 +730,18 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       return bDate.compareTo(aDate);
     });
 
-    int? liveId;
-    try {
-      final liveItem = _profiles.where((p) {
-        final active = p['is_active'] ?? true;
-        final expires = p['expires_at'] != null ? DateTime.tryParse(p['expires_at']) : null;
-        return active && (expires == null || expires.isAfter(now));
-      }).toList();
-      
-      if (liveItem.isNotEmpty) {
-        liveId = liveItem.first['id'];
-      }
-    } catch (_) {}
+    // --- SUMMARY COUNTS ---
+    int liveCount = 0;
+    int draftCount = 0;
+    int expiredCount = 0;
+
+    for (var p in _profiles) {
+      final active = p['is_active'] ?? false;
+      final expires = p['expires_at'] != null ? DateTime.tryParse(p['expires_at']) : null;
+      if (active) {
+        if (expires != null && expires.isBefore(now)) expiredCount++; else liveCount++;
+      } else draftCount++;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -757,49 +757,56 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                // 1. Search + Add
+                // --- HEADER SUMMARY ---
                 Row(
-                    children: [
-                        Expanded(
-                            child: TextField(
-                                controller: TextEditingController.fromValue(
-                                  TextEditingValue(
-                                    text: _searchQuery,
-                                    selection: TextSelection.collapsed(offset: _searchQuery.length),
-                                  ),
-                                ),
-                                decoration: InputDecoration(
-                                    hintText: "Search founders...",
-                                    prefixIcon: const Icon(Icons.search),
-                                    suffixIcon: _searchQuery.isNotEmpty 
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear, size: 20),
-                                            onPressed: () {
-                                              setState(() {
-                                                _searchQuery = "";
-                                                _filterItems();
-                                              });
-                                            },
-                                          )
-                                        : null,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
-                                ),
-                                onChanged: (val) {
+                  children: [
+                    _buildSummaryStat("LIVE", liveCount.toString(), Colors.green),
+                    const SizedBox(width: 12),
+                    _buildSummaryStat("DRAFT", draftCount.toString(), Colors.grey),
+                    const SizedBox(width: 12),
+                    _buildSummaryStat("EXPIRED", expiredCount.toString(), Colors.red),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // --- SEARCH ---
+                TextField(
+                    controller: TextEditingController.fromValue(
+                      TextEditingValue(
+                        text: _searchQuery,
+                        selection: TextSelection.collapsed(offset: _searchQuery.length),
+                      ),
+                    ),
+                    decoration: InputDecoration(
+                        hintText: "Search founders...",
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchQuery.isNotEmpty 
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
                                   setState(() {
-                                    _searchQuery = val;
+                                    _searchQuery = "";
                                     _filterItems();
                                   });
                                 },
-                            ),
-                        ),
-                    ],
+                              )
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16)
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                        _filterItems();
+                      });
+                    },
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 
-                // 2. List
+                // --- LIST ---
                 Expanded(
                   child: _isLoading 
                     ? const Center(child: CircularProgressIndicator()) 
@@ -834,13 +841,14 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
                                     fallbackIcon: Icons.person_outline,
                                     onTap: () => _showEditor(item),
                                     statusChip: _statusChip(statusText, statusColor),
-                                    trailing: !isActive ? TextButton(
+                                    trailing: !isActive ? OutlinedButton(
                                       onPressed: () => _toggleActive(item),
-                                      style: TextButton.styleFrom(
-                                        backgroundColor: Colors.green.withOpacity(0.1),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.green,
+                                        side: const BorderSide(color: Colors.green),
                                         padding: const EdgeInsets.symmetric(horizontal: 12),
                                       ),
-                                      child: Text("GO LIVE", style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 11)),
+                                      child: const Text("GO LIVE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
                                     ) : null,
                                   );
                                 },
@@ -852,16 +860,38 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
     );
   }
 
+  Widget _buildSummaryStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _statusChip(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5),
       ),
     );
   }

@@ -7,8 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 /// - Supports external links.
 class FlashAlertBanner extends StatelessWidget {
   final FlashAlert alert;
+  final double topPadding;
 
-  const FlashAlertBanner({super.key, required this.alert});
+  const FlashAlertBanner({super.key, required this.alert, this.topPadding = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +30,7 @@ class FlashAlertBanner extends StatelessWidget {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.fromLTRB(16, 12 + topPadding, 16, 12),
           child: Row(
             children: [
               const Icon(Icons.timer, color: Colors.white, size: 20),

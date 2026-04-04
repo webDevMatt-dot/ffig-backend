@@ -49,22 +49,32 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: FfigTheme.primaryBrown)),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator(color: FfigTheme.primaryBrown)),
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (_reels.isEmpty) {
         return Scaffold(
-            backgroundColor: Colors.black,
-            appBar: AppBar(backgroundColor: Colors.transparent, iconTheme: const IconThemeData(color: Colors.white)),
-            body: const Center(child: Text("No VVIP content yet.", style: TextStyle(color: Colors.white))),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent, 
+              iconTheme: IconThemeData(color: isDark ? Colors.white : FfigTheme.textDark)
+            ),
+            body: Center(
+              child: Text(
+                "No VVIP content yet.", 
+                style: TextStyle(color: isDark ? Colors.white : FfigTheme.textGrey)
+              )
+            ),
         );
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           PageView.builder(
@@ -82,7 +92,7 @@ class _VVIPReelsScreenState extends State<VVIPReelsScreen> {
             top: 40,
             left: 16,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+              icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : FfigTheme.textDark, size: 30),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -98,22 +108,27 @@ class _CaughtUpPage extends StatelessWidget {
     
     @override
     Widget build(BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? Colors.black : Theme.of(context).scaffoldBackgroundColor;
+        final textColor = isDark ? Colors.white : FfigTheme.textDark;
+        final subTextColor = isDark ? Colors.grey : FfigTheme.textGrey;
+
         return Container(
-            color: Colors.black,
-            child: const Center(
+            color: bgColor,
+            child: Center(
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                        Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-                        SizedBox(height: 24),
+                        const Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                        const SizedBox(height: 24),
                         Text(
                             "You're all caught up!",
-                            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                             "Check back later for more.",
-                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                            style: TextStyle(color: subTextColor, fontSize: 16),
                         ),
                     ],
                 ),
@@ -350,12 +365,12 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
     }
 
     final bool hasVideo = _chewieController != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Stack(
       fit: StackFit.expand,
       children: [
         // Content Layer
-        // Content Layer (Wrapped in IgnorePointer to prevent stealing taps)
         IgnorePointer(
           child: Stack(
             fit: StackFit.expand,
@@ -363,7 +378,10 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               if (hasVideo)
                 Chewie(controller: _chewieController!)
               else if (imageUrl != null)
-                Image.network(imageUrl, fit: BoxFit.contain)
+                Container(
+                  color: isDark ? Colors.black : Colors.white,
+                  child: Image.network(imageUrl, fit: BoxFit.contain)
+                )
               else
                 Container(color: Colors.grey[900], child: const Center(child: Icon(Icons.broken_image, color: Colors.white))),
             ],

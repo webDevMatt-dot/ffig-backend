@@ -55,8 +55,7 @@ class AdminDarkListItem extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                ClipOval(
                   child: SizedBox(
                     width: 64,
                     height: 64,
@@ -127,7 +126,10 @@ class AdminDarkListItem extends StatelessWidget {
     return Builder(builder: (context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return Container(
-        color: isDark ? const Color(0xFF1F2937) : Colors.grey[200],
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.grey[200],
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
         child: Icon(
           fallbackIcon,

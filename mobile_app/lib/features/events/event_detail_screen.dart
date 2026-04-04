@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'ticket_flow/ticket_selection_screen.dart';
 import 'ticket_flow/checkout_screen.dart';
 import '../../core/services/membership_service.dart';
 import '../../core/services/stripe_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/ffig_theme.dart';
 import '../tickets/my_tickets_screen.dart';
 
 /// Displays detailed information about a specific Event.
@@ -82,111 +86,155 @@ class EventDetailScreen extends StatelessWidget {
     final lastNameController = TextEditingController();
     final emailController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    HapticFeedback.mediumImpact(); // Premum tactile start
 
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) => Center(
         child: SingleChildScrollView(
-          child: AlertDialog(
-            backgroundColor: Theme.of(context).cardColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-            title: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.event_available, color: Theme.of(context).primaryColor, size: 32),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "Confirm RSVP",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                   Text(
-                    "Please provide your details below to secure your spot for this event.",
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildPremiumField(
-                    context: context,
-                    controller: firstNameController,
-                    label: "First Name",
-                    icon: Icons.person_outline,
-                    validator: (v) => v!.isEmpty ? "Please enter your first name" : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPremiumField(
-                    context: context,
-                    controller: lastNameController,
-                    label: "Last Name",
-                    icon: Icons.person_outline,
-                    validator: (v) => v!.isEmpty ? "Please enter your last name" : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPremiumField(
-                    context: context,
-                    controller: emailController,
-                    label: "Email Address",
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) {
-                      if (v!.isEmpty) return "Please enter your email";
-                      if (!v.contains('@')) return "Please enter a valid email";
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        foregroundColor: Colors.white60,
+                    color: isDark 
+                        ? FfigTheme.surfaceDark.withOpacity(0.85) 
+                        : Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 40,
+                        offset: const Offset(0, 20),
                       ),
-                      child: const Text("CANCEL"),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Form(
+                      key: formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. Icon & Header
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: FfigTheme.primaryBrown.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.verified_user, color: FfigTheme.primaryBrown, size: 36),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            "Confirm RSVP",
+                            style: GoogleFonts.inter(
+                              fontSize: 24, 
+                              fontWeight: FontWeight.w900, 
+                              color: isDark ? Colors.white : FfigTheme.textDark,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Please provide your details below to secure your spot for this event.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: isDark ? Colors.white.withOpacity(0.6) : FfigTheme.textGrey,
+                              height: 1.4,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // 2. Input Fields
+                          _buildPremiumField(
+                            context: context,
+                            controller: firstNameController,
+                            label: "First Name",
+                            icon: Icons.person_outline,
+                            validator: (v) => v!.isEmpty ? "Please enter your first name" : null,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPremiumField(
+                            context: context,
+                            controller: lastNameController,
+                            label: "Last Name",
+                            icon: Icons.person_outline,
+                            validator: (v) => v!.isEmpty ? "Please enter your last name" : null,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPremiumField(
+                            context: context,
+                            controller: emailController,
+                            label: "Email Address",
+                            icon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (v) {
+                              if (v!.isEmpty) return "Please enter your email";
+                              if (!v.contains('@')) return "Please enter a valid email";
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // 3. Actions
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.pop(context);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    foregroundColor: isDark ? Colors.white60 : FfigTheme.textLight,
+                                  ),
+                                  child: Text("CANCEL", style: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: 1.1)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    if (formKey.currentState!.validate()) {
+                                      HapticFeedback.mediumImpact();
+                                      Navigator.pop(context);
+                                      _processRSVP(context, tier, firstNameController.text, lastNameController.text, emailController.text);
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: FfigTheme.primaryBrown,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 8,
+                                    shadowColor: FfigTheme.primaryBrown.withOpacity(0.4),
+                                  ),
+                                  child: Text("CONFIRM", style: GoogleFonts.inter(fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (formKey.currentState!.validate()) {
-                            Navigator.pop(context);
-                            _processRSVP(context, tier, firstNameController.text, lastNameController.text, emailController.text);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        child: const Text("CONFIRM", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                  ),
-                ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -201,35 +249,38 @@ class EventDetailScreen extends StatelessWidget {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
-      style: Theme.of(context).textTheme.bodyLarge,
+      style: GoogleFonts.inter(color: isDark ? Colors.white : FfigTheme.textDark, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Theme.of(context).primaryColor, size: 20),
+        labelStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.5) : FfigTheme.textLight, fontSize: 13),
+        prefixIcon: Icon(icon, color: FfigTheme.primaryBrown, size: 20),
         filled: true,
-        fillColor: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.white.withOpacity(0.05) 
-            : Colors.black.withOpacity(0.05),
+        fillColor: isDark 
+            ? Colors.white.withOpacity(0.04) 
+            : Colors.black.withOpacity(0.04),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Theme.of(context).dividerColor),
+          borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+          borderSide: const BorderSide(color: FfigTheme.primaryBrown, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       ),
     );
   }
@@ -243,48 +294,97 @@ class EventDetailScreen extends StatelessWidget {
           email: email,
         );
         if (success && context.mounted) {
-           showDialog(
-             context: context,
-             barrierDismissible: false,
-             builder: (ctx) => AlertDialog(
-               backgroundColor: Theme.of(context).cardColor,
-               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-               content: Column(
-                 mainAxisSize: MainAxisSize.min,
-                 children: [
-                   Icon(Icons.check_circle_outline, color: Theme.of(context).primaryColor, size: 80),
-                   const SizedBox(height: 24),
-                   Text(
-                     "RSVP Sent!",
-                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                   ),
-                   const SizedBox(height: 12),
-                   Text(
-                     "Your registration has been successfully sent. You can find your ticket in the 'My Tickets' section.",
-                     textAlign: TextAlign.center,
-                     style: Theme.of(context).textTheme.bodyMedium,
-                   ),
-                   const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          HapticFeedback.heavyImpact(); // Success haptic
+
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) {
+              final isDark = Theme.of(ctx).brightness == Brightness.dark;
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? FfigTheme.surfaceDark.withOpacity(0.9) 
+                              : Colors.white.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
+                            width: 1.5,
+                          ),
                         ),
-                        child: const Text("VIEW MY TICKETS", style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 64),
+                              ),
+                              const SizedBox(height: 32),
+                              Text(
+                                "RSVP Sent!",
+                                style: GoogleFonts.inter(
+                                  fontSize: 28, 
+                                  fontWeight: FontWeight.w900, 
+                                  color: isDark ? Colors.white : FfigTheme.textDark,
+                                  letterSpacing: -0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                "Your registration has been successfully sent. You can find your ticket in the 'My Tickets' section.",
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  color: isDark ? Colors.white.withOpacity(0.6) : FfigTheme.textGrey,
+                                  fontSize: 15,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 40),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    HapticFeedback.mediumImpact();
+                                    Navigator.pop(ctx);
+                                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MyTicketsScreen()));
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: FfigTheme.primaryBrown,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    "VIEW MY TICKETS", 
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                 ],
-               ),
-             ),
-           );
+                  ),
+                ),
+              );
+            },
+          );
         }
       } catch (e) {
         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("RSVP Failed: $e")));
