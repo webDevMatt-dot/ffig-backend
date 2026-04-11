@@ -119,19 +119,32 @@ class _ManageHeroScreenState extends State<ManageHeroScreen> {
       uiSettings: [
         AndroidUiSettings(
             toolbarTitle: 'Crop Hero Image',
-            toolbarColor: FfigTheme.primaryBrown,
+            toolbarColor: Colors.black,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.ratio16x9,
-            lockAspectRatio: true,
-            activeControlsWidgetColor: FfigTheme.accentBrown,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+            activeControlsWidgetColor: FfigTheme.primaryBrown,
         ),
         IOSUiSettings(
           title: 'Crop Hero Image',
-          aspectRatioLockEnabled: true,
-          resetAspectRatioEnabled: false,
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
       ],
-      aspectRatio: const CropAspectRatio(ratioX: 2.2, ratioY: 1.0),
     );
     if (croppedFile != null) return File(croppedFile.path);
     return null;

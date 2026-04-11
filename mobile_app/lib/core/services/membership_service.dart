@@ -65,15 +65,21 @@ class MembershipService {
 
   /// Helper used by UI to show an "Upgrade Required" dialog for locked features.
   static void showUpgradeDialog(BuildContext context, String feature, {UserTier requiredTier = UserTier.standard}) {
-    String message = "Unlock '$feature' by becoming an FFIG Member. Choose Standard or Premium to access.";
+    String message = "Unlock '$feature' with Standard membership for community access and member networking.";
 
     if (currentTier == UserTier.standard && requiredTier == UserTier.premium) {
-      message = "The '$feature' feature is exclusive to Premium Members. Upgrade to unlock.";
+      message = "Upgrade to Premium to unlock direct inbox messaging, business tools, marketing tools, and full profile visibility.";
+    } else if (requiredTier == UserTier.standard) {
+      message = "Join as Standard to unlock Community Chat, Stories, and core member networking.";
     }
 
     showDialog(
       context: context,
-      builder: (context) => UpgradeModal(message: message),
+      builder: (context) => UpgradeModal(
+        message: message,
+        feature: feature,
+        requiredTier: requiredTier,
+      ),
     );
   }
 }

@@ -111,20 +111,33 @@ class _EditEventScreenState extends State<EditEventScreen> {
       if (image != null) {
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: image.path,
-          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Crop Event Image',
-              toolbarColor: FfigTheme.primaryBrown,
+              toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.ratio16x9,
-              lockAspectRatio: true,
-              activeControlsWidgetColor: FfigTheme.accentBrown,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
+              activeControlsWidgetColor: FfigTheme.primaryBrown,
             ),
             IOSUiSettings(
               title: 'Crop Event Image',
-              aspectRatioLockEnabled: true,
-              resetAspectRatioEnabled: false,
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
             ),
           ],
         );
@@ -147,20 +160,33 @@ class _EditEventScreenState extends State<EditEventScreen> {
     try {
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: _selectedImage!.path,
-        aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Event Image',
-            toolbarColor: FfigTheme.primaryBrown,
+            toolbarColor: Colors.black,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.ratio16x9,
-            lockAspectRatio: true,
-            activeControlsWidgetColor: FfigTheme.accentBrown,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+            activeControlsWidgetColor: FfigTheme.primaryBrown,
           ),
           IOSUiSettings(
             title: 'Crop Event Image',
-            aspectRatioLockEnabled: true,
-            resetAspectRatioEnabled: false,
+            aspectRatioLockEnabled: false,
+            resetAspectRatioEnabled: true,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
         ],
       );

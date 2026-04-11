@@ -4,33 +4,42 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import '../../../core/api/constants.dart';
-import '../../../core/theme/ffig_theme.dart';
+import '../../../core/services/admin_api_service.dart';
 
 class ReportDetailScreen extends StatefulWidget {
   final Map<String, dynamic> report;
+  final VoidCallback? onUpdated;
 
-  const ReportDetailScreen({super.key, required this.report});
+  const ReportDetailScreen({
+    super.key,
+    required this.report,
+    this.onUpdated,
+  });
 
   @override
   State<ReportDetailScreen> createState() => _ReportDetailScreenState();
 }
 
 class _ReportDetailScreenState extends State<ReportDetailScreen> {
+  final AdminApiService _api = AdminApiService();
   bool _isLoadingContext = false;
+  bool _isUpdating = false;
   List<dynamic> _chatContext = [];
   bool _contextError = false;
   final _storage = const FlutterSecureStorage();
   late String _currentStatus;
+  late Map<String, dynamic> _report;
 
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.report['status'];
+    _report = Map<String, dynamic>.from(widget.report);
+    _currentStatus = (_report['status'] ?? 'OPEN').toString().toUpperCase();
     _extractAndFetchContext();
   }
 
   Future<void> _extractAndFetchContext() async {
-    final reason = widget.report['reason'] as String;
+    final reason = (_report['reason'] ?? '').toString();
     // Regex to find [CID:123]
     final regex = RegExp(r'\[CID:(\d+)\]');
     final match = regex.firstMatch(reason);
@@ -91,20 +100,28 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 
   Future<void> _resolveReport() async {
+      if (_isUpdating) return;
+      setState(() => _isUpdating = true);
       try {
-          final token = await _storage.read(key: 'access_token');
-          final response = await http.patch(
-              Uri.parse('${baseUrl}admin/moderation/reports/${widget.report['id']}/'),
-              headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-              body: jsonEncode({'status': 'RESOLVED'})
-          );
+          final int id = (_report['id'] is int)
+              ? _report['id'] as int
+              : int.parse(_report['id'].toString());
+          await _api.updateReportStatus(id, 'RESOLVED');
 
-          if (response.statusCode == 200) {
-              setState(() => _currentStatus = 'RESOLVED');
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Marked as Resolved")));
-          }
+          if (!mounted) return;
+          setState(() {
+            _currentStatus = 'RESOLVED';
+            _report['status'] = 'RESOLVED';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Marked as resolved")));
+          widget.onUpdated?.call();
       } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error updating status")));
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error updating status: $e")));
+      } finally {
+          if (mounted) {
+            setState(() => _isUpdating = false);
+          }
       }
   }
 
@@ -117,13 +134,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    Text("Report #${widget.report['id']}", style: Theme.of(context).textTheme.headlineSmall),
+                    Text("Report #${_report['id']}", style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 16),
-                    _buildInfoRow("Reporter", widget.report['reporter_username'] ?? 'Unknown'),
-                    _buildInfoRow("Type", widget.report['reported_item_type']),
-                    _buildInfoRow("Reported User", widget.report['reported_user'] ?? 'Unknown'),
-                    _buildInfoRow("Target ID", widget.report['reported_item_id']),
-                    _buildInfoRow("Date", widget.report['created_at']),
+                    _buildInfoRow("Reporter", _report['reporter_username'] ?? 'Unknown'),
+                    _buildInfoRow("Type", _report['reported_item_type']),
+                    _buildInfoRow("Reported User", _report['reported_user'] ?? 'Unknown'),
+                    _buildInfoRow("Target ID", _report['reported_item_id']),
+                    _buildInfoRow("Date", _report['created_at']),
                     
                     const SizedBox(height: 24),
                     const Text("Reason & Context:", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -132,7 +149,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(top: 8),
                         decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-                        child: Text(widget.report['reason']),
+                        child: Text((_report['reason'] ?? '').toString()),
                     ),
 
                     const SizedBox(height: 32),
@@ -169,9 +186,11 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                   icon: const Icon(Icons.check),
-                                  label: const Text("Mark as Resolved"),
+                                  label: _isUpdating
+                                      ? const Text("Updating...")
+                                      : const Text("Mark as Resolved"),
                                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.all(16)),
-                                  onPressed: _resolveReport,
+                                  onPressed: _isUpdating ? null : _resolveReport,
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -179,7 +198,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             const SizedBox(height: 16),
                             const Text("Administrative Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 16),
-                            if (widget.report['target_user_id'] != null) ...[
+                            if (_report['target_user_id'] != null) ...[
                                 _buildActionBtn("Warn User", Colors.orange, Icons.warning, () => _confirmAction('WARN')),
                                 _buildActionBtn("Suspend (7 Days)", Colors.deepOrange, Icons.timer_off, () => _confirmAction('SUSPEND')),
                                 _buildActionBtn("Block User", Colors.red, Icons.block, () => _confirmAction('BLOCK')),
@@ -208,18 +227,34 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                       padding: const EdgeInsets.all(16),
                       side: BorderSide(color: color),
                   ),
-                  onPressed: onTap
+                  onPressed: _isUpdating ? null : onTap
               ),
           ),
       );
   }
 
   Future<void> _confirmAction(String action) async {
+      final reasonController = TextEditingController(text: (_report['reason'] ?? '').toString());
       final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
               title: Text("Confirm $action?"),
-              content: const Text("This action cannot be easily undone."),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("This action cannot be easily undone."),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: "Reason",
+                      hintText: "Add admin note",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
               actions: [
                   TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
                   ElevatedButton(
@@ -232,42 +267,60 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       );
 
       if (confirmed == true) {
-          _performAction(action);
+          await _performAction(action, reasonController.text.trim());
       }
+      reasonController.dispose();
   }
 
-  Future<void> _performAction(String action) async {
+  Future<void> _performAction(String action, String reason) async {
+      final dynamic target = _report['target_user_id'];
+      final int? targetUserId = target is int ? target : int.tryParse(target?.toString() ?? '');
+      if (targetUserId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("This report has no direct user target.")),
+        );
+        return;
+      }
+
+      setState(() => _isUpdating = true);
        try {
-          final token = await _storage.read(key: 'access_token');
-          final response = await http.post(
-              Uri.parse('${baseUrl}admin/moderation/actions/'),
-              headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-              body: jsonEncode({
-                  'action': action,
-                  'target_user_id': widget.report['target_user_id'],
-                  'reason': widget.report['reason'] // Pass report reason as context
-              })
+          await _api.performModerationAction(
+            action: action,
+            targetUserId: targetUserId,
+            reason: reason,
           );
 
-          if (response.statusCode == 200) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action $action Successful")));
-              // Optionally resolve the report too
-              if (_currentStatus != 'RESOLVED') _resolveReport(); 
-          } else {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action Failed: ${response.body}")));
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action $action successful.")));
+          if (_currentStatus != 'RESOLVED') {
+            final int reportId = (_report['id'] is int)
+                ? _report['id'] as int
+                : int.parse(_report['id'].toString());
+            await _api.updateReportStatus(reportId, 'RESOLVED');
+            if (!mounted) return;
+            setState(() {
+              _currentStatus = 'RESOLVED';
+              _report['status'] = 'RESOLVED';
+            });
+            widget.onUpdated?.call();
           }
       } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Action failed: $e")));
+      } finally {
+          if (mounted) {
+            setState(() => _isUpdating = false);
+          }
       }
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, dynamic value) {
       return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
               children: [
                   SizedBox(width: 100, child: Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-                  Expanded(child: Text(value)),
+                  Expanded(child: Text(value?.toString() ?? '-')),
               ],
           ),
       );

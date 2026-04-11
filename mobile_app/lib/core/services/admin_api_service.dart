@@ -16,6 +16,7 @@ import '../api/constants.dart';
 /// - Handles Authentication headers via `FlutterSecureStorage`.
 class AdminApiService {
   static final String _baseUrl = '${baseUrl}home';
+  static final String _adminBaseUrl = '${baseUrl}admin';
   static final String _membersBaseUrl = '${baseUrl}members';
   static final String _communityBaseUrl = '${baseUrl}community'; // Added for Polls/Quizzes
   final _storage = const FlutterSecureStorage();
@@ -47,7 +48,7 @@ class AdminApiService {
   Future<List<dynamic>> fetchReports() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('${baseUrl}admin/moderation/reports/'),
+      Uri.parse('$_adminBaseUrl/moderation/reports/'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
@@ -57,11 +58,49 @@ class AdminApiService {
     }
   }
 
+  Future<void> updateReportStatus(int id, String status) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$_adminBaseUrl/moderation/reports/$id/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'status': status}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update report status: ${response.body}');
+    }
+  }
+
+  Future<void> performModerationAction({
+    required String action,
+    required int targetUserId,
+    String reason = '',
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_adminBaseUrl/moderation/actions/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'action': action,
+        'target_user_id': targetUserId,
+        'reason': reason,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed moderation action: ${response.body}');
+    }
+  }
+
   // Fetch Login Logs (Admin only)
   Future<List<dynamic>> fetchLoginLogs() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('${baseUrl}admin/logs/logins/'),
+      Uri.parse('$_adminBaseUrl/logs/logins/'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
@@ -71,12 +110,25 @@ class AdminApiService {
     }
   }
 
+  Future<List<dynamic>> fetchAuditLogs() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_adminBaseUrl/logs/audit/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load audit logs: ${response.statusCode}');
+    }
+  }
+
   // Fetch Users for Picker
   Future<List<dynamic>> searchUsers(String query) async {
     final token = await _getToken();
     final url = query.isEmpty 
-        ? '${baseUrl}admin/users/' 
-        : '${baseUrl}admin/users/?q=$query';
+        ? '$_adminBaseUrl/users/' 
+        : '$_adminBaseUrl/users/?q=$query';
     
     final response = await http.get(
       Uri.parse(url),
@@ -540,9 +592,7 @@ class AdminApiService {
   Future<Map<String, dynamic>> fetchAnalytics() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$_baseUrl/../admin/analytics/'), // _baseUrl is api/home so ../admin/analytics => api/admin/analytics
-      // Endpoint: admin/analytics/
-      // Correct logic:
+      Uri.parse('$_adminBaseUrl/analytics/'),
       headers: {'Authorization': 'Bearer $token'}
     );
      if (response.statusCode == 200) {
@@ -555,7 +605,7 @@ class AdminApiService {
   Future<List<dynamic>> fetchAdminTickets() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('${baseUrl}admin/tickets/'),
+      Uri.parse('$_adminBaseUrl/tickets/'),
       headers: {'Authorization': 'Bearer $token'}
     );
      if (response.statusCode == 200) {
@@ -577,7 +627,7 @@ class AdminApiService {
 
   Future<List<dynamic>> _fetchApprovals(String type) async {
       final token = await _getToken();
-      final url = '${baseUrl}admin/approvals/$type/'; // Ensure URL structure in backend
+      final url = '$_adminBaseUrl/approvals/$type/';
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch approvals: ${response.statusCode}');
@@ -598,7 +648,7 @@ class AdminApiService {
           body['feedback'] = feedback;
       }
       final response = await http.patch(
-          Uri.parse('${baseUrl}admin/approvals/$type/$id/'),
+          Uri.parse('$_adminBaseUrl/approvals/$type/$id/'),
           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
           body: jsonEncode(body)
       );
@@ -617,7 +667,7 @@ class AdminApiService {
   Future<void> deleteAdminMarketingRequest(int id) async {
        final token = await _getToken();
        final response = await http.delete(
-          Uri.parse('${baseUrl}admin/approvals/marketing/$id/'),
+          Uri.parse('$_adminBaseUrl/approvals/marketing/$id/'),
           headers: {'Authorization': 'Bearer $token'}
        );
        if (response.statusCode != 204) throw Exception('Failed to delete request (Admin)');

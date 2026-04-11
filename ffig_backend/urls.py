@@ -17,28 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.static import serve
-from django.http import HttpResponse
-from django.contrib.auth.models import User
 from django.conf import settings
 
-import os
-
-# APK Directory
-APK_ROOT = os.path.join(settings.BASE_DIR, 'mobile_app', 'web')
-
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 from events.views import (
     FeaturedEventView, EventListView, EventDetailView, MyTicketsView, 
     TicketTierCreateView, TicketTierDeleteView, EventDeleteView,
     EventSpeakerCreateView, EventSpeakerDeleteView,
     AgendaItemCreateView, AgendaItemDeleteView,
-    EventFAQCreateView, EventFAQDeleteView
+    EventFAQCreateView, EventFAQDeleteView, EventSharePreviewView
 )
 from members.views import (
-    MemberListView, UserProfileView, premium_content,
+    MemberListView, MemberDetailView, UserProfileView,
     MyBusinessProfileView, MarketingRequestCreateView, ContentReportCreateView,
     AdminAnalyticsView, AdminBusinessProfileListView, AdminBusinessProfileDetailView, 
     AdminMarketingRequestListView, AdminMarketingRequestDetailView,
@@ -46,8 +35,8 @@ from members.views import (
     NotificationListView, NotificationMarkReadView,
     ToggleFavoriteView, BlockUserView, BlockedUserListView, MarketingFeedView,
     MarketingLikeView, MarketingCommentView, MyMarketingRequestListView, MarketingRequestUpdateView,
-    StoryViewSet, AdminUserUpdateView, AdminLoginLogListView, wix_webhook,
-    AdminTicketListView, UniqueLocationsView
+    StoryViewSet, AdminLoginLogListView, wix_webhook,
+    AdminAuditLogListView, AdminTicketListView, UniqueLocationsView
 )
 from resources.views import (
     ResourceListView, AdminResourceListCreateView, AdminResourceDetailView,
@@ -57,7 +46,8 @@ from resources.views import (
 from chat.views import (
     ConversationListView, MessageListView, SendMessageView, 
     UnreadCountView, CommunityChatView, ChatSearchView, 
-    ClearChatView, MuteChatView, CommunityUnreadCountView, MarkCommunityReadView
+    ClearChatView, MuteChatView, CommunityUnreadCountView, MarkCommunityReadView,
+    DeleteMessageView
 )
 from home.views import download_latest_apk
 
@@ -66,6 +56,8 @@ urlpatterns = [
     
     path('api/events/', EventListView.as_view(), name='event-list'),
     path('api/events/<int:pk>/', EventDetailView.as_view(), name='event-detail'),
+    path('share/events/<int:pk>/<slug:event_slug>/', EventSharePreviewView.as_view(), name='event-share-preview-pretty'),
+    path('share/events/<int:pk>/', EventSharePreviewView.as_view(), name='event-share-preview'),
     path('api/events/<int:pk>/delete/', EventDeleteView.as_view(), name='event-delete'),
     path('api/events/featured/', FeaturedEventView.as_view(), name='featured-events'),
     
@@ -79,6 +71,7 @@ urlpatterns = [
     path('api/events/tiers/', TicketTierCreateView.as_view(), name='tier-create'),
     path('api/events/tiers/<int:pk>/', TicketTierDeleteView.as_view(), name='tier-delete'),
     path('api/members/', MemberListView.as_view(), name='member-list'),
+    path('api/members/<int:user_id>/', MemberDetailView.as_view(), name='member-detail'),
     path('api/members/unique-locations/', UniqueLocationsView.as_view(), name='unique-locations'),
     path('api/members/me/', UserProfileView.as_view(), name='my-profile'),
     path('api/resources/', ResourceListView.as_view(), name='resource-list'),
@@ -88,8 +81,7 @@ urlpatterns = [
     # Authentication (Login, Register, Password Reset)
     path('api/', include('authentication.urls')),
 
-    # Explicit override to ensuring routing works
-    path('api/home/download-apk/', download_latest_apk, name='direct-download-apk'),
+    # Home endpoints (includes download-apk and router endpoints)
     path('api/home/', include('home.urls')),
     
     # Admin Resource Management
@@ -112,15 +104,12 @@ urlpatterns = [
     path('api/admin/moderation/reports/', AdminContentReportListView.as_view(), name='admin-report-list'),
     path('api/admin/moderation/reports/<int:pk>/', AdminContentReportDetailView.as_view(), name='admin-report-detail'),
     path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
-
-    path('api/admin/moderation/actions/', AdminModerationActionView.as_view(), name='admin-moderation-action'),
     
-    # Admin User Management
-    path('api/admin/users/<int:pk>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
+    # Admin User Management (canonical users CRUD is served via authentication.urls under /api/admin/users/)
     path('api/admin/logs/logins/', AdminLoginLogListView.as_view(), name='admin-login-logs'),
+    path('api/admin/logs/audit/', AdminAuditLogListView.as_view(), name='admin-audit-logs'),
 
     # User Submissions
-    path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
     path('api/members/me/business/', MyBusinessProfileView.as_view(), name='my-business-profile'),
     path('api/members/me/marketing/', MarketingRequestCreateView.as_view(), name='create-marketing-request'),
     path('api/members/me/marketing/list/', MyMarketingRequestListView.as_view(), name='my-marketing-list'),
@@ -137,7 +126,6 @@ urlpatterns = [
     path('api/members/stories/<int:pk>/reply/', StoryViewSet.as_view({'post': 'reply'}), name='story-reply'),
 
     path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
-    path('api/members/report/', ContentReportCreateView.as_view(), name='create-content-report'),
     path('api/members/favorites/toggle/<int:user_id>/', ToggleFavoriteView.as_view(), name='toggle-favorite'),
     
     # Blocking
@@ -146,10 +134,9 @@ urlpatterns = [
 
     path('api/chat/conversations/', ConversationListView.as_view(), name='conversation-list'),
     path('api/chat/messages/send/', SendMessageView.as_view(), name='send-message'),
+    path('api/chat/messages/<int:pk>/delete/', DeleteMessageView.as_view(), name='delete-message'),
     path('api/chat/conversations/<int:pk>/mute/', MuteChatView.as_view(), name='mute-chat'),
     path('api/chat/conversations/<int:pk>/clear/', ClearChatView.as_view(), name='clear-chat'),
-    path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
-    path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/conversations/<int:pk>/messages/', MessageListView.as_view(), name='message-list'),
     path('api/chat/unread-count/', UnreadCountView.as_view(), name='unread-count'),
     path('api/chat/community/', CommunityChatView.as_view(), name='community-chat'),

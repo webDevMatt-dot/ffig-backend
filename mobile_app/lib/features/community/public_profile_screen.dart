@@ -8,6 +8,7 @@ import '../../shared_widgets/user_avatar.dart';
 import '../chat/chat_screen.dart';
 import '../../core/services/membership_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart';
 
 class PublicProfileScreen extends StatefulWidget {
   final int? userId;
@@ -63,12 +64,39 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     try {
       final response = await http.get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
 
+      // Backward-compat fallback: older backends may not have /members/<id>/ yet.
+      if (response.statusCode == 404 && widget.userId != null) {
+        final fallbackResponse = await http.get(
+          Uri.parse('${baseUrl}members/?search=${widget.username ?? widget.userId}'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (fallbackResponse.statusCode == 200) {
+          final dynamic fallbackData = jsonDecode(fallbackResponse.body);
+          if (fallbackData is List) {
+            Map<String, dynamic>? exact;
+            for (final item in fallbackData) {
+              final map = Map<String, dynamic>.from(item);
+              if (map['user_id'] == widget.userId) {
+                exact = map;
+                break;
+              }
+            }
+            if (exact != null && mounted) {
+              setState(() {
+                _profileData = exact!;
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+        }
+      }
+
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
             final data = jsonDecode(response.body);
             if (data is List) {
-                // It was a search result
                 if (data.isNotEmpty) {
                     _profileData = data.first;
                 } else {
@@ -81,12 +109,15 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           });
         }
       } else {
-         if (mounted) {
-           setState(() {
-             _isLoading = false;
-             _errorMessage = "Failed to load profile (${response.statusCode})";
-         });
-         }
+        if (kDebugMode) {
+          print('Public profile fetch failed: ${response.statusCode} ${response.body}');
+        }
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = "Failed to load profile (${response.statusCode})";
+          });
+        }
       }
     } catch (e) {
       print(e);

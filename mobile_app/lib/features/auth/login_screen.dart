@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../home/dashboard_screen.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
-import '../../core/api/constants.dart';
 import '../../core/theme/ffig_theme.dart';
-import '../../core/services/version_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../shared_widgets/moderation_dialog.dart';
+import '../../core/api/django_api_client.dart';
 
 /// The Main Authentication Entry Point.
 ///
 /// **Features:**
 /// - User Login (Email/Username & Password).
 /// - Secure Token Storage (`access`, `refresh`) via `FlutterSecureStorage`.
+/// - Optional "Remember me" credential autofill on this device.
 /// - Admin Status Check (`is_staff`).
 /// - Account Moderation Checks (Block/Suspend).
 /// - Version Display.
@@ -28,16 +25,24 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const String _rememberMeKey = 'remember_me';
+  static const String _rememberedUsernameKey = 'remembered_username';
+  static const String _rememberedPasswordKey = 'remembered_password';
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _apiClient = DjangoApiClient();
+  final _storage = const FlutterSecureStorage();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _rememberMe = false;
   String _version = "";
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadRememberedCredentials();
   }
 
   Future<void> _loadVersion() async {
@@ -45,7 +50,39 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _version = info.version);
   }
 
+  Future<void> _loadRememberedCredentials() async {
+    final rememberValue = await _storage.read(key: _rememberMeKey);
+    final shouldRemember = rememberValue == 'true';
+    if (!shouldRemember) return;
 
+    final savedUsername = await _storage.read(key: _rememberedUsernameKey) ?? '';
+    final savedPassword = await _storage.read(key: _rememberedPasswordKey) ?? '';
+
+    if (!mounted) return;
+    setState(() {
+      _rememberMe = true;
+      _emailController.text = savedUsername;
+      _passwordController.text = savedPassword;
+    });
+  }
+
+  Future<void> _persistRememberMe() async {
+    await _storage.write(key: _rememberMeKey, value: _rememberMe.toString());
+    if (_rememberMe) {
+      await _storage.write(key: _rememberedUsernameKey, value: _emailController.text.trim());
+      await _storage.write(key: _rememberedPasswordKey, value: _passwordController.text);
+    } else {
+      await _storage.delete(key: _rememberedUsernameKey);
+      await _storage.delete(key: _rememberedPasswordKey);
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   /// Authenticates the user with the backend.
   /// - Validates credentials.
@@ -57,36 +94,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(() => _isLoading = true);
 
-    String url = '${baseUrl}auth/login/';
-
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final raw = await _apiClient.post(
+        'auth/login/',
+        requiresAuth: false,
+        retryEnabled: false,
+        data: {
           'username': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
-        }),
+        },
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (raw is Map<String, dynamic>) {
+        final data = raw;
         final String accessToken = data['access'];
         final String refreshToken = data['refresh'];
 
-        const storage = FlutterSecureStorage();
-        await storage.write(key: 'access_token', value: accessToken);
-        await storage.write(key: 'refresh_token', value: refreshToken);
+        await _apiClient.saveAuthTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
 
         if (data.containsKey('is_staff')) {
-          await storage.write(
+          await _storage.write(
             key: 'is_staff',
             value: data['is_staff'].toString(),
           );
         }
 
         if (data.containsKey('user_id')) {
-          await storage.write(
+          await _storage.write(
             key: 'user_id',
             value: data['user_id'].toString(),
           );
@@ -121,12 +158,14 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         // VERIFY TOKEN WRITE (Debug Step)
-        final verifyToken = await storage.read(key: 'access_token');
+        final verifyToken = await _storage.read(key: 'access_token');
         if (verifyToken != accessToken) {
           throw Exception(
             "Token Storage Failed! Read-back returned: $verifyToken",
           );
         }
+
+        await _persistRememberMe();
 
         if (mounted) {
           Navigator.pushAndRemoveUntil(
@@ -135,55 +174,22 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         }
-      } else if (response.statusCode == 401) {
-        // Standard Incorrect Password / User not found
+      } else {
+        _showError("Unexpected server response. Please try again.");
+      }
+    } on DjangoApiException catch (e) {
+      if (e.statusCode == 401) {
         _showError("Invalid credentials. Please check your username and password.");
       } else {
-        _showError(_getLoginErrorMessage(response));
+        _showError(e.message);
       }
+      debugPrint("Login API exception: $e");
     } catch (e) {
       _showError("Unable to sign in right now. Please check your internet connection and try again.");
       debugPrint("Login exception: $e");
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-
-  String _getLoginErrorMessage(http.Response response) {
-    try {
-      final dynamic decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        final nonFieldErrors = decoded['non_field_errors'];
-        final detail = decoded['detail'];
-
-        final extracted =
-            _extractFirstError(nonFieldErrors) ?? _extractFirstError(detail);
-        if (extracted != null) {
-          return extracted;
-        }
-      }
-    } catch (_) {
-      // Fall through to status-based fallback
-    }
-
-    if (response.statusCode == 429) {
-      return "Too many login attempts. Please wait a moment and try again.";
-    }
-
-    return "Unable to sign in right now. Please try again in a moment.";
-  }
-
-  String? _extractFirstError(dynamic error) {
-    if (error is List && error.isNotEmpty) {
-      return error.first.toString();
-    }
-
-    if (error is String && error.trim().isNotEmpty) {
-      return error;
-    }
-
-    return null;
   }
 
   void _showError(String message) {
@@ -293,6 +299,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() => _rememberMe = value ?? false);
+                      },
+                    ),
+                    const Expanded(
+                      child: Text(
+                        "Remember me on this device",
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Align(

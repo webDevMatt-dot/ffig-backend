@@ -60,18 +60,31 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.ratio16x9,
-              lockAspectRatio: true,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
             ),
             IOSUiSettings(
               title: 'Edit Image',
-              aspectRatioLockEnabled: true,
-              resetAspectRatioEnabled: false,
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
             ),
             WebUiSettings(
               context: context,
             ),
           ],
-          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
         );
 
         if (croppedFile != null) {
@@ -247,9 +260,10 @@ class _CreateMarketingRequestScreenState extends State<CreateMarketingRequestScr
                             : Colors.transparent;
                       }),
                       foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                        return states.contains(WidgetState.selected) 
-                            ? Colors.white 
-                            : Colors.white70;
+                        if (states.contains(WidgetState.selected)) return Colors.white;
+                        return Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.white70 
+                            : Colors.black54;
                       }),
                     ),
                   )

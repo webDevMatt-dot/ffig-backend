@@ -156,7 +156,7 @@ class _CaughtUpPage extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final bgColor = isDark ? Colors.black : Theme.of(context).scaffoldBackgroundColor;
+        final bgColor = isDark ? Colors.black : Colors.white; // Solid white for light mode
         final textColor = isDark ? Colors.white : FfigTheme.textDark;
         final subTextColor = isDark ? Colors.grey : FfigTheme.textGrey;
 
@@ -447,13 +447,13 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
             Colors.black.withOpacity(0.92),
             Colors.black.withOpacity(0.45),
             Colors.transparent,
-            Colors.black.withOpacity(0.3),
+            Colors.black.withOpacity(0.35),
           ]
         : [
-            Colors.black.withOpacity(0.35),
-            Colors.black.withOpacity(0.12),
+            Colors.black.withOpacity(0.42), // Slightly deeper protection for white text
+            Colors.black.withOpacity(0.18),
             Colors.transparent,
-            Colors.white.withOpacity(0.1),
+            Colors.white.withOpacity(0.05), // Very subtle top glow
           ];
     const textColor = Colors.white;
     

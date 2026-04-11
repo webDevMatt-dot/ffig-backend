@@ -1,36 +1,19 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/theme/ffig_theme.dart';
-import '../../../../core/services/admin_api_service.dart';
-import '../../../../core/api/constants.dart';
-import '../../../../core/utils/dialog_utils.dart';
+import 'package:video_player/video_player.dart';
+
+import '../../../core/api/constants.dart';
+import '../../../core/services/admin_api_service.dart';
 
 class AdminApprovalsScreen extends StatelessWidget {
   const AdminApprovalsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Approvals Center", 
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)
-          ),
-          bottom: TabBar(
-            labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
-            unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
-            indicatorColor: FfigTheme.accentBrown,
-            indicatorWeight: 3,
-            tabs: const [
-              Tab(text: "Business Profiles"),
-              Tab(text: "Marketing Requests"),
-            ],
-          ),
-        ),
-        body: const TabBarView(
+        appBar: _ApprovalsAppBar(),
+        body: TabBarView(
           children: [
             _BusinessApprovalsList(),
             _MarketingApprovalsList(),
@@ -41,665 +24,1026 @@ class AdminApprovalsScreen extends StatelessWidget {
   }
 }
 
+class _ApprovalsAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ApprovalsAppBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: const Text("Approvals Center"),
+      bottom: const TabBar(
+        tabs: [
+          Tab(text: "Business"),
+          Tab(text: "Marketing"),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
+}
+
 class _BusinessApprovalsList extends StatefulWidget {
-    const _BusinessApprovalsList();
-    @override
-    State<_BusinessApprovalsList> createState() => _BusinessApprovalsListState();
+  const _BusinessApprovalsList();
+
+  @override
+  State<_BusinessApprovalsList> createState() => _BusinessApprovalsListState();
 }
 
 class _BusinessApprovalsListState extends State<_BusinessApprovalsList> {
-    final _api = AdminApiService(); 
-    List<dynamic> _items = [];
-    bool _isLoading = true;
-    String _searchQuery = "";
+  final AdminApiService _api = AdminApiService();
+  final TextEditingController _searchController = TextEditingController();
 
-    @override 
-    void initState() { super.initState(); _load(); }
+  List<dynamic> _items = [];
+  final Set<int> _selectedIds = <int>{};
 
-    Future<void> _load() async {
-        try {
-            final data = await _api.fetchBusinessApprovals();
-            // Filter locally for now if API returns all
-            final pending = data.where((i) => i['status'] == 'PENDING').toList();
-            if (mounted) setState(() { _items = pending; _isLoading = false; });
-        } catch (e) {
-            if (mounted) setState(() => _isLoading = false);
-        }
+  bool _isLoading = true;
+  String _statusFilter = 'ALL';
+  String _ageFilter = 'ALL';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _api.fetchBusinessApprovals();
+      data.sort((a, b) {
+        final aPending = a['status'] == 'PENDING' ? 0 : 1;
+        final bPending = b['status'] == 'PENDING' ? 0 : 1;
+        if (aPending != bPending) return aPending.compareTo(bPending);
+        final aDate = DateTime.tryParse((a['created_at'] ?? '').toString());
+        final bDate = DateTime.tryParse((b['created_at'] ?? '').toString());
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+      if (!mounted) return;
+      setState(() {
+        _items = data;
+        _isLoading = false;
+        _selectedIds.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to load approvals: $e")));
+    }
+  }
+
+  int _hoursOpen(dynamic item) {
+    final created = DateTime.tryParse((item['created_at'] ?? '').toString());
+    if (created == null) return 0;
+    return DateTime.now().difference(created.toLocal()).inHours;
+  }
+
+  bool _isSlaBreached(dynamic item) {
+    return (item['status'] == 'PENDING') && _hoursOpen(item) > 48;
+  }
+
+  List<dynamic> _filteredItems() {
+    final query = _searchController.text.trim().toLowerCase();
+    return _items.where((item) {
+      final status = (item['status'] ?? '').toString().toUpperCase();
+      final company = (item['company_name'] ?? '').toString().toLowerCase();
+      final description = (item['description'] ?? '').toString().toLowerCase();
+
+      if (_statusFilter != 'ALL' && status != _statusFilter) return false;
+      if (_ageFilter == '<=24H' && _hoursOpen(item) > 24) return false;
+      if (_ageFilter == '>24H' && _hoursOpen(item) <= 24) return false;
+
+      if (query.isEmpty) return true;
+      return company.contains(query) || description.contains(query);
+    }).toList();
+  }
+
+  Future<String?> _askRejectReason() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reject reason"),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: "Reason..."),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text("Confirm"),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return null;
+    return reason;
+  }
+
+  Future<void> _bulkUpdate(String status) async {
+    final targets = _items.where((e) => _selectedIds.contains(e['id']) && e['status'] == 'PENDING').toList();
+    if (targets.isEmpty) return;
+
+    String? feedback;
+    if (status == 'REJECTED') {
+      feedback = await _askRejectReason();
+      if (feedback == null) return;
     }
 
-    Future<void> _decide(int id, String status) async {
-        if (status == 'REJECTED') {
-            final reason = await _showDeclineReasonDialog(context);
-            if (reason == null) return; // Cancelled
-            await _api.updateBusinessStatus(id, status, feedback: reason);
-        } else {
-            await _api.updateBusinessStatus(id, status); 
-        }
-        _load();
+    setState(() => _isLoading = true);
+    try {
+      for (final item in targets) {
+        await _api.updateBusinessStatus(item['id'] as int, status, feedback: feedback);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Updated ${targets.length} business profile(s) to $status")),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Bulk update failed: $e")));
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'PENDING':
+        return Colors.orange;
+      case 'APPROVED':
+        return Colors.green;
+      case 'REJECTED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filteredItems();
+    final pendingCount = _items.where((e) => e['status'] == 'PENDING').length;
+    final breachedCount = _items.where(_isSlaBreached).length;
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    @override
-    Widget build(BuildContext context) {
-        if (_isLoading) return const Center(child: CircularProgressIndicator());
-        
-        final filteredItems = _items.where((item) {
-            if (_searchQuery.isEmpty) return true;
-            final name = (item['company_name'] ?? '').toString().toLowerCase();
-            final desc = (item['description'] ?? '').toString().toLowerCase();
-            final q = _searchQuery.toLowerCase();
-            return name.contains(q) || desc.contains(q);
-        }).toList();
-
-        if (_items.isEmpty) return Center(child: Text("No pending business profiles.", style: GoogleFonts.inter(color: Colors.grey)));
-        
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                style: GoogleFonts.inter(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: "Search pending businesses...",
-                  hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16)
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Theme.of(context).cardColor,
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: Text("Pending: $pendingCount", style: const TextStyle(fontWeight: FontWeight.w700))),
+              Expanded(child: Text("SLA breaches: $breachedCount", style: const TextStyle(fontWeight: FontWeight.w700))),
+            ],
+          ),
+        ),
+        if (_selectedIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _bulkUpdate('APPROVED'),
+                    child: Text("Approve (${_selectedIds.length})"),
+                  ),
                 ),
-                onChanged: (val) => setState(() => _searchQuery = val),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _bulkUpdate('REJECTED'),
+                    child: const Text("Reject"),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => setState(() => _selectedIds.clear()),
+                ),
+              ],
             ),
-            Expanded(
-              child: filteredItems.isEmpty 
-                  ? Center(child: Text("No matches found.", style: GoogleFonts.inter(color: Colors.grey)))
-                  : ListView.builder(
-                    itemCount: filteredItems.length,
-                    padding: const EdgeInsets.only(bottom: 100),
-                    itemBuilder: (context, index) {
-                        final item = filteredItems[index];
-                        return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: "Search company or description...",
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(
+            children: [
+              _chip(label: "All", selected: _statusFilter == 'ALL', onTap: () => setState(() => _statusFilter = 'ALL')),
+              _chip(label: "Pending", selected: _statusFilter == 'PENDING', onTap: () => setState(() => _statusFilter = 'PENDING')),
+              _chip(label: "Approved", selected: _statusFilter == 'APPROVED', onTap: () => setState(() => _statusFilter = 'APPROVED')),
+              _chip(label: "Rejected", selected: _statusFilter == 'REJECTED', onTap: () => setState(() => _statusFilter = 'REJECTED')),
+              const SizedBox(width: 8),
+              _chip(label: "All ages", selected: _ageFilter == 'ALL', onTap: () => setState(() => _ageFilter = 'ALL')),
+              _chip(label: "<=24h", selected: _ageFilter == '<=24H', onTap: () => setState(() => _ageFilter = '<=24H')),
+              _chip(label: ">24h", selected: _ageFilter == '>24H', onTap: () => setState(() => _ageFilter = '>24H')),
+            ],
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(child: Text("No approvals match your filter."))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final item = filtered[index];
+                    final id = item['id'] as int;
+                    final status = (item['status'] ?? 'UNKNOWN').toString().toUpperCase();
+                    final selected = _selectedIds.contains(id);
+                    final hours = _hoursOpen(item);
+                    final breached = _isSlaBreached(item);
+
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: selected,
+                                  onChanged: (_) {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedIds.remove(id);
+                                      } else {
+                                        _selectedIds.add(id);
+                                      }
+                                    });
+                                  },
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    (item['company_name'] ?? 'Unknown company').toString(),
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(status).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: _statusColor(status),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () => _showBusinessDetails(context, item),
+                            const SizedBox(height: 6),
+                            Text(
+                              (item['description'] ?? '').toString(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  breached ? Icons.warning_amber_rounded : Icons.schedule,
+                                  size: 16,
+                                  color: breached ? Colors.red : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  breached ? "SLA breached (${hours}h open)" : "Open ${hours}h · SLA 48h",
+                                  style: TextStyle(
+                                    color: breached ? Colors.red : Colors.grey[700],
+                                    fontSize: 12,
+                                    fontWeight: breached ? FontWeight.w700 : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (status == 'PENDING')
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    OutlinedButton(
+                                      onPressed: () async {
+                                        final reason = await _askRejectReason();
+                                        if (reason == null) return;
+                                        await _api.updateBusinessStatus(id, 'REJECTED', feedback: reason);
+                                        await _load();
+                                      },
+                                      child: const Text("Reject"),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        await _api.updateBusinessStatus(id, 'APPROVED');
+                                        await _load();
+                                      },
+                                      child: const Text("Approve"),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MarketingApprovalsList extends StatefulWidget {
+  const _MarketingApprovalsList();
+
+  @override
+  State<_MarketingApprovalsList> createState() => _MarketingApprovalsListState();
+}
+
+class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
+  final AdminApiService _api = AdminApiService();
+  final TextEditingController _searchController = TextEditingController();
+
+  List<dynamic> _items = [];
+  final Set<int> _selectedIds = <int>{};
+
+  bool _isLoading = true;
+  String _statusFilter = 'ALL';
+  String _typeFilter = 'ALL';
+  String _ageFilter = 'ALL';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _api.fetchMarketingApprovals();
+      if (!mounted) return;
+      setState(() {
+        _items = data;
+        _isLoading = false;
+        _selectedIds.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to load approvals: $e")));
+    }
+  }
+
+  int _hoursOpen(dynamic item) {
+    final created = DateTime.tryParse((item['created_at'] ?? '').toString());
+    if (created == null) return 0;
+    return DateTime.now().difference(created.toLocal()).inHours;
+  }
+
+  bool _isSlaBreached(dynamic item) => (item['status'] == 'PENDING') && _hoursOpen(item) > 48;
+
+  List<dynamic> _filteredItems() {
+    final query = _searchController.text.trim().toLowerCase();
+    return _items.where((item) {
+      final status = (item['status'] ?? '').toString().toUpperCase();
+      final type = (item['type'] ?? '').toString().toUpperCase();
+      final title = (item['title'] ?? '').toString().toLowerCase();
+      final link = (item['link'] ?? '').toString().toLowerCase();
+
+      if (_statusFilter != 'ALL' && status != _statusFilter) return false;
+      if (_typeFilter != 'ALL' && type != _typeFilter) return false;
+      if (_ageFilter == '<=24H' && _hoursOpen(item) > 24) return false;
+      if (_ageFilter == '>24H' && _hoursOpen(item) <= 24) return false;
+
+      if (query.isEmpty) return true;
+      return title.contains(query) || link.contains(query);
+    }).toList();
+  }
+
+  Future<String?> _askRejectReason() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reject reason"),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: "Reason..."),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text("Confirm"),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return null;
+    return reason;
+  }
+
+  Future<void> _bulkUpdate(String status) async {
+    final targets = _items.where((e) => _selectedIds.contains(e['id']) && e['status'] == 'PENDING').toList();
+    if (targets.isEmpty) return;
+
+    String? feedback;
+    if (status == 'REJECTED') {
+      feedback = await _askRejectReason();
+      if (feedback == null) return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      for (final item in targets) {
+        await _api.updateMarketingStatus(item['id'] as int, status, feedback: feedback);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Updated ${targets.length} marketing request(s) to $status")),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Bulk update failed: $e")));
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'PENDING':
+        return Colors.orange;
+      case 'APPROVED':
+        return Colors.green;
+      case 'REJECTED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String? _absoluteMediaUrl(dynamic value) {
+    if (value == null) return null;
+    final raw = value.toString().trim();
+    if (raw.isEmpty || raw == 'null') return null;
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+    if (raw.startsWith('//')) {
+      return 'https:$raw';
+    }
+
+    final apiUri = Uri.parse(baseUrl);
+    final origin = '${apiUri.scheme}://${apiUri.host}${apiUri.hasPort ? ':${apiUri.port}' : ''}';
+
+    if (raw.startsWith('/')) {
+      return '$origin$raw';
+    }
+    return '$origin/$raw';
+  }
+
+  String? _imageUrl(dynamic item) {
+    return _absoluteMediaUrl(item['image_url'] ?? item['image']);
+  }
+
+  String? _videoUrl(dynamic item) {
+    return _absoluteMediaUrl(item['video_url'] ?? item['video']);
+  }
+
+  bool _hasMedia(dynamic item) => _imageUrl(item) != null || _videoUrl(item) != null;
+
+  Future<void> _showPreview(dynamic item) async {
+    final imageUrl = _imageUrl(item);
+    final videoUrl = _videoUrl(item);
+    if (imageUrl == null && videoUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No uploaded media found for this request.")),
+      );
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: _MarketingMediaPreviewSheet(
+          title: (item['title'] ?? 'Marketing Preview').toString(),
+          imageUrl: imageUrl,
+          videoUrl: videoUrl,
+          link: (item['link'] ?? '').toString(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filteredItems();
+    final pendingCount = _items.where((e) => e['status'] == 'PENDING').length;
+    final breachedCount = _items.where(_isSlaBreached).length;
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Theme.of(context).cardColor,
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: Text("Pending: $pendingCount", style: const TextStyle(fontWeight: FontWeight.w700))),
+              Expanded(child: Text("SLA breaches: $breachedCount", style: const TextStyle(fontWeight: FontWeight.w700))),
+            ],
+          ),
+        ),
+        if (_selectedIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _bulkUpdate('APPROVED'),
+                    child: Text("Approve (${_selectedIds.length})"),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _bulkUpdate('REJECTED'),
+                    child: const Text("Reject"),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => setState(() => _selectedIds.clear()),
+                ),
+              ],
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: "Search title or link...",
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(
+            children: [
+              _chip(label: "All", selected: _statusFilter == 'ALL', onTap: () => setState(() => _statusFilter = 'ALL')),
+              _chip(label: "Pending", selected: _statusFilter == 'PENDING', onTap: () => setState(() => _statusFilter = 'PENDING')),
+              _chip(label: "Approved", selected: _statusFilter == 'APPROVED', onTap: () => setState(() => _statusFilter = 'APPROVED')),
+              _chip(label: "Rejected", selected: _statusFilter == 'REJECTED', onTap: () => setState(() => _statusFilter = 'REJECTED')),
+              const SizedBox(width: 8),
+              _chip(label: "All types", selected: _typeFilter == 'ALL', onTap: () => setState(() => _typeFilter = 'ALL')),
+              _chip(label: "Ads", selected: _typeFilter == 'AD', onTap: () => setState(() => _typeFilter = 'AD')),
+              _chip(label: "Promotion", selected: _typeFilter == 'PROMOTION', onTap: () => setState(() => _typeFilter = 'PROMOTION')),
+              _chip(label: "Content", selected: _typeFilter == 'CONTENT', onTap: () => setState(() => _typeFilter = 'CONTENT')),
+              const SizedBox(width: 8),
+              _chip(label: "All ages", selected: _ageFilter == 'ALL', onTap: () => setState(() => _ageFilter = 'ALL')),
+              _chip(label: "<=24h", selected: _ageFilter == '<=24H', onTap: () => setState(() => _ageFilter = '<=24H')),
+              _chip(label: ">24h", selected: _ageFilter == '>24H', onTap: () => setState(() => _ageFilter = '>24H')),
+            ],
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(child: Text("No approvals match your filter."))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final item = filtered[index];
+                    final id = item['id'] as int;
+                    final status = (item['status'] ?? 'UNKNOWN').toString().toUpperCase();
+                    final selected = _selectedIds.contains(id);
+                    final hours = _hoursOpen(item);
+                    final breached = _isSlaBreached(item);
+
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: selected,
+                                  onChanged: (_) {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedIds.remove(id);
+                                      } else {
+                                        _selectedIds.add(id);
+                                      }
+                                    });
+                                  },
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    (item['title'] ?? 'Untitled request').toString(),
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(status).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: _statusColor(status),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Type: ${(item['type'] ?? '').toString().toUpperCase()} · ${(item['link'] ?? '').toString()}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                if (_imageUrl(item) != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      "Photo",
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.blue),
+                                    ),
+                                  ),
+                                if (_videoUrl(item) != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.deepPurple.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      "Video",
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.deepPurple),
+                                    ),
+                                  ),
+                                if (!_hasMedia(item))
+                                  Text(
+                                    "No media uploaded",
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: _hasMedia(item) ? () => _showPreview(item) : null,
+                                  icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
+                                  label: const Text("Preview"),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  breached ? Icons.warning_amber_rounded : Icons.schedule,
+                                  size: 16,
+                                  color: breached ? Colors.red : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  breached ? "SLA breached (${hours}h open)" : "Open ${hours}h · SLA 48h",
+                                  style: TextStyle(
+                                    color: breached ? Colors.red : Colors.grey[700],
+                                    fontSize: 12,
+                                    fontWeight: breached ? FontWeight.w700 : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Wrap(
+                                spacing: 8,
+                                children: [
+                                  if (status == 'PENDING')
+                                    OutlinedButton(
+                                      onPressed: () async {
+                                        final reason = await _askRejectReason();
+                                        if (reason == null) return;
+                                        await _api.updateMarketingStatus(id, 'REJECTED', feedback: reason);
+                                        await _load();
+                                      },
+                                      child: const Text("Reject"),
+                                    ),
+                                  if (status == 'PENDING')
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        await _api.updateMarketingStatus(id, 'APPROVED');
+                                        await _load();
+                                      },
+                                      child: const Text("Approve"),
+                                    ),
+                                  if (status != 'PENDING')
+                                    TextButton(
+                                      onPressed: () async {
+                                        await _api.deleteAdminMarketingRequest(id);
+                                        await _load();
+                                      },
+                                      child: const Text("Delete"),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MarketingMediaPreviewSheet extends StatefulWidget {
+  final String title;
+  final String? imageUrl;
+  final String? videoUrl;
+  final String link;
+
+  const _MarketingMediaPreviewSheet({
+    required this.title,
+    required this.imageUrl,
+    required this.videoUrl,
+    required this.link,
+  });
+
+  @override
+  State<_MarketingMediaPreviewSheet> createState() => _MarketingMediaPreviewSheetState();
+}
+
+class _MarketingMediaPreviewSheetState extends State<_MarketingMediaPreviewSheet> {
+  VideoPlayerController? _videoController;
+  bool _videoReady = false;
+  String? _videoError;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    final videoUrl = widget.videoUrl;
+    if (videoUrl == null || videoUrl.isEmpty) return;
+
+    try {
+      final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _videoController = controller;
+        _videoReady = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _videoError = e.toString();
+        _videoReady = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (widget.imageUrl != null) ...[
+                  const Text("Photo", style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      widget.imageUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const SizedBox(
+                          height: 220,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 220,
+                        alignment: Alignment.center,
+                        color: Colors.black12,
+                        child: const Text("Could not load image preview"),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                if (widget.videoUrl != null) ...[
+                  const Text("Video", style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      color: Colors.black,
+                      child: _videoError != null
+                          ? SizedBox(
+                              height: 220,
+                              child: Center(
                                 child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    "Could not load video preview.\n$_videoError",
+                                    style: const TextStyle(color: Colors.white70),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : !_videoReady || _videoController == null
+                              ? const SizedBox(
+                                  height: 220,
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                              : AspectRatio(
+                                  aspectRatio: _videoController!.value.aspectRatio,
+                                  child: Stack(
+                                    fit: StackFit.expand,
                                     children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              item['company_name'] ?? 'Unknown', 
-                                              style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16),
-                                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                                            ),
+                                      VideoPlayer(_videoController!),
+                                      Align(
+                                        alignment: Alignment.center,
+                                        child: IconButton(
+                                          iconSize: 56,
+                                          color: Colors.white,
+                                          onPressed: () {
+                                            final controller = _videoController;
+                                            if (controller == null) return;
+                                            if (controller.value.isPlaying) {
+                                              controller.pause();
+                                            } else {
+                                              controller.play();
+                                            }
+                                            setState(() {});
+                                          },
+                                          icon: Icon(
+                                            _videoController!.value.isPlaying
+                                                ? Icons.pause_circle_filled
+                                                : Icons.play_circle_fill,
                                           ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                                            child: Text("PENDING", style: GoogleFonts.inter(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w800)),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        item['description'] ?? '', 
-                                        maxLines: 2, overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey, height: 1.4),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          OutlinedButton.icon(
-                                            icon: const Icon(Icons.close, size: 16),
-                                            label: Text("REJECT", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800)),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                              side: const BorderSide(color: Colors.red),
-                                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            onPressed: () => _decide(item['id'], 'REJECTED'),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          ElevatedButton.icon(
-                                            icon: const Icon(Icons.check, size: 16),
-                                            label: Text("APPROVE", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800)),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.green,
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            onPressed: () => _decide(item['id'], 'APPROVED'),
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                            ),
-                        );
-                    }
-                ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                if (widget.link.trim().isNotEmpty) ...[
+                  const Text("Destination Link", style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  SelectableText(widget.link, style: const TextStyle(fontSize: 13)),
+                ],
+              ],
             ),
-          ],
-        );
-    }
-
-    void _showBusinessDetails(BuildContext context, dynamic item) {
-        showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (c) => Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        // HEADER
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              IconButton(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close), constraints: const BoxConstraints(), padding: EdgeInsets.zero),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  item['company_name'] ?? 'Business Details', 
-                                  style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w800),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Divider(height: 1, color: Colors.white.withOpacity(0.05)),
-                        
-                        Flexible(
-                          child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                      Text("ABOUT BUSINESS", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        item['description'] ?? 'No description provided.', 
-                                        style: GoogleFonts.inter(fontSize: 15, height: 1.6),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      
-                                      Text("CONTACT & INFO", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
-                                      const SizedBox(height: 16),
-                                      if (item['website'] != null && item['website'].toString().isNotEmpty) ...[
-                                          _detailRow(Icons.language, "Website", item['website']),
-                                      ],
-                                      if (item['industry'] != null && item['industry'].toString().isNotEmpty) ...[
-                                          _detailRow(Icons.category_outlined, "Industry", item['industry']),
-                                      ],
-                                      if (item['contact_email'] != null && item['contact_email'].toString().isNotEmpty) ...[
-                                          _detailRow(Icons.email_outlined, "Email", item['contact_email']),
-                                      ],
-                                      const SizedBox(height: 32),
-                                  ]
-                              )
-                          ),
-                        ),
-                    ]
-                )
-            )
-        );
-    }
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-Widget _detailRow(IconData icon, String label, String val) {
+Widget _chip({
+  required String label,
+  required bool selected,
+  required VoidCallback onTap,
+}) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 16.0),
-    child: Row(
-      children: [
-        Icon(icon, size: 20, color: FfigTheme.accentBrown),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w700)),
-            Text(val, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ],
+    padding: const EdgeInsets.only(right: 8),
+    child: ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
     ),
   );
-}
-
-class _MarketingApprovalsList extends StatefulWidget {
-    const _MarketingApprovalsList();
-    @override
-    State<_MarketingApprovalsList> createState() => _MarketingApprovalsListState();
-}
-
-class _MarketingApprovalsListState extends State<_MarketingApprovalsList> {
-    final _api = AdminApiService();
-    List<dynamic> _items = [];
-    bool _isLoading = true;
-    String _searchQuery = "";
-
-    @override 
-    void initState() { super.initState(); _load(); }
-
-    Future<void> _load() async {
-        try {
-            final data = await _api.fetchMarketingApprovals();
-            // Show ALL, but maybe sort PENDING first
-            data.sort((a,b) {
-                if (a['status'] == 'PENDING' && b['status'] != 'PENDING') return -1;
-                if (a['status'] != 'PENDING' && b['status'] == 'PENDING') return 1;
-                return 0; 
-            });
-            if (mounted) setState(() { _items = data; _isLoading = false; });
-        } catch (e) {
-            if (mounted) setState(() => _isLoading = false);
-        }
-    }
-
-
-    Future<void> _decide(int id, String status) async {
-        String? reason;
-        if (status == 'REJECTED') {
-            reason = await _showDeclineReasonDialog(context);
-            if (reason == null) return; // Cancelled
-        }
-        
-        setState(() => _isLoading = true);
-        try {
-            await _api.updateMarketingStatus(id, status, feedback: reason);
-            if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Request marked as $status"), backgroundColor: Colors.green)
-                );
-            }
-            await _load();
-        } catch (e) {
-            if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
-                );
-                // Reload anyway to reset state
-                 _load();
-            }
-        }
-    }
-
-    Future<void> _delete(int id) async {
-         // Confirm Dialog
-         final confirm = await showGeneralDialog<bool>(
-             context: context,
-             barrierDismissible: true,
-             barrierLabel: '',
-             barrierColor: Colors.black.withOpacity(0.7),
-             transitionDuration: const Duration(milliseconds: 300),
-             pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
-             transitionBuilder: (ctx, anim1, anim2, child) {
-               return BackdropFilter(
-                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                 child: ScaleTransition(
-                   scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
-                   child: FadeTransition(
-                     opacity: anim1,
-                     child: AlertDialog(
-                         backgroundColor: Theme.of(ctx).cardColor.withOpacity(0.9),
-                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                         title: Text("Delete Post?".toUpperCase(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.red, letterSpacing: 1.0)),
-                         content: Text("This cannot be undone. Are you sure?", style: GoogleFonts.inter(fontSize: 14)),
-                         actions: [
-                             TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("CANCEL", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w700))),
-                             const SizedBox(width: 8),
-                             ElevatedButton(
-                               onPressed: () => Navigator.pop(ctx, true), 
-                               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                               child: Text("DELETE", style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.white))
-                             ),
-                         ],
-                     ),
-                   ),
-                 ),
-               );
-             }
-         );
-         
-         if (confirm != true) return;
-
-         setState(() => _isLoading = true);
-         try {
-             await _api.deleteAdminMarketingRequest(id);
-             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deleted!")));
-             _load(); 
-         } catch (e) {
-             if (mounted) {
-                 setState(() => _isLoading = false);
-                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Delete Failed: $e")));
-             }
-         }
-    }
-
-    @override
-    Widget build(BuildContext context) {
-        if (_isLoading) return const Center(child: CircularProgressIndicator());
-        
-        final filteredItems = _items.where((item) {
-            if (_searchQuery.isEmpty) return true;
-            final title = (item['title'] ?? '').toString().toLowerCase();
-            final link = (item['link'] ?? '').toString().toLowerCase();
-            final q = _searchQuery.toLowerCase();
-            return title.contains(q) || link.contains(q);
-        }).toList();
-
-        if (_items.isEmpty) return Center(child: Text("No pending marketing requests.", style: GoogleFonts.inter(color: Colors.grey)));
-        
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                style: GoogleFonts.inter(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: "Search marketing requests...",
-                  hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16)
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val),
-              ),
-            ),
-            Expanded(
-              child: filteredItems.isEmpty 
-                  ? Center(child: Text("No matches found.", style: GoogleFonts.inter(color: Colors.grey)))
-                  : ListView.builder(
-                    itemCount: filteredItems.length,
-                    padding: const EdgeInsets.only(bottom: 100),
-                    itemBuilder: (context, index) {
-                        final item = filteredItems[index];
-                        return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                            ),
-                            child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () => _showMarketingDetails(context, item),
-                                child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                        Padding(
-                                          padding: const EdgeInsets.all(16.0),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(item['title'] ?? 'Untitled', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                    Text(item['link'] ?? 'No link attached', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                  ],
-                                                ),
-                                              ),
-                                              _statusChip(item['status']),
-                                            ],
-                                          ),
-                                        ),
-                                        if (item['image'] != null)
-                                            Builder(builder: (c) {
-                                              var url = item['image'].toString();
-                                              if (url.startsWith('/')) {
-                                                  final domain = baseUrl.replaceAll('/api/', '');
-                                                  url = '$domain$url';
-                                              }
-                                              return Container(
-                                                height: 180, width: double.infinity,
-                                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Image.network(url, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.grey[800], child: const Icon(Icons.broken_image, color: Colors.white24))),
-                                                ),
-                                              );
-                                            }),
-                                         if (item['video'] != null && item['image'] == null)
-                                            Container(
-                                              margin: const EdgeInsets.symmetric(horizontal: 16),
-                                              padding: const EdgeInsets.all(16),
-                                              decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.videocam_outlined, color: Colors.blue),
-                                                  const SizedBox(width: 12),
-                                                  Text("VIDEO CONTENT ATTACHED", style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.blue)),
-                                                ],
-                                              ),
-                                            ),
-                                        
-                                        Padding(
-                                          padding: const EdgeInsets.all(16.0),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
-                                            children: [
-                                              if (item['status'] == 'PENDING') ...[
-                                                 TextButton(onPressed: () => _decide(item['id'], 'REJECTED'), child: Text("REJECT", style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w800, fontSize: 12))),
-                                                 const SizedBox(width: 12),
-                                                 ElevatedButton(
-                                                   onPressed: () => _decide(item['id'], 'APPROVED'), 
-                                                   style: ElevatedButton.styleFrom(backgroundColor: FfigTheme.accentBrown, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                                   child: Text("APPROVE", style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12))
-                                                 ),
-                                              ] else ...[
-                                                  IconButton(
-                                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                                      onPressed: () => _delete(item['id']),
-                                                  ),
-                                                  const Spacer(),
-                                                  Text(item['status'].toUpperCase(), style: GoogleFonts.inter(
-                                                      color: item['status'] == 'APPROVED' ? Colors.green : Colors.grey,
-                                                      fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.2
-                                                  )),
-                                              ]
-                                            ],
-                                          ),
-                                        )
-                                    ],
-                                ),
-                            ),
-                        );
-                    }
-                ),
-            ),
-          ],
-        );
-    }
-
-    Widget _statusChip(String status) {
-      Color color = Colors.grey;
-      if (status == 'PENDING') color = Colors.orange;
-      if (status == 'APPROVED') color = Colors.green;
-      if (status == 'REJECTED') color = Colors.red;
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-        child: Text(status.toUpperCase(), style: GoogleFonts.inter(color: color, fontSize: 9, fontWeight: FontWeight.w800)),
-      );
-    }
-
-    void _showMarketingDetails(BuildContext context, dynamic item) {
-        showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (c) => Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.85),
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        // HEADER
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              IconButton(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close), constraints: const BoxConstraints(), padding: EdgeInsets.zero),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  item['title'] ?? 'Marketing Request', 
-                                  style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w800),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Divider(height: 1, color: Colors.white.withOpacity(0.05)),
-                        
-                        Flexible(
-                          child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                      Text("REQUEST DETAILS", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
-                                      const SizedBox(height: 16),
-                                      _detailRow(Icons.category_outlined, "Type", (item['type'] ?? 'Unknown').toString().toUpperCase()),
-                                      if (item['link'] != null && item['link'].toString().isNotEmpty) ...[
-                                          _detailRow(Icons.link_rounded, "External Link", item['link']),
-                                      ],
-                                      const SizedBox(height: 24),
-                                      
-                                      if (item['image'] != null) ...[
-                                          Text("ATTACHED MEDIA", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2)),
-                                          const SizedBox(height: 16),
-                                          Builder(builder: (c) {
-                                              var url = item['image'].toString();
-                                              if (url.startsWith('/')) {
-                                                  final domain = baseUrl.replaceAll('/api/', '');
-                                                  url = '$domain$url';
-                                              }
-                                              return ClipRRect(
-                                                borderRadius: BorderRadius.circular(16), 
-                                                child: Image.network(url, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(height: 200, color: Colors.grey[900], child: const Icon(Icons.broken_image, color: Colors.white24)))
-                                              );
-                                          }),
-                                          const SizedBox(height: 16),
-                                      ],
-                                      if (item['video'] != null) ...[
-                                          Container(
-                                            padding: const EdgeInsets.all(16),
-                                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                                            child: Row(
-                                              children: [
-                                                const Icon(Icons.videocam_outlined, color: Colors.blue),
-                                                const SizedBox(width: 12),
-                                                Text("USER PROVIDED VIDEO CONTENT", style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.blue)),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                      ],
-                                      const SizedBox(height: 32),
-                                  ]
-                              )
-                          ),
-                        ),
-                    ]
-                )
-            )
-        );
-    }
-}
-
-/// Helper method to prompt the admin for a reason when declining.
-Future<String?> _showDeclineReasonDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    return showGeneralDialog<String>(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: '',
-        barrierColor: Colors.black.withOpacity(0.7),
-        transitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
-        transitionBuilder: (ctx, anim1, anim2, child) {
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: ScaleTransition(
-              scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
-              child: FadeTransition(
-                opacity: anim1,
-                child: AlertDialog(
-                    backgroundColor: Theme.of(ctx).cardColor.withOpacity(0.9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                    title: Text("Decline Reason".toUpperCase(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: FfigTheme.accentBrown, letterSpacing: 1.0)),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("Please provide a reason for declining this request.", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
-                        const SizedBox(height: 20),
-                        TextField(
-                            controller: controller,
-                            style: GoogleFonts.inter(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: "Reason...",
-                              hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                              filled: true,
-                              fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
-                            ),
-                            maxLines: 4,
-                            autofocus: true,
-                        ),
-                      ],
-                    ),
-                    actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text("CANCEL", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w700))),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                            onPressed: () {
-                                if (controller.text.trim().isEmpty) return;
-                                Navigator.pop(ctx, controller.text.trim());
-                            },
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                            child: Text("REJECT", style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.white)),
-                        )
-                    ]
-                ),
-              ),
-            ),
-          );
-        }
-    );
 }

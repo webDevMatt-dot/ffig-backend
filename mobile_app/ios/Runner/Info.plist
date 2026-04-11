@@ -82,5 +82,11 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Allow access to local network to use the Dart VM Service.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dart_observation_service._tcp</string>
+	</array>
 </dict>
 </plist>

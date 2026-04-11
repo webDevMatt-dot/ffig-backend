@@ -28,6 +28,8 @@ class StoryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -44,10 +46,7 @@ class StoryBubble extends StatelessWidget {
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    // GRADIENT LOGIC:
-                    // - No gradient for "Add" button
-                    // - No gradient for "Seen" stories
-                    // - Gold/Bronze gradient for "Unseen" stories
+                    // GRADIENT LOGIC
                     gradient: isAdd
                         ? null
                         : (isSeen
@@ -57,19 +56,17 @@ class StoryBubble extends StatelessWidget {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               )),
-                    // BORDER LOGIC:
-                    // - White/Transparent border for "Add"
-                    // - Grey border for "Seen"
+                    // BORDER LOGIC
                     border: Border.all(
                       color: isAdd 
-                          ? Colors.white.withOpacity(0.15) 
-                          : (isSeen ? Colors.grey.shade700 : const Color(0xFFD4AF37)),
+                          ? (isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.08))
+                          : (isSeen ? (isDark ? Colors.grey.shade700 : Colors.grey.shade300) : const Color(0xFFD4AF37)),
                       width: isSeen ? 1.5 : 2.5,
                     ),
                   ),
                   child: CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFF0D1117),
+                    backgroundColor: isDark ? const Color(0xFF0D1117) : Colors.white,
                     child: isAdd
                         ? Icon(Icons.add, size: 28, color: FfigTheme.primaryBrown)
                         : UserAvatar(
@@ -90,8 +87,9 @@ class StoryBubble extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: FfigTheme.primaryBrown,
                         shape: BoxShape.circle,
+                        border: Border.all(color: isDark ? const Color(0xFF0D1117) : Colors.white, width: 2),
                       ),
-                      child: const Icon(Icons.add, size: 14, color: Colors.black),
+                      child: Icon(Icons.add, size: 12, color: isDark ? Colors.black : Colors.white),
                     ),
                   ),
               ],
@@ -104,7 +102,9 @@ class StoryBubble extends StatelessWidget {
                 name,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isAdd ? Colors.grey[400] : (isSeen ? Colors.grey[500] : Colors.white),
+                  color: isAdd 
+                      ? (isDark ? Colors.grey[400] : Colors.grey[600]) 
+                      : (isSeen ? (isDark ? Colors.grey[500] : Colors.grey[400]) : (isDark ? Colors.white : Colors.black87)),
                   fontSize: 10,
                   fontWeight: isSeen ? FontWeight.w400 : FontWeight.w600,
                 ),
@@ -127,6 +127,10 @@ class ShimmerStoryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade200;
+    final highlightShimmer = isDark ? Colors.grey.shade700 : Colors.grey.shade100;
+
     return Container(
       margin: const EdgeInsets.only(right: 12),
       child: Column(
@@ -134,8 +138,8 @@ class ShimmerStoryBubble extends StatelessWidget {
         children: [
           // Circle Shimmer
           Shimmer.fromColors(
-            baseColor: Colors.grey.shade800,
-            highlightColor: Colors.grey.shade700,
+            baseColor: baseShimmer,
+            highlightColor: highlightShimmer,
             child: Container(
               width: 58,
               height: 58,
@@ -148,8 +152,8 @@ class ShimmerStoryBubble extends StatelessWidget {
           const SizedBox(height: 6),
           // Text Line Shimmer
           Shimmer.fromColors(
-            baseColor: Colors.grey.shade800,
-            highlightColor: Colors.grey.shade700,
+            baseColor: baseShimmer,
+            highlightColor: highlightShimmer,
             child: Container(
               width: 40,
               height: 8,

@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Conversation, Message
-import boto3
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+import boto3
 
 # A simple User serializer for chat participants
 class ChatUserSerializer(serializers.ModelSerializer):
@@ -38,10 +40,19 @@ class MessageSerializer(serializers.ModelSerializer):
     attachment = serializers.FileField(write_only=True, required=False) # For input
     attachment_url = serializers.SerializerMethodField() # For output
     message_type = serializers.CharField(required=False)
+    can_delete_for_everyone = serializers.SerializerMethodField()
+    delete_window_expires_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id', 'is_read', 'message_type', 'attachment', 'attachment_url', 'metadata']
+        fields = [
+            'id', 'sender', 'text', 'created_at', 'is_me', 'reply_to', 'reply_to_id',
+            'is_read', 'message_type', 'attachment', 'attachment_url', 'metadata',
+            'can_delete_for_everyone', 'delete_window_expires_at'
+        ]
+
+    def _delete_window_minutes(self):
+        return int(getattr(settings, 'CHAT_MESSAGE_DELETE_WINDOW_MINUTES', 15))
 
     def get_attachment_url(self, obj):
         if not obj.attachment:
@@ -99,6 +110,24 @@ class MessageSerializer(serializers.ModelSerializer):
         # Tell Flutter if this message is from "me" (blue bubble) or "them" (grey bubble)
         request = self.context.get('request')
         return request and request.user == obj.sender
+
+    def get_delete_window_expires_at(self, obj):
+        return obj.created_at + timedelta(minutes=self._delete_window_minutes())
+
+    def get_can_delete_for_everyone(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+
+        # Sender (or staff) can delete as long as window has not expired.
+        if request.user != obj.sender and not request.user.is_staff:
+            return False
+
+        if request.user.is_staff:
+            return True
+
+        expires_at = self.get_delete_window_expires_at(obj)
+        return timezone.now() <= expires_at
 
 class ConversationSerializer(serializers.ModelSerializer):
     participants = ChatUserSerializer(many=True, read_only=True)

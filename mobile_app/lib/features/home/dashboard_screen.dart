@@ -105,6 +105,84 @@ class _DashboardScreenState extends State<DashboardScreen>
   int _lastNotificationId = 0;
   final _storage = const FlutterSecureStorage();
 
+  DateTime? _subscriptionExpiryDate() {
+    final raw = _userProfile?['subscription_expiry']?.toString();
+    if (raw == null || raw.isEmpty || raw == 'null') return null;
+    try {
+      return DateTime.parse(raw).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _membershipLifecycleMessage() {
+    if (_userProfile == null) return null;
+    final tier = (_userProfile?['tier'] ?? 'FREE').toString().toUpperCase();
+    if (tier == 'FREE') return "Upgrade to Standard to unlock Community Chat, Stories, and member networking.";
+
+    final expiry = _subscriptionExpiryDate();
+    if (expiry == null) return null;
+
+    final now = DateTime.now();
+    final daysLeft = expiry.difference(now).inDays;
+
+    if (daysLeft < 0) return "Membership expired. Renew now to restore full access instantly.";
+    if (daysLeft <= 1) return "Final reminder: your membership expires tomorrow.";
+    if (daysLeft <= 7) return "Renew now to keep inbox, chat, and premium tools active.";
+    if (daysLeft <= 30) return "Your membership renews in $daysLeft days. Keep access uninterrupted.";
+    return null;
+  }
+
+  Widget _buildMembershipLifecycleBanner() {
+    final message = _membershipLifecycleMessage();
+    if (message == null) return const SizedBox.shrink();
+
+    final tier = (_userProfile?['tier'] ?? 'FREE').toString().toUpperCase();
+    final isExpired = message.toLowerCase().contains('expired');
+    final isRenewal = message.toLowerCase().contains('renew');
+
+    final Color bannerColor = isExpired
+        ? Colors.red
+        : (isRenewal ? Colors.orange : FfigTheme.primaryBrown);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bannerColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: bannerColor.withOpacity(0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isExpired ? Icons.error_outline : Icons.notifications_active_outlined,
+            color: bannerColor,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 13, height: 1.3),
+            ),
+          ),
+          if (tier != 'PREMIUM')
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const LockedScreen())),
+              child: const Text("Upgrade"),
+            )
+          else if (isRenewal || isExpired)
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const LockedScreen())),
+              child: const Text("Renew"),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -666,7 +744,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         // Only shows when VVIP tab (Index 3) is selected
         leading: (_selectedIndex == 3 && !MembershipService.isFree)
             ? IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: FfigTheme.primaryBrown, size: 28),
+                icon: const Icon(Icons.add, color: FfigTheme.primaryBrown, size: 28),
                 onPressed: _showCreationMenu,
               )
             : null,
@@ -903,6 +981,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       content.add(_buildProfileCompletionPrompt(topPadding: 16));
     }
 
+    // 2.5 Membership lifecycle nudges (renewal/expiry/upgrade)
+    content.add(_buildMembershipLifecycleBanner());
+
     // 1. Editorial Header
     content.add(Padding(
       padding: EdgeInsets.fromLTRB(
@@ -1077,7 +1158,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     // 5. TRENDING NOW Section
     content.add(Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1085,9 +1166,19 @@ class _DashboardScreenState extends State<DashboardScreen>
             "TRENDING NOW",
             style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey),
           ),
-          const Text(
-            "View All",
-            style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12),
+          GestureDetector(
+            onTap: () {
+              setState(() => _selectedIndex = 1);
+              _pageController.animateToPage(
+                1,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            child: const Text(
+              "View All",
+              style: TextStyle(color: FfigTheme.primaryBrown, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
           ),
         ],
       ),

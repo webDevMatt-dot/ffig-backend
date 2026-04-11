@@ -70,11 +70,15 @@ class _PremiumDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isError ? Colors.redAccent.shade100 : FfigTheme.primaryBrown;
-    
+    final bgColor = Theme.of(context).colorScheme.surface;
+    final titleColor = Theme.of(context).colorScheme.onSurface;
+    final messageColor = isDark ? Colors.white70 : Colors.black54;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       elevation: 10,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -84,7 +88,7 @@ class _PremiumDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withOpacity(0.15), // Slightly more visible for dark mode
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 40, color: color),
@@ -93,10 +97,10 @@ class _PremiumDialog extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: titleColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -106,10 +110,10 @@ class _PremiumDialog extends StatelessWidget {
                 child: Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.black54,
-                    height: 1.4,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: messageColor,
+                    height: 1.5,
                   ),
                 ),
               ),
@@ -120,17 +124,17 @@ class _PremiumDialog extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black, // Premium Black
-                  foregroundColor: FfigTheme.primaryBrown, // Gold Text
+                  backgroundColor: FfigTheme.primaryBrown,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 0,
                 ),
-                child: Text(
+                child: const Text(
                   "DISMISS",
-                  style: GoogleFonts.lato(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
                 ),
               ),
             ),
@@ -152,9 +156,14 @@ class _PremiumConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).colorScheme.surface;
+    final titleColor = Theme.of(context).colorScheme.onSurface;
+    final messageColor = isDark ? Colors.white70 : Colors.black54;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       elevation: 10,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -164,7 +173,7 @@ class _PremiumConfirmationDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.orangeAccent.withOpacity(0.1),
+                color: Colors.orangeAccent.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.help_outline, size: 40, color: Colors.orangeAccent),
@@ -173,10 +182,10 @@ class _PremiumConfirmationDialog extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: titleColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -186,10 +195,10 @@ class _PremiumConfirmationDialog extends StatelessWidget {
                 child: Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.black54,
-                    height: 1.4,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: messageColor,
+                    height: 1.5,
                   ),
                 ),
               ),
@@ -203,9 +212,9 @@ class _PremiumConfirmationDialog extends StatelessWidget {
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.grey,
                     ),
-                    child: Text(
+                    child: const Text(
                       "CANCEL",
-                      style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -214,16 +223,16 @@ class _PremiumConfirmationDialog extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black, // Premium Black
-                      foregroundColor: FfigTheme.primaryBrown, // Gold Text
+                      backgroundColor: FfigTheme.primaryBrown,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
+                    child: const Text(
                       "CONFIRM",
-                      style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),

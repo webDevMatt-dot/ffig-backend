@@ -122,13 +122,29 @@ class _ManageBusinessScreenState extends State<ManageBusinessScreen> {
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Business Logo',
-          toolbarColor: FfigTheme.primaryBrown,
+          toolbarColor: Colors.black,
           toolbarWidgetColor: Colors.white,
           initAspectRatio: CropAspectRatioPreset.square,
-          lockAspectRatio: true,
+          lockAspectRatio: false,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
         IOSUiSettings(
           title: 'Crop Business Logo',
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
       ],
     );

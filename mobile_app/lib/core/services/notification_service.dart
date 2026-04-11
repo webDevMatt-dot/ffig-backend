@@ -9,6 +9,11 @@ import 'package:mobile_app/core/services/admin_api_service.dart';
 import '../../main.dart'; // Global Navigator Key
 import '../../features/chat/chat_screen.dart';
 import '../../features/chat/community_chat_screen.dart';
+import '../../features/admin/approvals/admin_approvals_screen.dart';
+import '../../features/admin/tickets/admin_tickets_screen.dart';
+import '../../features/resources/resources_screen.dart';
+import '../../features/premium/vvip_reels_screen.dart';
+import '../../features/home/dashboard_screen.dart';
 
 // 1. TOP-LEVEL BACKGROUND HANDLER
 @pragma('vm:entry-point')
@@ -210,6 +215,9 @@ class NotificationService {
       if (kDebugMode) print("❌ Error subscribing to topics: $e");
     }
     
+    // 8. Setup Background/Terminated Interaction Listeners
+    await _setupInteractedMessage();
+    
     _isInitialized = true;
   }
 
@@ -230,36 +238,59 @@ class NotificationService {
   }
 
   void _handleNotificationData(Map<String, dynamic> data) {
-    if (kDebugMode) print("🔔 Notification Data: $data");
+    if (kDebugMode) print("🔔 Notification Data Received: $data");
     
     // Normalize data keys (background messages sometimes come as Map<Object?, Object?>)
     final params = Map<String, dynamic>.from(data);
+    final type = params['type']?.toString();
 
-    if (params['type'] == 'chat_message') {
+    // 1. CHAT MESSAGES
+    if (type == 'chat_message') {
        final conversationId = int.tryParse(params['conversation_id']?.toString() ?? '');
        final recipientId = int.tryParse(params['sender_id']?.toString() ?? ''); 
        final name = params['sender_name']?.toString() ?? 'Chat';
 
        if (conversationId != null) {
-           // Navigate to Chat Screen using Global Key
-           navigatorKey.currentState?.push(
-             MaterialPageRoute(
-               builder: (_) => ChatScreen(
-                 conversationId: conversationId,
-                 recipientId: recipientId,
-                 recipientName: name, 
-               ),
-             ),
-           );
+           _pushScreen(ChatScreen(
+             conversationId: conversationId,
+             recipientId: recipientId,
+             recipientName: name, 
+           ));
        }
-    } else if (params['type'] == 'community_chat') {
-       // Navigate to Community Chat
-       navigatorKey.currentState?.push(
-         MaterialPageRoute(
-           builder: (_) => const CommunityChatScreen(),
-         ),
-       );
+    } 
+    // 2. COMMUNITY CHAT
+    else if (type == 'community_chat') {
+       _pushScreen(const CommunityChatScreen());
     }
+    // 3. ADMIN ALERTS (Business Approvals, Verification Requests)
+    else if (type == 'admin_alert' || type == 'admin_business_alert') {
+       _pushScreen(const AdminApprovalsScreen());
+    }
+    // 4. ADMIN PURCHASE ALERTS
+    else if (type == 'admin_purchase_alert') {
+       _pushScreen(const AdminTicketsScreen());
+    }
+    // 5. PREMIUM STORIES
+    else if (type == 'new_story') {
+       _pushScreen(const VVIPReelsScreen());
+    }
+    // 6. SHARED RESOURCES
+    else if (type == 'new_resource') {
+       _pushScreen(const ResourcesScreen());
+    }
+    // 7. CONTENT UPDATES (Spotlights, Posts, Announcements)
+    // These generally lead back to the Dashboard (Home) where the latest content is highlighted.
+    else if (['new_post', 'hero_announcement', 'flash_alert', 'founder_spotlight', 'business_spotlight'].contains(type)) {
+       // We push a fresh Dashboard which will auto-refresh its content on initialization
+       _pushScreen(const DashboardScreen());
+    }
+  }
+
+  /// Helper to push a screen on top of the current state using the Global Key.
+  void _pushScreen(Widget screen) {
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
   }
 
   /// Forces a token sync with the backend.

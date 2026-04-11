@@ -1,20 +1,20 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:io';
-import '../api/constants.dart';
+import '../api/django_api_client.dart';
 
 class VersionService {
+  final _apiClient = DjangoApiClient();
+
   Future<Map<String, dynamic>?> checkUpdate() async {
     try {
-      // Endpoint: constants.baseUrl usually is "https://.../api/"
-      // We need "https://.../api/home/version/"
-      final uri = Uri.parse('${baseUrl}home/version/');
-      final response = await http.get(uri);
-      
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
+      final raw = await _apiClient.get(
+        'home/version/',
+        requiresAuth: false,
+        retryEnabled: true,
+      );
+      if (raw is List) {
+        final List<dynamic> data = raw;
         
         String platformName = 'ANDROID';
         if (kIsWeb) {
@@ -24,7 +24,9 @@ class VersionService {
         }
         
         final versionData = data.firstWhere(
-            (v) => v['platform'] == platformName, orElse: () => null);
+          (v) => v['platform'] == platformName,
+          orElse: () => null,
+        );
             
         if (versionData != null) {
           final PackageInfo packageInfo = await PackageInfo.fromPlatform();
@@ -42,7 +44,7 @@ class VersionService {
         }
       }
     } catch (e) {
-      print("Version check error: $e");
+      debugPrint("Version check error: $e");
     }
     return null;
   }

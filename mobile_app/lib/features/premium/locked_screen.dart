@@ -100,7 +100,7 @@ class _LockedScreenState extends State<LockedScreen> {
       } catch (e) {
         if (mounted) {
            setState(() => _isPurchasing = false);
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+           _showPaymentRecovery(tierName: tierName, product: product, errorMessage: "$e");
         }
       }
     } else {
@@ -116,7 +116,7 @@ class _LockedScreenState extends State<LockedScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Payment Error: $e")));
+          _showPaymentRecovery(tierName: tierName, product: null, errorMessage: "$e");
         }
       } finally {
         if (mounted) setState(() => _isPurchasing = false);
@@ -137,6 +137,116 @@ class _LockedScreenState extends State<LockedScreen> {
     } finally {
       if (mounted) setState(() => _isPurchasing = false);
     }
+  }
+
+  Future<void> _openBillingSettings() async {
+    final billingUrl = defaultTargetPlatform == TargetPlatform.iOS
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
+    await _launchURL(context, billingUrl);
+  }
+
+  Future<void> _showPaymentRecovery({
+    required String tierName,
+    required ProductDetails? product,
+    required String errorMessage,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Payment Didn’t Go Through",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Your membership remains active until your current period ends. Update your payment method or retry to avoid interruption.",
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Details: $errorMessage",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _buy(product, tierName);
+                    },
+                    child: const Text("Retry Payment"),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetContext);
+                      setState(() => _isPurchasing = true);
+                      try {
+                        final success = await StripeService().purchaseMembership(targetTier: tierName);
+                        if (success && mounted) {
+                          _handlePurchaseSuccess();
+                          IAPService().purchaseSuccessNotifier.value = true;
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Unable to process alternative card right now.")),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _isPurchasing = false);
+                      }
+                    },
+                    child: const Text("Use Another Card"),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetContext);
+                      await _openBillingSettings();
+                    },
+                    child: const Text("Update Billing Details"),
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetContext);
+                      await _launchURL(
+                        context,
+                        'mailto:admin@femalefoundersinitiative.com?subject=Payment%20support',
+                      );
+                    },
+                    child: const Text("Contact Support"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Obsolete: Replaced by IAPService handling
@@ -182,7 +292,7 @@ class _LockedScreenState extends State<LockedScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Direct messaging is exclusively available to our members. Subscribe in-app to start connecting.',
+                'Upgrade to unlock community networking, direct messaging, and growth tools.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
@@ -193,7 +303,12 @@ class _LockedScreenState extends State<LockedScreen> {
                 context,
                 title: "STANDARD MEMBER",
                 price: "\$600 / year",
-                features: ["Global Networking", "Member Directory Access", "Basic Resources"],
+                features: [
+                  "Community Chat access",
+                  "Post and view Stories",
+                  "Community member networking",
+                  "10% ticket discount on events",
+                ],
                 buttonText: standard != null ? "JOIN STANDARD" : "JOIN VIA STRIPE",
                 isRecommended: false,
                 onTap: () => _buy(standard, 'STANDARD'),
@@ -206,7 +321,13 @@ class _LockedScreenState extends State<LockedScreen> {
                 context,
                 title: "PREMIUM MEMBER",
                 price: "\$800 / year",
-                features: ["Direct Messaging (DM)", "VIP Event Access", "Investor Introductions", "Premium Resource Vault"],
+                features: [
+                  "Everything in Standard",
+                  "Direct Inbox messaging",
+                  "Business Profile + Marketing tools",
+                  "Full member profile visibility",
+                  "20% ticket discount on events",
+                ],
                 buttonText: premium != null ? "GO PREMIUM" : "UPGRADE VIA STRIPE",
                 isRecommended: true,
                 onTap: () => _buy(premium, 'PREMIUM'),

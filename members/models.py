@@ -304,3 +304,34 @@ class LoginLog(models.Model):
 
     def __str__(self):
         return f"{self.user.username} logged in at {self.timestamp}"
+
+
+class AdminAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('BUSINESS_STATUS', 'Business Status Updated'),
+        ('MARKETING_STATUS', 'Marketing Status Updated'),
+        ('REPORT_STATUS', 'Report Status Updated'),
+        ('MODERATION_ACTION', 'Moderation Action Performed'),
+    ]
+
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='admin_audit_logs',
+    )
+    action_type = models.CharField(max_length=40, choices=ACTION_CHOICES)
+    target_type = models.CharField(max_length=40)
+    target_id = models.CharField(max_length=100)
+    target_label = models.CharField(max_length=255, blank=True)
+    reason = models.TextField(blank=True)
+    metadata = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        actor_name = self.actor.username if self.actor else 'System'
+        return f"{actor_name} -> {self.action_type} ({self.target_type}:{self.target_id})"

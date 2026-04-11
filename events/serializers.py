@@ -1,6 +1,16 @@
 from rest_framework import serializers
 from .models import Event, EventSpeaker, AgendaItem, EventFAQ, TicketTier, Ticket
 from decimal import Decimal
+import os
+from django.utils.text import slugify
+
+
+def _share_base_url():
+    base = os.environ.get(
+        'PUBLIC_SHARE_BASE_URL',
+        'https://www.femalefoundersinitiative.com',
+    ).rstrip('/')
+    return base
 
 class EventSpeakerSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
@@ -127,6 +137,7 @@ class EventSerializer(serializers.ModelSerializer):
     ticket_tiers = TicketTierSerializer(many=True, read_only=True)
 
     image_url = serializers.SerializerMethodField()
+    share_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -138,4 +149,33 @@ class EventSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
-        return obj.image_url
+
+        url = (obj.image_url or '').strip()
+        if not url:
+            return ''
+
+        if url.startswith('http://') or url.startswith('https://'):
+            return url
+
+        if url.startswith('//'):
+            return f'https:{url}'
+
+        if url.startswith('/'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+
+            site_url = os.environ.get(
+                'SITE_URL',
+                'https://ffig-backend-ti5w.onrender.com',
+            ).rstrip('/')
+            if site_url.endswith('/api'):
+                site_url = site_url[:-4]
+            return f'{site_url}{url}'
+
+        return url
+
+    def get_share_url(self, obj):
+        pretty_slug = slugify(obj.title) or f'event-{obj.id}'
+        share_base = _share_base_url()
+        return f'{share_base}/share/events/{obj.id}/{pretty_slug}/'

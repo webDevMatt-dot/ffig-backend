@@ -47,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _adminNotice;
   bool _updateAvailable = false;
   bool _isAdmin = false;
+  DateTime? _subscriptionExpiry;
 
   String? _updateUrl;
   bool _isGuest = true;
@@ -100,11 +101,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _readReceiptsEnabled = data['read_receipts_enabled'] ?? true;
               _adminNotice = data['admin_notice']; // May be null
               _isAdmin = data['is_staff'] ?? false;
+              final expiryRaw = data['subscription_expiry']?.toString();
+              if (expiryRaw != null && expiryRaw.isNotEmpty && expiryRaw != 'null') {
+                _subscriptionExpiry = DateTime.tryParse(expiryRaw)?.toLocal();
+              } else {
+                _subscriptionExpiry = null;
+              }
               _isGuest = false;
             });
           }
         }
       } catch (e) {}
+  }
+
+  String? _subscriptionLifecycleMessage() {
+    if (_isGuest) return null;
+    if (_tier == 'FREE') {
+      return "Upgrade to Standard to unlock Community Chat, Stories, and member networking.";
+    }
+    if (_subscriptionExpiry == null) return null;
+    final daysLeft = _subscriptionExpiry!.difference(DateTime.now()).inDays;
+    if (daysLeft < 0) return "Membership expired. Renew now to restore full access instantly.";
+    if (daysLeft <= 1) return "Final reminder: your membership expires tomorrow.";
+    if (daysLeft <= 7) return "Renew now to keep inbox, chat, and premium tools active.";
+    if (daysLeft <= 30) return "Your membership renews in $daysLeft days. Keep access uninterrupted.";
+    return null;
   }
 
   void _showDeleteConfirmation() {
@@ -601,6 +622,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                    ],
                  ),
                  const SizedBox(height: 16),
+                 if (_subscriptionLifecycleMessage() != null) ...[
+                   Container(
+                     width: double.infinity,
+                     margin: const EdgeInsets.only(bottom: 12),
+                     padding: const EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: Colors.orange.withOpacity(0.08),
+                       borderRadius: BorderRadius.circular(10),
+                       border: Border.all(color: Colors.orange.withOpacity(0.35)),
+                     ),
+                     child: Text(
+                       _subscriptionLifecycleMessage()!,
+                       style: const TextStyle(fontSize: 13),
+                     ),
+                   ),
+                 ],
                  SizedBox(
                    width: double.infinity,
                    child: OutlinedButton.icon(
@@ -611,6 +648,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                        foregroundColor: Theme.of(context).colorScheme.primary,
                        side: BorderSide(color: Theme.of(context).colorScheme.primary),
                      ),
+                   ),
+                 ),
+                 const SizedBox(height: 8),
+                 SizedBox(
+                   width: double.infinity,
+                   child: TextButton.icon(
+                     onPressed: () async {
+                       final uri = Uri.parse(
+                         'mailto:admin@femalefoundersinitiative.com?subject=Membership%20Payment%20Support',
+                       );
+                       await launchUrl(uri, mode: LaunchMode.externalApplication);
+                     },
+                     icon: const Icon(Icons.support_agent, size: 18),
+                     label: const Text("Need payment help? Contact support"),
                    ),
                  ),
                ],

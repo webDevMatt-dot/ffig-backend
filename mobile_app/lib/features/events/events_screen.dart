@@ -59,6 +59,7 @@ class _EventsScreenState extends State<EventsScreen> {
     try {
       final response = await http.get(Uri.parse(endpoint), headers: headers);
       if (response.statusCode == 200) {
+        if (!mounted) return;
         setState(() => _events = jsonDecode(response.body));
       }
     } catch (e) {

@@ -1,19 +1,13 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../api/constants.dart';
+import '../api/django_api_client.dart';
 
 class StripeService {
   static final StripeService _instance = StripeService._internal();
   factory StripeService() => _instance;
   StripeService._internal();
 
-  // Use the global baseUrl defined in constants.dart
-  final String _baseUrl = '${baseUrl}payments';
-
-  final _storage = const FlutterSecureStorage();
+  final _apiClient = DjangoApiClient();
 
   /// Processes a ticket purchase using the native Stripe Payment Sheet.
   /// 
@@ -22,29 +16,17 @@ class StripeService {
   /// 3. Presents the sheet (`Stripe.instance.presentPaymentSheet`).
   Future<bool> purchaseTicket({required int tierId, int quantity = 1}) async {
     try {
-      // 1. Get token
-      final token = await _storage.read(key: 'access_token');
-      if (token == null) throw Exception("User not authenticated.");
-
-      // 2. Call backend to create PaymentIntent
-      final url = Uri.parse('$_baseUrl/create-payment-intent/');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
+      final data = await _apiClient.post(
+        'payments/create-payment-intent/',
+        data: {
           'tier_id': tierId,
           'quantity': quantity,
-        }),
+        },
       );
 
-      if (response.statusCode != 200) {
-        throw Exception("Failed to create payment intent: ${response.body}");
+      if (data is! Map<String, dynamic>) {
+        throw Exception("Unexpected payment response.");
       }
-
-      final data = jsonDecode(response.body);
       final clientSecret = data['clientSecret'];
 
       if (clientSecret == null) {
@@ -73,6 +55,8 @@ class StripeService {
       }
       if (kDebugMode) print("Stripe Exception: ${e.error.localizedMessage}");
       rethrow;
+    } on DjangoApiException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       if (kDebugMode) print("General Exception during payment: $e");
       rethrow;
@@ -82,18 +66,9 @@ class StripeService {
   /// Request a Stripe Connect onboarding link for event organizers
   Future<String?> getConnectOnboardingLink() async {
     try {
-      final token = await _storage.read(key: 'access_token');
-      if (token == null) return null;
-
-      final url = Uri.parse('$_baseUrl/connect/create-account/');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['url'];
+      final data = await _apiClient.post('payments/connect/create-account/');
+      if (data is Map<String, dynamic>) {
+        return data['url']?.toString();
       }
       return null;
     } catch (e) {
@@ -105,17 +80,9 @@ class StripeService {
   /// Check the onboarding status of the current user's connected account
   Future<Map<String, dynamic>?> getConnectStatus() async {
     try {
-      final token = await _storage.read(key: 'access_token');
-      if (token == null) return null;
-
-      final url = Uri.parse('$_baseUrl/connect/status/');
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+      final data = await _apiClient.get('payments/connect/status/');
+      if (data is Map<String, dynamic>) {
+        return data;
       }
       return null;
     } catch (e) {
@@ -126,31 +93,19 @@ class StripeService {
   /// Process a free ticket registration
   Future<bool> registerFreeTicket({required int tierId, int quantity = 1, String? firstName, String? lastName, String? email}) async {
     try {
-      final token = await _storage.read(key: 'access_token');
-      if (token == null) throw Exception("User not authenticated.");
-
-      final url = Uri.parse('$_baseUrl/free-registration/');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
+      await _apiClient.post(
+        'payments/free-registration/',
+        data: {
           'tier_id': tierId, 
           'quantity': quantity,
           'first_name': firstName,
           'last_name': lastName,
           'email': email,
-        }),
+        },
       );
-
-      if (response.statusCode == 201) {
-        return true;
-      } else {
-        final data = jsonDecode(response.body);
-        throw Exception(data['error'] ?? "Failed to register for free ticket.");
-      }
+      return true;
+    } on DjangoApiException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       if (kDebugMode) print("Error during free registration: $e");
       rethrow;
@@ -160,24 +115,14 @@ class StripeService {
   /// Processes a membership upgrade using the native Stripe Payment Sheet.
   Future<bool> purchaseMembership({required String targetTier}) async {
     try {
-      final token = await _storage.read(key: 'access_token');
-      if (token == null) throw Exception("User not authenticated.");
-
-      final url = Uri.parse('$_baseUrl/create-membership-payment-intent/');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'target_tier': targetTier}),
+      final data = await _apiClient.post(
+        'payments/create-membership-payment-intent/',
+        data: {'target_tier': targetTier},
       );
 
-      if (response.statusCode != 200) {
-        throw Exception("Failed to create membership payment intent: ${response.body}");
+      if (data is! Map<String, dynamic>) {
+        throw Exception("Unexpected membership payment response.");
       }
-
-      final data = jsonDecode(response.body);
       final clientSecret = data['clientSecret'];
 
       await Stripe.instance.initPaymentSheet(
@@ -192,6 +137,8 @@ class StripeService {
     } on StripeException catch (e) {
       if (e.error.code == FailureCode.Canceled) return false;
       rethrow;
+    } on DjangoApiException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       if (kDebugMode) print("Membership Payment Error: $e");
       rethrow;

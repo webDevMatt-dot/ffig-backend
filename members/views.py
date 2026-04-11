@@ -11,11 +11,12 @@ from .serializers import ProfileSerializer
 from core.permissions import IsPremiumUser
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAdminUser
-from .models import Profile, BusinessProfile, MarketingRequest, ContentReport
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, AdminAuditLog
 from .serializers import (
     ProfileSerializer, BusinessProfileSerializer, AdminBusinessProfileSerializer,
     MarketingRequestSerializer, AdminMarketingRequestSerializer, ContentReportSerializer,
-    NotificationSerializer, LoginLogSerializer
+    AdminContentReportSerializer,
+    NotificationSerializer, LoginLogSerializer, AdminAuditLogSerializer
 )
 from events.models import Ticket
 from events.serializers import AdminTicketSerializer
@@ -32,6 +33,27 @@ def premium_content(request):
             "Private Coaching Session Link"
         ]
     })
+
+
+def _log_admin_action(
+    *,
+    actor,
+    action_type,
+    target_type,
+    target_id,
+    target_label='',
+    reason='',
+    metadata=None,
+):
+    AdminAuditLog.objects.create(
+        actor=actor if getattr(actor, 'is_authenticated', False) else None,
+        action_type=action_type,
+        target_type=target_type,
+        target_id=str(target_id),
+        target_label=(target_label or '')[:255],
+        reason=reason or '',
+        metadata=metadata or {},
+    )
 
 
 class MemberListView(generics.ListAPIView):
@@ -85,6 +107,18 @@ class MemberListView(generics.ListAPIView):
              queryset = queryset.filter(is_blocked=True)
 
         return queryset
+
+
+class MemberDetailView(generics.RetrieveAPIView):
+    """
+    Return a single member profile by Django User ID.
+    Frontend passes user_id from directory/chat payloads.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProfileSerializer
+
+    def get_object(self):
+        return get_object_or_404(Profile.objects.select_related('user'), user__id=self.kwargs['user_id'])
 
 class UniqueLocationsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -420,9 +454,25 @@ class AdminBusinessProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AdminBusinessProfileSerializer
 
     def perform_update(self, serializer):
-        old_status = self.get_object().status
+        obj = self.get_object()
+        old_status = obj.status
         instance = serializer.save()
         new_status = instance.status
+
+        if old_status != new_status:
+            _log_admin_action(
+                actor=self.request.user,
+                action_type='BUSINESS_STATUS',
+                target_type='business_profile',
+                target_id=instance.id,
+                target_label=instance.company_name,
+                reason=(getattr(instance, 'feedback', '') or '').strip(),
+                metadata={
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'owner_user_id': instance.user_id,
+                },
+            )
 
         if old_status != 'REJECTED' and new_status == 'REJECTED':
             from chat.models import Conversation, Message
@@ -480,9 +530,26 @@ class AdminMarketingRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AdminMarketingRequestSerializer
 
     def perform_update(self, serializer):
-        old_status = self.get_object().status
+        obj = self.get_object()
+        old_status = obj.status
         instance = serializer.save()
         new_status = instance.status
+
+        if old_status != new_status:
+            _log_admin_action(
+                actor=self.request.user,
+                action_type='MARKETING_STATUS',
+                target_type='marketing_request',
+                target_id=instance.id,
+                target_label=instance.title,
+                reason=(getattr(instance, 'feedback', '') or '').strip(),
+                metadata={
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'owner_user_id': instance.user_id,
+                    'request_type': instance.type,
+                },
+            )
 
         # If approved, notify ALL users (New Post notification)
         if old_status != 'APPROVED' and new_status == 'APPROVED':
@@ -506,12 +573,34 @@ class AdminMarketingRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AdminContentReportListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = ContentReport.objects.all().order_by('-created_at')
-    serializer_class = ContentReportSerializer
+    serializer_class = AdminContentReportSerializer
 
 class AdminContentReportDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAdminUser]
     queryset = ContentReport.objects.all()
-    serializer_class = ContentReportSerializer
+    serializer_class = AdminContentReportSerializer
+
+    def perform_update(self, serializer):
+        obj = self.get_object()
+        old_status = obj.status
+        instance = serializer.save()
+        new_status = instance.status
+
+        if old_status != new_status:
+            _log_admin_action(
+                actor=self.request.user,
+                action_type='REPORT_STATUS',
+                target_type='content_report',
+                target_id=instance.id,
+                target_label=f"{instance.reported_item_type}:{instance.reported_item_id}",
+                reason=(getattr(instance, 'reason', '') or '').strip(),
+                metadata={
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'reported_item_type': instance.reported_item_type,
+                    'reported_item_id': instance.reported_item_id,
+                },
+            )
 
 class AdminModerationActionView(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -539,10 +628,20 @@ class AdminModerationActionView(APIView):
             # Set the notice on the profile
             target_user.profile.admin_notice = reason
             target_user.profile.save()
+
+            _log_admin_action(
+                actor=request.user,
+                action_type='MODERATION_ACTION',
+                target_type='user',
+                target_id=target_user.id,
+                target_label=target_user.username,
+                reason=reason,
+                metadata={'action': action},
+            )
             
             from core.services.fcm_service import send_push_notification
             send_push_notification(
-                recipient=target_user,
+                target_user,
                 title="Warning from Admin",
                 body=f"You have received a warning: {reason}",
                 data={"type": "admin_warning"}
@@ -555,11 +654,21 @@ class AdminModerationActionView(APIView):
             target_user.profile.suspension_expiry = timezone.now() + timedelta(days=duration)
             target_user.profile.admin_notice = f"Suspended for {duration} days: {reason}"
             target_user.profile.save()
+
+            _log_admin_action(
+                actor=request.user,
+                action_type='MODERATION_ACTION',
+                target_type='user',
+                target_id=target_user.id,
+                target_label=target_user.username,
+                reason=reason,
+                metadata={'action': action, 'duration_days': duration},
+            )
             
             # Notify via Direct Push
             from core.services.fcm_service import send_push_notification
             send_push_notification(
-                recipient=target_user,
+                target_user,
                 title="Account Suspended",
                 body=f"Your account has been suspended for {duration} days. Reason: {reason}",
                 data={"type": "account_suspension"}
@@ -569,12 +678,31 @@ class AdminModerationActionView(APIView):
         elif action == 'BLOCK':
             target_user.profile.is_blocked = True
             target_user.profile.save()
+
+            _log_admin_action(
+                actor=request.user,
+                action_type='MODERATION_ACTION',
+                target_type='user',
+                target_id=target_user.id,
+                target_label=target_user.username,
+                reason=reason,
+                metadata={'action': action},
+            )
             # target_user.is_active = False # Don't deactivate so they can see the 'Blocked' dialog
             # target_user.save()
              # Notify (email would be better here since they can't login, but creating notif for record)
             return Response({'status': 'blocked'})
             
         elif action == 'DELETE':
+            _log_admin_action(
+                actor=request.user,
+                action_type='MODERATION_ACTION',
+                target_type='user',
+                target_id=target_user.id,
+                target_label=target_user.username,
+                reason=reason,
+                metadata={'action': action},
+            )
             target_user.delete()
             return Response({'status': 'deleted'})
             
@@ -900,6 +1028,14 @@ class AdminLoginLogListView(generics.ListAPIView):
     def get_queryset(self):
         from .models import LoginLog
         return LoginLog.objects.all().order_by('-timestamp')
+
+
+class AdminAuditLogListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = AdminAuditLogSerializer
+
+    def get_queryset(self):
+        return AdminAuditLog.objects.select_related('actor').all().order_by('-created_at')
 
 class AdminTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAdminUser]

@@ -25,6 +25,38 @@ def env_list(name, default=''):
     raw = os.environ.get(name, default)
     return [item.strip() for item in raw.split(',') if item.strip()]
 
+
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def unique_ordered(items):
+    seen = set()
+    ordered = []
+    for item in items:
+        if item and item not in seen:
+            seen.add(item)
+            ordered.append(item)
+    return ordered
+
+
+def sanitize_hosts(hosts):
+    # Explicitly reject wildcard host entries.
+    return [host for host in hosts if host and host != '*']
+
+
+def sanitize_origins(origins):
+    cleaned = []
+    for origin in origins:
+        value = origin.strip().rstrip('/')
+        if not value or '*' in value:
+            continue
+        cleaned.append(value)
+    return cleaned
+
 # Load .env file for local development
 env_path = Path(__file__).resolve().parent.parent / '.env'
 if env_path.exists():
@@ -69,23 +101,75 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DEBUG', False)
 
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1,192.168.0.3,*')
+LOCAL_ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '10.0.2.2',
+    '192.168.0.5',
+]
+KNOWN_PROD_ALLOWED_HOSTS = [
+    'ffig-backend-ti5w.onrender.com',
+    'femalefoundersinitiativeglobal.onrender.com',
+    'www.femalefoundersinitiative.com',
+    'femalefoundersinitiative.com',
+    'www.femalefoundersinitiativeglobal.com',
+    'femalefoundersinitiativeglobal.com',
+]
+LOCAL_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://192.168.0.5',
+    'http://192.168.0.5:8000',
+]
+KNOWN_PROD_TRUSTED_ORIGINS = [
+    'https://ffig-backend-ti5w.onrender.com',
+    'https://femalefoundersinitiativeglobal.onrender.com',
+    'https://www.femalefoundersinitiative.com',
+    'https://femalefoundersinitiative.com',
+    'https://www.femalefoundersinitiativeglobal.com',
+    'https://femalefoundersinitiativeglobal.com',
+]
+LOCAL_CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://192.168.0.5:8000',
+]
+
+env_allowed_hosts = sanitize_hosts(env_list('ALLOWED_HOSTS', ''))
+env_csrf_trusted_origins = sanitize_origins(env_list('CSRF_TRUSTED_ORIGINS', ''))
+env_cors_allowed_origins = sanitize_origins(env_list('CORS_ALLOWED_ORIGINS', ''))
 
 # Automatically append Render hostnames if running on Render
-render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(render_external_hostname)
+render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
 
-if '.onrender.com' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('.onrender.com')
+if DEBUG:
+    # Local-first defaults for development.
+    ALLOWED_HOSTS = unique_ordered(env_allowed_hosts or LOCAL_ALLOWED_HOSTS)
+    CSRF_TRUSTED_ORIGINS = unique_ordered(env_csrf_trusted_origins or LOCAL_TRUSTED_ORIGINS)
+    CORS_ALLOWED_ORIGINS = unique_ordered(env_cors_allowed_origins or LOCAL_CORS_ALLOWED_ORIGINS)
+else:
+    # Mobile-only production posture: explicit backend/admin origins only.
+    ALLOWED_HOSTS = unique_ordered(env_allowed_hosts + KNOWN_PROD_ALLOWED_HOSTS)
+    if render_external_hostname:
+        ALLOWED_HOSTS = unique_ordered(ALLOWED_HOSTS + [render_external_hostname])
 
-CSRF_TRUSTED_ORIGINS = env_list(
-    'CSRF_TRUSTED_ORIGINS',
-    'https://*.onrender.com,http://localhost,http://127.0.0.1'
-)
+    CSRF_TRUSTED_ORIGINS = unique_ordered(env_csrf_trusted_origins + KNOWN_PROD_TRUSTED_ORIGINS)
+    if render_external_hostname:
+        CSRF_TRUSTED_ORIGINS = unique_ordered(CSRF_TRUSTED_ORIGINS + [f'https://{render_external_hostname}'])
 
-CORS_ALLOW_ALL_ORIGINS = env_bool('CORS_ALLOW_ALL_ORIGINS', False)
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', '')
+    # Keep CORS strict in production. Native mobile apps do not require browser CORS.
+    CORS_ALLOWED_ORIGINS = unique_ordered(env_cors_allowed_origins)
+
+if env_bool('CORS_ALLOW_ALL_ORIGINS', False):
+    print("⚠️  WARNING: CORS_ALLOW_ALL_ORIGINS=True was provided but is ignored for security hardening.")
+
+CORS_ALLOW_ALL_ORIGINS = False
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', True)
@@ -296,12 +380,17 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
-    
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    # Transitional defaults: significantly shorter than 10 years while minimizing
+    # forced logouts until client-side silent refresh is fully centralized.
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=env_int('JWT_ACCESS_DAYS', 30)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env_int('JWT_REFRESH_DAYS', 365)),
+    'ROTATE_REFRESH_TOKENS': env_bool('JWT_ROTATE_REFRESH_TOKENS', True),
+    # Set to True only after enabling token blacklist app + migrations.
+    'BLACKLIST_AFTER_ROTATION': env_bool('JWT_BLACKLIST_AFTER_ROTATION', False),
 }
+
+# Chat safety defaults
+CHAT_MESSAGE_DELETE_WINDOW_MINUTES = env_int('CHAT_MESSAGE_DELETE_WINDOW_MINUTES', 15)
 
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
     'rest_framework.throttling.AnonRateThrottle',

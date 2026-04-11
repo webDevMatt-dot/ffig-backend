@@ -9,6 +9,7 @@ import 'dart:convert';
 import '../../../core/api/constants.dart';
 
 import '../../../shared_widgets/user_avatar.dart';
+import '../../../core/utils/dialog_utils.dart';
 
 /// A full-screen viewer for user stories, similar to Instagram/Snapchat.
 ///
@@ -53,6 +54,12 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   bool _isReplyLoading = false;
   bool _isClosed = false;
 
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _onNext();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -60,15 +67,22 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     _pageController = PageController(initialPage: _currentIndex);
     
     _animController = AnimationController(vsync: this);
+    _animController.addStatusListener(_onAnimationStatus);
     
     _replyFocusNode.addListener(_onReplyFocusChange);
-    
-    _loadStory(index: _currentIndex);
+
+    // Delay story loading until after first frame to avoid inherited widget
+    // access issues during init (e.g., MediaQuery via precache paths).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isClosed) return;
+      _loadStory(index: _currentIndex);
+    });
   }
 
   @override
   void dispose() {
     _replyFocusNode.removeListener(_onReplyFocusChange);
+    _animController.removeStatusListener(_onAnimationStatus);
     _replyFocusNode.dispose();
     _pageController.dispose();
     _animController.dispose();
@@ -205,12 +219,6 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
     // Proactively preload next story
     _preloadNextStory(index + 1);
-
-    _animController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _onNext();
-      }
-    });
   }
 
   /// Preloads the next story in the list (image cache or video warm-up).
@@ -239,11 +247,16 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         _nextVideoController = VideoPlayerController.networkUrl(Uri.parse(mediaUrl));
         _nextVideoController!.initialize().then((_) {
           debugPrint("Next Video Warmed: $mediaUrl");
-        }).catchError((e) => debugPrint("Next Video Warmup failed: $e"));
+        }).catchError((e) {
+          debugPrint("Next Video Warmup failed: $e");
+          return null;
+        });
       }
     } else {
       // Precache Image
-      precacheImage(CachedNetworkImageProvider(mediaUrl), context);
+      precacheImage(CachedNetworkImageProvider(mediaUrl), context).catchError((_) {
+        // Network/cache warmup failures should not crash story flow.
+      });
     }
   }
 
@@ -745,19 +758,10 @@ class StoryViewersSheet extends StatelessWidget {
   /// Deletes the story via API.
   /// - Prompts for confirmation.
   Future<void> _deleteStory(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Story?'),
-        content: const Text('This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-             onPressed: () => Navigator.pop(context, true), 
-             child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    final confirm = await DialogUtils.showConfirmation(
+      context, 
+      'Delete Story?', 
+      'This cannot be undone.'
     );
 
     if (confirm != true) return;

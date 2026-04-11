@@ -85,29 +85,30 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               toolbarColor: Colors.black,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.original,
-              lockAspectRatio: true,
+              lockAspectRatio: false,
             ),
             IOSUiSettings(
               title: 'Story',
-              aspectRatioLockEnabled: true,
-              resetAspectRatioEnabled: false,
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
             ),
              WebUiSettings(
               context: context,
             ),
           ],
-          aspectRatio: const CropAspectRatio(ratioX: 9, ratioY: 16),
         );
 
         if (croppedFile != null) {
            _disposeVideo();
            if (kIsWeb) {
              final bytes = await croppedFile.readAsBytes();
+             if (!mounted) return;
              setState(() {
                _selectedFile = bytes;
                _isVideo = false;
              });
            } else {
+             if (!mounted) return;
              setState(() {
                _selectedFile = File(croppedFile.path);
                _isVideo = false;
@@ -135,6 +136,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
            _videoController = VideoPlayerController.networkUrl(Uri.parse(xfile.path));
            
            await _videoController!.initialize();
+           if (!mounted) return;
            setState(() {
              _selectedFile = bytes;
              _isVideo = true;
@@ -143,13 +145,16 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
            final file = File(xfile.path);
            _videoController = VideoPlayerController.file(file);
            await _videoController!.initialize();
+           if (!mounted) return;
            setState(() {
              _selectedFile = file;
              _isVideo = true;
            });
        }
-       _videoController!.play();
-       _videoController!.setLooping(true);
+       if (_videoController != null) {
+         _videoController!.play();
+         _videoController!.setLooping(true);
+       }
     }
   }
 
@@ -172,7 +177,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           }
       } catch (e) {
            if (mounted) DialogUtils.showError(context, "Error", e.toString());
-           setState(() => _isLoading = false);
+           if (mounted) setState(() => _isLoading = false);
       }
   }
 
@@ -258,5 +263,4 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 }
-
 

@@ -118,27 +118,35 @@ class _ManageFounderScreenState extends State<ManageFounderScreen> {
   }
 
   Future<File?> _cropImage(File imageFile) async {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    // Match exactly the dashboard's padding (24 on each side)
-    final double cardWidth = screenWidth - 48; 
-    final double cardHeight = 340.0; // Updated from 300 to match live card
-
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
-      aspectRatio: CropAspectRatio(ratioX: cardWidth, ratioY: cardHeight),
       compressQuality: 90,
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Founder Photo',
-          toolbarColor: FfigTheme.primaryBrown,
+          toolbarColor: Colors.black,
           toolbarWidgetColor: Colors.white,
           initAspectRatio: CropAspectRatioPreset.original,
-          lockAspectRatio: true,
+          lockAspectRatio: false,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
         IOSUiSettings(
           title: 'Crop Founder Photo',
-          aspectRatioPickerButtonHidden: true,
-          resetAspectRatioEnabled: false,
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
       ],
     );

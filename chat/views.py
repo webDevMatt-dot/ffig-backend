@@ -4,6 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 from core.permissions import IsPremiumUser, IsStandardUser
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
@@ -243,6 +246,10 @@ class SendMessageView(APIView):
             # Dynamic body based on message type
             if message_type == 'image':
                 display_body = "📷 Sent an image"
+            elif message_type == 'video':
+                display_body = "🎬 Sent a video"
+            elif message_type == 'document':
+                display_body = "📄 Sent a document"
             elif message_type == 'audio':
                 display_body = "🎙️ Sent a voice message"
             else:
@@ -261,6 +268,47 @@ class SendMessageView(APIView):
             send_topic_notification("community_chat", display_title, display_body, data=data_payload)
 
         return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
+
+
+class DeleteMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        msg = get_object_or_404(Message.objects.select_related('conversation', 'sender'), id=pk)
+        conversation = msg.conversation
+
+        # Security: requester must be in chat (or staff)
+        if (
+            not conversation.is_public
+            and request.user not in conversation.participants.all()
+            and not request.user.is_staff
+        ):
+            return Response({"error": "Not a participant"}, status=403)
+
+        # Only sender (or staff override) may delete this message.
+        if request.user != msg.sender and not request.user.is_staff:
+            return Response({"error": "You can only delete your own messages."}, status=403)
+
+        delete_window_minutes = int(getattr(settings, 'CHAT_MESSAGE_DELETE_WINDOW_MINUTES', 15))
+        expires_at = msg.created_at + timedelta(minutes=delete_window_minutes)
+        if not request.user.is_staff and timezone.now() > expires_at:
+            return Response(
+                {
+                    "error": (
+                        f"Delete window expired. Messages can only be deleted "
+                        f"within {delete_window_minutes} minutes."
+                    )
+                },
+                status=400,
+            )
+
+        deleted_id = msg.id
+        msg.delete()
+
+        # Keep conversation ordering fresh in inbox after delete.
+        conversation.save()
+
+        return Response({"status": "deleted", "message_id": deleted_id}, status=200)
 
 # 4. Get/Create Global Community Chat
 class CommunityChatView(APIView):

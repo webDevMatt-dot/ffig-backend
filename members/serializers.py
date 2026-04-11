@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story, StoryView, Conversation, Message, LoginLog
+from .models import Profile, BusinessProfile, MarketingRequest, ContentReport, Story, StoryView, Conversation, Message, LoginLog, AdminAuditLog
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -186,18 +186,45 @@ class MarketingRequestSerializer(serializers.ModelSerializer):
 
 class AdminMarketingRequestSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    image_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
     
     class Meta:
         model = MarketingRequest
-        fields = '__all__'
-        read_only_fields = ['user'] # Admin can edit status and feedback
+        fields = [
+            'id',
+            'user',
+            'username',
+            'type',
+            'title',
+            'image',
+            'image_url',
+            'video',
+            'video_url',
+            'link',
+            'status',
+            'feedback',
+            'created_at',
+            'likes_count',
+        ]
+        read_only_fields = ['user', 'created_at'] # Admin can edit status and feedback
     
     def get_likes_count(self, obj):
         return obj.likes.count()
 
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        return obj.image.url
+
+    def get_video_url(self, obj):
+        if not obj.video:
+            return None
+        return obj.video.url
+
+
 class ContentReportSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ContentReport
     reporter_username = serializers.CharField(source='reporter.username', read_only=True)
     reported_user = serializers.SerializerMethodField()
     target_user_id = serializers.SerializerMethodField()
@@ -225,6 +252,11 @@ class ContentReportSerializer(serializers.ModelSerializer):
             return None 
         except:
             return None
+
+
+class AdminContentReportSerializer(ContentReportSerializer):
+    class Meta(ContentReportSerializer.Meta):
+        read_only_fields = ['reporter']
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -298,3 +330,22 @@ class LoginLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoginLog
         fields = ['id', 'username', 'timestamp', 'ip_address', 'user_agent']
+
+
+class AdminAuditLogSerializer(serializers.ModelSerializer):
+    actor_username = serializers.CharField(source='actor.username', read_only=True)
+
+    class Meta:
+        model = AdminAuditLog
+        fields = [
+            'id',
+            'actor',
+            'actor_username',
+            'action_type',
+            'target_type',
+            'target_id',
+            'target_label',
+            'reason',
+            'metadata',
+            'created_at',
+        ]

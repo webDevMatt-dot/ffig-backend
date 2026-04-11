@@ -36,6 +36,8 @@ class Message(models.Model):
         ('text', 'Text'),
         ('image', 'Image'),
         ('audio', 'Audio/Voice'),
+        ('video', 'Video'),
+        ('document', 'Document'),
     )
 
     conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)

@@ -109,18 +109,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         uiSettings: [
           AndroidUiSettings(
-              toolbarTitle: 'Edit Photo',
-              toolbarColor: Colors.black,
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: true),
+            toolbarTitle: 'Edit Photo',
+            toolbarColor: Colors.black,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
           IOSUiSettings(
             title: 'Edit Photo',
-            aspectRatioLockEnabled: true,
-            resetAspectRatioEnabled: false,
+            aspectRatioLockEnabled: false,
+            resetAspectRatioEnabled: true,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
           WebUiSettings(
             context: context,
